@@ -1,4 +1,4 @@
-use pso2server::{ServerInfo, User};
+use pso2server::{sql, ServerInfo, User};
 use rsa::{pkcs8::EncodePrivateKey, RsaPrivateKey};
 use std::{
     error, io,
@@ -39,7 +39,8 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     Ok(())
 }
 
-async fn init_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Result<()> {
+async fn init_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> Result<(), pso2server::Error> {
+    let sql = Arc::new(sql::Sql::new().unwrap());
     let listener = TcpListener::bind("0.0.0.0:12456")?;
     listener.set_nonblocking(true)?;
     {
@@ -70,18 +71,22 @@ async fn init_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Result<()
             match stream {
                 Ok(s) => {
                     println!("Client connected");
-                    clients.push(User::new(s)?);
+                    clients.push(User::new(s, sql.clone())?);
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
-                    return Err(e);
+                    return Err(e.into());
                 }
             }
         }
         for (pos, client) in clients.iter_mut().enumerate() {
             match client.tick() {
                 Ok(_) => {}
-                Err(x) if x.kind() == io::ErrorKind::ConnectionAborted => to_remove.push(pos),
+                Err(pso2server::Error::IOError(x))
+                    if x.kind() == io::ErrorKind::ConnectionAborted =>
+                {
+                    to_remove.push(pos)
+                }
                 Err(x) => {
                     to_remove.push(pos);
                     println!("Client error: {x}");
