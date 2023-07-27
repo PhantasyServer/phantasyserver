@@ -1,12 +1,15 @@
-use pso2server::{sql, ServerInfo, User};
+use pso2packetlib::protocol::login::ShipEntry;
+use pso2server::{map::Map, sql, Action, BlockInfo, User};
 use rsa::{pkcs8::EncodePrivateKey, RsaPrivateKey};
 use std::{
+    cell::RefCell,
     error, io,
-    net::TcpListener,
-    sync::{Arc, Mutex},
+    net::{Ipv4Addr, TcpListener},
+    rc::Rc,
+    sync::{Arc, Mutex, RwLock},
+    thread::{self, Builder},
     time::Duration,
 };
-use tokio::time::sleep;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     match std::fs::metadata("keypair.pem") {
@@ -21,16 +24,30 @@ fn main() -> Result<(), Box<dyn error::Error>> {
             return Err(e.into());
         }
     }
-    let server_statuses = Arc::new(Mutex::new(Vec::<ServerInfo>::new()));
-
-    let rt = tokio::runtime::Runtime::new()?;
+    let server_statuses = Arc::new(Mutex::new(Vec::<BlockInfo>::new()));
+    let ship_statuses = Arc::new(RwLock::new(Vec::<ShipEntry>::new()));
     {
-        let _guard = rt.enter();
-        let querry = tokio::spawn(querry_srv(server_statuses.clone()));
-        let block_balance = tokio::spawn(block_balance(server_statuses.clone()));
-        let server = tokio::spawn(init_srv(server_statuses));
-        println!("Server started.");
+        let mut ships = ship_statuses.write().unwrap();
+        ships.push(ShipEntry {
+            id: 0,
+            name: "Ship01".to_string(),
+            ip: Ipv4Addr::UNSPECIFIED,
+            status: pso2packetlib::protocol::login::ShipStatus::Online,
+            order: 0,
+        });
+    }
+    {
+        let status_copy = ship_statuses;
+        let querry = thread::spawn(move || querry_srv(status_copy));
+        let status_copy = server_statuses.clone();
+        let block_balance = thread::spawn(move || block_balance(status_copy));
+        let status_copy = server_statuses;
+        let server = Builder::new()
+            .name("block".into())
+            .stack_size(32 * 1024 * 1024)
+            .spawn(move || init_srv(status_copy))?;
 
+        println!("Server started.");
         while !querry.is_finished() || !block_balance.is_finished() || !server.is_finished() {
             std::thread::sleep(Duration::from_millis(100));
         }
@@ -39,39 +56,39 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     Ok(())
 }
 
-async fn init_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> Result<(), pso2server::Error> {
-    let sql = Arc::new(sql::Sql::new().unwrap());
-    let listener = TcpListener::bind("0.0.0.0:12456")?;
+fn init_srv(server_statuses: Arc<Mutex<Vec<BlockInfo>>>) -> Result<(), pso2server::Error> {
+    let sql = Arc::new(RwLock::new(sql::Sql::new().unwrap()));
+    let listener = TcpListener::bind("0.0.0.0:0")?;
+    let name = "Block 01".to_string();
     listener.set_nonblocking(true)?;
     {
         let mut servers = server_statuses.lock().unwrap();
-        servers.push(ServerInfo {
+        servers.push(BlockInfo {
             ip: [0, 0, 0, 0],
             id: 1,
-            name: "Ship01".to_string(),
-            port: 12456,
-            order: 1,
-            status: 1,
-        });
-        servers.push(ServerInfo {
-            ip: [0, 0, 0, 0],
-            id: 2,
-            name: "Ship02".to_string(),
-            port: 12456,
-            order: 2,
-            status: 1,
+            name: name.clone(),
+            port: listener.local_addr()?.port(),
         });
     }
 
+    let lobby = match Map::new("lobby.mp") {
+        Ok(x) => Rc::new(RefCell::new(x)),
+        Err(e) => {
+            eprintln!("Failed to load lobby map: {}", e);
+            return Err(e);
+        }
+    };
+
     let mut clients = vec![];
     let mut to_remove = vec![];
+    let mut actions = vec![];
 
     loop {
         for stream in listener.incoming() {
             match stream {
                 Ok(s) => {
                     println!("Client connected");
-                    clients.push(User::new(s, sql.clone())?);
+                    clients.push(User::new(s, sql.clone(), name.clone())?);
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
@@ -80,36 +97,91 @@ async fn init_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> Result<(), ps
             }
         }
         for (pos, client) in clients.iter_mut().enumerate() {
-            match client.tick() {
-                Ok(_) => {}
-                Err(pso2server::Error::IOError(x))
-                    if x.kind() == io::ErrorKind::ConnectionAborted =>
-                {
-                    to_remove.push(pos)
+            if let Some(action) = handle_error(client.tick(), &mut to_remove, pos) {
+                actions.push((action, pos));
+            }
+        }
+        for (action, pos) in actions.drain(..) {
+            match action {
+                Action::Nothing => {}
+                Action::LoadLobby => {
+                    let user = &mut clients[pos];
+                    let id = user.get_user_id();
+                    user.set_map(lobby.clone());
+                    handle_error(
+                        lobby.borrow_mut().add_player(&mut clients, id),
+                        &mut to_remove,
+                        pos,
+                    );
                 }
-                Err(x) => {
-                    to_remove.push(pos);
-                    println!("Client error: {x}");
+                Action::SendPosition(packet) => {
+                    let user = &clients[pos];
+                    let id = user.get_user_id();
+                    if let Some(map) = user.get_current_map() {
+                        map.borrow_mut().send_movement(&mut clients, packet, id);
+                    }
+                }
+                Action::SendMapMessage(packet) => {
+                    let user = &clients[pos];
+                    let id = user.get_user_id();
+                    if let Some(map) = user.get_current_map() {
+                        map.borrow_mut().send_message(&mut clients, packet, id);
+                    }
+                }
+                Action::SendMapSA(packet) => {
+                    let user = &clients[pos];
+                    let id = user.get_user_id();
+                    if let Some(map) = user.get_current_map() {
+                        map.borrow_mut().send_sa(&mut clients, packet, id);
+                    }
                 }
             }
         }
         to_remove.sort_unstable();
+        to_remove.dedup();
         for pos in to_remove.drain(..).rev() {
             println!("Client disconnected");
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().remove_player(&mut clients, id);
+            }
             clients.remove(pos);
         }
-        sleep(Duration::from_millis(1)).await;
+        thread::sleep(Duration::from_millis(1));
     }
 }
 
-async fn block_balance(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Result<()> {
-    let mut listeners = vec![
-        TcpListener::bind("0.0.0.0:12193")?, //vita ship1
-        TcpListener::bind("0.0.0.0:12100")?, //pc ship1
-        TcpListener::bind("0.0.0.0:12293")?, //vita ship2
-        TcpListener::bind("0.0.0.0:12200")?, //pc ship2
-        TcpListener::bind("0.0.0.0:12181")?, //steam ship1
-    ];
+fn handle_error<T>(
+    result: Result<T, pso2server::Error>,
+    to_remove: &mut Vec<usize>,
+    pos: usize,
+) -> Option<T> {
+    match result {
+        Ok(t) => Some(t),
+        Err(pso2server::Error::IOError(x)) if x.kind() == io::ErrorKind::ConnectionAborted => {
+            to_remove.push(pos);
+            None
+        }
+        Err(pso2server::Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => None,
+        Err(x) => {
+            to_remove.push(pos);
+            eprintln!("Client error: {x}");
+            eprintln!("Client error: {x:?}");
+            None
+        }
+    }
+}
+
+fn block_balance(server_statuses: Arc<Mutex<Vec<BlockInfo>>>) -> io::Result<()> {
+    // TODO: add ship id config
+    let mut listeners = vec![];
+    for i in 0..10 {
+        //pc balance
+        listeners.push(TcpListener::bind(("0.0.0.0", 12100 + (i * 100)))?);
+        //vita balance
+        listeners.push(TcpListener::bind(("0.0.0.0", 12193 + (i * 100)))?);
+    }
     listeners
         .iter_mut()
         .map(|x| x.set_nonblocking(true).unwrap())
@@ -119,10 +191,10 @@ async fn block_balance(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Resu
             for stream in info_listener.incoming() {
                 match stream {
                     Ok(s) => {
-                        tokio::spawn(pso2server::send_block_balance(s, server_statuses.clone()));
+                        let _ = pso2server::send_block_balance(s, server_statuses.clone());
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        sleep(Duration::from_millis(1)).await;
+                        thread::sleep(Duration::from_millis(1));
                         break;
                     }
                     Err(e) => {
@@ -134,17 +206,14 @@ async fn block_balance(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Resu
     }
 }
 
-async fn querry_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Result<()> {
-    let mut info_listeners: Vec<TcpListener> = vec![
-        TcpListener::bind("0.0.0.0:12199")?,
-        TcpListener::bind("0.0.0.0:12180")?,
-        TcpListener::bind("0.0.0.0:12280")?,
-        TcpListener::bind("0.0.0.0:12299")?,
-        TcpListener::bind("0.0.0.0:12194")?,
-        TcpListener::bind("0.0.0.0:12294")?,
-        TcpListener::bind("0.0.0.0:12394")?,
-        TcpListener::bind("0.0.0.0:12494")?,
-    ];
+fn querry_srv(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
+    let mut info_listeners: Vec<TcpListener> = vec![];
+    for i in 0..10 {
+        //pc ships
+        info_listeners.push(TcpListener::bind(("0.0.0.0", 12199 + (i * 100)))?);
+        //vita ships
+        info_listeners.push(TcpListener::bind(("0.0.0.0", 12194 + (i * 100)))?);
+    }
     info_listeners
         .iter_mut()
         .map(|x| x.set_nonblocking(true).unwrap())
@@ -154,16 +223,17 @@ async fn querry_srv(server_statuses: Arc<Mutex<Vec<ServerInfo>>>) -> io::Result<
             for stream in info_listener.incoming() {
                 match stream {
                     Ok(s) => {
-                        tokio::spawn(pso2server::send_querry(s, server_statuses.clone()));
+                        let _ = pso2server::send_querry(s, server_statuses.clone());
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        sleep(Duration::from_millis(1)).await;
                         break;
                     }
                     Err(e) => {
-                        return Err(e);
+                        eprintln!("Querry error: {}", e);
+                        break;
                     }
                 }
+                thread::sleep(Duration::from_millis(1));
             }
         }
     }

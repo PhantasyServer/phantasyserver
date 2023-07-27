@@ -4,14 +4,17 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use crate::Error;
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher};
-use pso2packetlib::protocol::{
-    login::{LoginAttempt, LoginResult},
-    models::character::Character,
+use pso2packetlib::{
+    protocol::{
+        login::{LoginAttempt, LoginResult},
+        models::character::Character,
+    },
+    AsciiString,
 };
 use rsa::rand_core::OsRng;
 use sqlite::{ConnectionWithFullMutex as SqliteConnection, State, Type, Value};
-use thiserror::Error;
 
 pub struct Sql {
     connection: SqliteConnection,
@@ -19,24 +22,6 @@ pub struct Sql {
 
 pub struct User {
     pub id: u32,
-}
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("Invalid input")]
-    InvalidInput,
-    #[error("Invalid password")]
-    InvalidPassword(u32),
-    #[error("Unable to hash the password")]
-    HashError,
-    #[error("Invalid character")]
-    InvalidCharacter,
-    #[error(transparent)]
-    SQLError(#[from] sqlite::Error),
-    #[error(transparent)]
-    IOError(#[from] std::io::Error),
-    #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
 }
 
 impl Sql {
@@ -50,14 +35,15 @@ impl Sql {
                 Password text default NULL,
                 PSNNickname text default NULL,
                 Settings text default NULL,
-                CharacterIds text default NULL
+                CharacterIds text default NULL,
+                SymbolArtIds text default NULL
             );
         ";
         connection.execute(query)?;
         let query = "
             create table if not exists Characters (
                 Id integer primary key autoincrement,
-                Data text default NULL
+                Data text default NULL 
             );
         ";
         connection.execute(query)?;
@@ -71,10 +57,18 @@ impl Sql {
             );
         ";
         connection.execute(query)?;
+        let query = "
+            create table if not exists SymbolArts (
+                UUID string default NULL,
+                name string default NULL,
+                data blob default NULL
+            );
+        ";
+        connection.execute(query)?;
         Ok(Sql { connection })
     }
 
-    pub fn get_sega_user(&self, username: &str, password: &str) -> Result<User, Error> {
+    pub fn get_sega_user(&mut self, username: &str, password: &str) -> Result<User, Error> {
         if username.is_empty() || password.is_empty() {
             return Err(Error::InvalidInput);
         }
@@ -95,10 +89,13 @@ impl Sql {
                 }
                 Ok(User { id })
             }
-            State::Done => self.create_sega_user(username, password),
+            State::Done => {
+                drop(statement);
+                self.create_sega_user(username, password)
+            }
         }
     }
-    pub fn get_psn_user(&self, username: &str) -> Result<User, Error> {
+    pub fn get_psn_user(&mut self, username: &str) -> Result<User, Error> {
         if username.is_empty() {
             return Err(Error::InvalidInput);
         }
@@ -110,10 +107,13 @@ impl Sql {
                 let id = statement.read::<i64, _>("Id")? as u32;
                 Ok(User { id })
             }
-            State::Done => self.create_psn_user(username),
+            State::Done => {
+                drop(statement);
+                self.create_psn_user(username)
+            }
         }
     }
-    pub fn create_psn_user(&self, username: &str) -> Result<User, Error> {
+    fn create_psn_user(&mut self, username: &str) -> Result<User, Error> {
         let query = "insert into Users (PSNNickname, Settings) values (?, ?)";
         let settings_file = File::open("settings.txt")?;
         let settings = std::io::read_to_string(settings_file)?;
@@ -130,7 +130,7 @@ impl Sql {
             Err(Error::HashError)
         }
     }
-    pub fn create_sega_user(&self, username: &str, password: &str) -> Result<User, Error> {
+    fn create_sega_user(&mut self, username: &str, password: &str) -> Result<User, Error> {
         let query = "insert into Users (Username, Password, Settings) values (?, ?, ?)";
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
@@ -170,7 +170,7 @@ impl Sql {
         }
         Ok(attempts)
     }
-    pub fn put_login(&self, id: u32, ip: Ipv4Addr, status: LoginResult) -> Result<(), Error> {
+    pub fn put_login(&mut self, id: u32, ip: Ipv4Addr, status: LoginResult) -> Result<(), Error> {
         let ip_data = serde_json::to_string(&ip)?;
         let status_data = serde_json::to_string(&status)?;
         let timestamp_int = SystemTime::now()
@@ -190,19 +190,19 @@ impl Sql {
         statement.into_iter().count();
         Ok(())
     }
-    pub fn get_settings(&self, id: u32) -> Result<String, Error> {
+    pub fn get_settings(&self, id: u32) -> Result<AsciiString, Error> {
         let query = "select Settings from Users where Id = ?";
         let mut statement = self.connection.prepare(query)?;
         statement.bind((1, id as i64))?;
         match statement.next()? {
             State::Row => {
                 let settings = statement.read::<String, _>("Settings")?;
-                Ok(settings)
+                Ok(settings.into())
             }
-            State::Done => Ok(String::new()),
+            State::Done => Ok(Default::default()),
         }
     }
-    pub fn save_settings(&self, id: u32, settings: &str) -> Result<(), Error> {
+    pub fn save_settings(&mut self, id: u32, settings: &str) -> Result<(), Error> {
         let query = "update Users set Settings = ? where Id = ?";
         let mut statement = self.connection.prepare(query)?;
         statement.bind::<&[(_, Value)]>(&[(1, settings.into()), (2, (id as i64).into())][..])?;
@@ -244,12 +244,12 @@ impl Sql {
             let data = statement.read::<String, _>("Data")?;
             let mut char: Character = serde_json::from_str(&data)?;
             char.player_id = id;
-            char.character_id = char_id as u32;
+            char.character_id = char_id;
             return Ok(char);
         }
         Err(Error::InvalidCharacter)
     }
-    pub fn put_character(&self, id: u32, char: &Character) -> Result<u32, Error> {
+    pub fn put_character(&mut self, id: u32, char: &Character) -> Result<u32, Error> {
         let mut char_id = 0;
         let query = "select CharacterIds from Users where id = ?";
         let mut statement = self.connection.prepare(query)?;
@@ -281,5 +281,62 @@ impl Sql {
         }
 
         Ok(char_id)
+    }
+    pub fn get_symbol_art_list(&self, id: u32) -> Result<Vec<u128>, Error> {
+        let mut ids = vec![0; 20];
+        let query = "select SymbolArtIds from Users where id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind((1, id as i64))?;
+        if let State::Row = statement.next()? {
+            let col_typee = statement.column_type("SymbolArtIds")?;
+            if let Type::Null = col_typee {
+                let ids_str = serde_json::to_string(&ids)?;
+                let query = "update Users set SymbolArtIds = ? where Id = ?";
+                let mut statement = self.connection.prepare(query)?;
+                statement
+                    .bind::<&[(_, Value)]>(&[(1, ids_str.into()), (2, (id as i64).into())][..])?;
+                statement.into_iter().count();
+                return Ok(ids);
+            }
+            let ids_str = statement.read::<String, _>("SymbolArtIds")?;
+            ids = serde_json::from_str::<Vec<u128>>(&ids_str)?;
+        }
+        Ok(ids)
+    }
+    pub fn set_symbol_art_list(&mut self, uuids: Vec<u128>, id: u32) -> Result<(), Error> {
+        let uuids = serde_json::to_string(&uuids)?;
+        let query = "update Users set SymbolArtIds = ? where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement
+            .bind::<&[(_, Value)]>(&[(1, uuids.as_str().into()), (2, (id as i64).into())][..])?;
+        statement.into_iter().count();
+        Ok(())
+    }
+    pub fn get_symbol_art(&self, uuid: u128) -> Result<Option<Vec<u8>>, Error> {
+        let query = "select * from SymbolArts where UUID = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind((1, format!("{uuid:X}").as_str()))?;
+        if let State::Row = statement.next()? {
+            let col_typee = statement.column_type("data")?;
+            if let Type::Null = col_typee {
+                return Ok(None);
+            }
+            let data = statement.read::<Vec<u8>, _>("data")?;
+            return Ok(Some(data));
+        }
+        Ok(None)
+    }
+    pub fn add_symbol_art(&mut self, uuid: u128, data: &[u8], name: &str) -> Result<(), Error> {
+        let query = "insert into SymbolArts (UUID, name, data) values (?, ?, ?)";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind::<&[(_, Value)]>(
+            &[
+                (1, format!("{uuid:X}").as_str().into()),
+                (2, name.into()),
+                (3, data.into()),
+            ][..],
+        )?;
+        statement.into_iter().count();
+        Ok(())
     }
 }
