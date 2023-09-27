@@ -1,31 +1,33 @@
+pub mod ice;
+pub mod inventory;
+pub mod invites;
 pub mod map;
+pub mod party;
 pub mod sql;
-use byteorder::{LittleEndian, WriteBytesExt};
-use map::Map;
+pub mod user;
+use console::style;
+use ice::{IceFileInfo, IceWriter};
+use indicatif::{MultiProgress, ProgressBar};
+use inventory::ItemParameters;
+use parking_lot::RwLock;
 use pso2packetlib::{
     protocol::{
-        self, login,
-        models::{character::Character, Position},
-        spawn::CharacterSpawnPacket,
-        symbolart::{
-            SendSymbolArtPacket, SymbolArtClientDataPacket, SymbolArtDataRequestPacket,
-            SymbolArtListPacket,
-        },
-        ChatArea, ObjectHeader, Packet, PacketHeader,
+        self, login, models::item_attrs, symbolart::SendSymbolArtPacket, Packet, PacketType,
     },
     Connection,
 };
 use rand::Rng;
-use sql::Sql;
 use std::{
     cell::RefCell,
-    io,
-    net::Ipv4Addr,
+    io::{self, Cursor},
+    net::{Ipv4Addr, TcpListener},
     rc::Rc,
-    sync::{Arc, Mutex, RwLock},
-    time::{Instant, SystemTime, UNIX_EPOCH},
+    sync::Arc,
+    thread,
+    time::Duration,
 };
 use thiserror::Error;
+pub use user::*;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -37,7 +39,7 @@ pub enum Error {
     HashError,
     #[error("Invalid character")]
     InvalidCharacter,
-    #[error("No character loader")]
+    #[error("No character loaded")]
     NoCharacter,
     #[error(transparent)]
     SQLError(#[from] sqlite::Error),
@@ -49,8 +51,11 @@ pub enum Error {
     RMPDecodeError(#[from] rmp_serde::decode::Error),
     #[error(transparent)]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
+    #[error(transparent)]
+    LuaError(#[from] mlua::Error),
 }
 
+#[derive(Clone)]
 pub struct BlockInfo {
     pub id: u32,
     pub name: String,
@@ -62,416 +67,246 @@ pub struct BlockInfo {
 pub enum Action {
     #[default]
     Nothing,
+    InitialLoad,
+    // party related
+    SendPartyInvite(u32),
+    GetPartyDetails(protocol::party::GetPartyDetailsPacket),
+    SetPartySettings(protocol::party::NewPartySettingsPacket),
+    AcceptPartyInvite(u32),
+    TransferLeader(protocol::ObjectHeader),
+    KickPartyMember(protocol::ObjectHeader),
+    DisbandParty,
+    LeaveParty,
+    SetBusyState(protocol::party::BusyState),
+    SetChatState(protocol::party::ChatStatusPacket),
+    // map related
     LoadLobby,
     SendPosition(Packet),
     SendMapMessage(Packet),
     SendMapSA(SendSymbolArtPacket),
+    Interact(protocol::objects::InteractPacket),
+    MapLuaReload,
 }
 
-pub struct User {
-    connection: Connection,
-    ip: Ipv4Addr,
-    sql: Arc<RwLock<Sql>>,
-    player_id: u32,
-    char_id: u32,
-    position: Position,
-    map: Option<Rc<RefCell<Map>>>,
-    character: Option<Character>,
-    last_ping: Instant,
-    failed_pings: u32,
-    is_global: bool,
-    ready_to_shutdown: bool,
-    blockname: String,
-}
+pub fn init_block(
+    _server_statuses: Arc<RwLock<Vec<BlockInfo>>>,
+    this_block: BlockInfo,
+    sql: Arc<RwLock<sql::Sql>>,
+    item_attrs: Arc<RwLock<ItemParameters>>,
+) -> Result<(), Error> {
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", this_block.port))?;
+    let name = &this_block.name;
+    listener.set_nonblocking(true)?;
 
-impl User {
-    pub fn new(
-        stream: std::net::TcpStream,
-        sql: Arc<RwLock<Sql>>,
-        blockname: String,
-    ) -> Result<User, Error> {
-        stream.set_nonblocking(true)?;
-        stream.set_nodelay(true)?;
-        let ip = stream.peer_addr()?.ip();
-        let ip = match ip {
-            std::net::IpAddr::V4(x) => x,
-            std::net::IpAddr::V6(_) => Ipv4Addr::UNSPECIFIED,
-        };
-        let mut con = Connection::new(stream, false, Some("keypair.pem".into()), None);
-        match con.write_packet(&Packet::ServerHello(protocol::server::ServerHelloPacket {
-            version: 0xc9,
-        })) {
-            Ok(_) => {}
-            Err(x) if x.kind() == io::ErrorKind::WouldBlock => {}
-            Err(x) => return Err(x.into()),
+    let mut latest_mapid = 0;
+    let mut latest_partyid = 0;
+
+    let lobby = match map::Map::new("lobby.mp", &mut latest_mapid) {
+        Ok(x) => Rc::new(RefCell::new(x)),
+        Err(e) => {
+            eprintln!(
+                "{}",
+                style(format!("Failed to load lobby map: {}", e)).red()
+            );
+            return Err(e);
         }
-        Ok(User {
-            connection: con,
-            ip,
-            sql,
-            player_id: 0,
-            char_id: 0,
-            character: None,
-            map: None,
-            position: Default::default(),
-            last_ping: Instant::now(),
-            failed_pings: 0,
-            is_global: false,
-            ready_to_shutdown: false,
-            blockname,
-        })
-    }
-    pub fn tick(&mut self) -> Result<Action, Error> {
-        let _ = self.connection.flush();
-        if self.ready_to_shutdown && self.last_ping.elapsed().as_millis() >= 500 {
-            return Err(Error::IOError(std::io::ErrorKind::ConnectionAborted.into()));
+    };
+
+    let mut clients = vec![];
+    let mut to_remove = vec![];
+    let mut actions = vec![];
+
+    loop {
+        for stream in listener.incoming() {
+            match stream {
+                Ok(s) => {
+                    println!("{}", style("Client connected").cyan());
+                    clients.push(User::new(
+                        s,
+                        sql.clone(),
+                        name.clone(),
+                        this_block.id as u16,
+                        item_attrs.clone(),
+                    )?);
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                Err(e) => {
+                    return Err(e.into());
+                }
+            }
         }
-        if self.failed_pings >= 5 {
-            return Err(Error::IOError(std::io::ErrorKind::ConnectionAborted.into()));
+        for (pos, client) in clients.iter_mut().enumerate() {
+            if let Some(action) = handle_error(client.tick(), &mut to_remove, client, pos) {
+                actions.push((action, pos));
+            }
         }
-        if self.last_ping.elapsed().as_secs() >= 10 {
-            self.last_ping = Instant::now();
-            self.failed_pings += 1;
-            let _ = self.connection.write_packet(&Packet::ServerPing);
+        for (action, pos) in actions.drain(..) {
+            handle_error(
+                run_action(&mut clients, pos, action, &lobby, &mut latest_partyid),
+                &mut to_remove,
+                &mut clients[pos],
+                pos,
+            );
         }
-        match self.connection.read_packet() {
-            Ok(packet) => match packet_handler(self, packet) {
-                Ok(action) => return Ok(action),
-                Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => {}
-                Err(x) => return Err(x),
-            },
-            Err(x) if x.kind() == io::ErrorKind::WouldBlock => {}
-            Err(x) => return Err(x.into()),
+        to_remove.sort_unstable();
+        to_remove.dedup();
+        for pos in to_remove.drain(..).rev() {
+            println!("{}", style("Client disconnected").cyan());
+            let user = &mut clients[pos];
+            let _ = user.save_inventory();
+            let id = user.get_user_id();
+            if let Some(party) = user.get_current_party() {
+                let _ = party.borrow_mut().remove_player(&mut clients, id);
+            }
+            let user = &clients[pos];
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().remove_player(&mut clients, id);
+            }
+            clients.remove(pos);
         }
-        Ok(Action::Nothing)
-    }
-    pub fn send_packet(&mut self, packet: &Packet) -> Result<(), Error> {
-        self.connection.write_packet(packet)?;
-        Ok(())
-    }
-    pub fn spawn_character(&mut self, mut packet: CharacterSpawnPacket) -> Result<(), Error> {
-        packet.is_global = self.is_global;
-        self.send_packet(&Packet::CharacterSpawn(packet))?;
-        Ok(())
-    }
-    pub fn get_current_map(&self) -> Option<Rc<RefCell<Map>>> {
-        self.map.clone()
-    }
-    pub fn set_map(&mut self, map: Rc<RefCell<Map>>) {
-        self.map = Some(map)
-    }
-    pub fn get_user_id(&self) -> u32 {
-        self.player_id
+        thread::sleep(Duration::from_millis(1));
     }
 }
 
-fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
-    let sql_provider = user.sql.clone();
-    match packet {
-        Packet::EncryptionRequest(_) => {
-            let key = user.connection.get_key();
-            user.send_packet(&respond_enc(key))?;
+fn run_action(
+    clients: &mut [User],
+    pos: usize,
+    action: Action,
+    lobby: &Rc<RefCell<map::Map>>,
+    latest_partyid: &mut u32,
+) -> Result<(), Error> {
+    match action {
+        Action::Nothing => {}
+        Action::InitialLoad => {
+            let user = &mut clients[pos];
+            let id = user.get_user_id();
+            user.set_map(lobby.clone());
+            party::Party::init_player(clients, id, latest_partyid)?;
+            lobby.borrow_mut().add_player(clients, id)?;
         }
-        Packet::SegaIDLogin(packet) => {
-            user.is_global = true;
-            let (mut id, mut status, mut error) = Default::default();
-            let mut sql = sql_provider.write().unwrap();
-            match sql.get_sega_user(&packet.username, &packet.password) {
-                Ok(x) => {
-                    id = x.id;
-                    sql.put_login(id, user.ip, login::LoginResult::Successful)?;
-                }
-                Err(Error::InvalidPassword(id)) => {
-                    status = login::LoginStatus::Failure;
-                    error = "Invalid password".to_string();
-                    sql.put_login(id, user.ip, login::LoginResult::LoginError)?;
-                }
-                Err(Error::InvalidInput) => {
-                    status = login::LoginStatus::Failure;
-                    error = "Empty username or password".to_string();
-                }
-                Err(e) => return Err(e),
-            }
-            user.player_id = id;
-            user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
-                status,
-                error,
-                blockname: user.blockname.clone(),
-                player: ObjectHeader {
-                    id,
-                    entity_type: protocol::EntityType::Player,
-                    ..Default::default()
-                },
-                ..Default::default()
-            }))?;
-            //TODO: send item attributes
+        Action::SendPartyInvite(invitee) => {
+            let user = &mut clients[pos];
+            let inviter = user.get_user_id();
+            party::Party::send_invite(clients, inviter, invitee)?;
         }
-        Packet::ServerPong => user.failed_pings -= 1,
-        Packet::VitaLogin(x) => {
-            let mut sql = sql_provider.write().unwrap();
-            let user_psn = sql.get_psn_user(&x.username)?;
-            user.player_id = user_psn.id;
-            sql.put_login(user.player_id, user.ip, login::LoginResult::Successful)?;
-            user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
-                status: login::LoginStatus::Success,
-                player: ObjectHeader {
-                    id: user_psn.id,
-                    entity_type: protocol::EntityType::Player,
-                    ..Default::default()
-                },
-                blockname: user.blockname.clone(),
-                ..Default::default()
-            }))?;
+        Action::LoadLobby => {
+            let user = &mut clients[pos];
+            let id = user.get_user_id();
+            user.set_map(lobby.clone());
+            lobby.borrow_mut().add_player(clients, id)?;
         }
-        Packet::SettingsRequest => {
-            let sql = sql_provider.read().unwrap();
-            let settings = sql.get_settings(user.player_id)?;
-            user.send_packet(&Packet::LoadSettings(protocol::LoadSettingsPacket {
-                settings,
-            }))?;
+        Action::GetPartyDetails(packet) => {
+            party::Party::get_details(clients, pos, packet)?;
         }
-        Packet::SaveSettings(packet) => {
-            let mut sql = sql_provider.write().unwrap();
-            sql.save_settings(user.player_id, &packet.settings)?;
+        Action::AcceptPartyInvite(party_id) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            party::Party::accept_invite(clients, id, party_id)?;
         }
-        Packet::ClientPing(packet) => {
-            let response = login::ClientPongPacket {
-                client_time: packet.time,
-                server_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap(),
-                unk1: 0,
-            };
-            user.send_packet(&Packet::ClientPong(response))?;
+        Action::LeaveParty => {
+            let user = &mut clients[pos];
+            let id = user.get_user_id();
+            user.send_packet(&pso2packetlib::protocol::Packet::RemovedFromParty)?;
+            party::Party::init_player(clients, id, latest_partyid)?;
         }
-        Packet::ClientGoodbye => {
-            user.ready_to_shutdown = true;
-            user.last_ping = Instant::now();
-        }
-        Packet::CharacterListRequest => {
-            let sql = sql_provider.read().unwrap();
-            let test = sql.get_characters(user.player_id)?;
-            user.send_packet(&Packet::CharacterListResponse(login::CharacterListPacket {
-                characters: test,
-                is_global: user.is_global,
-                ..Default::default()
-            }))?;
-        }
-        Packet::CreateCharacter1 => {
-            user.send_packet(&Packet::CreateCharacter1Response(
-                login::CreateCharacter1ResponsePacket::default(),
-            ))?;
-        }
-        Packet::CreateCharacter2 => {
-            user.send_packet(&Packet::CreateCharacter2Response(
-                login::CreateCharacter2ResponsePacket { unk: 1 },
-            ))?;
-        }
-        Packet::CharacterCreate(packet) => {
-            let mut sql = sql_provider.write().unwrap();
-            user.char_id = sql.put_character(user.player_id, &packet.character)?;
-            user.character = Some(packet.character);
-            user.send_packet(&Packet::LoadingScreenTransition)?;
-        }
-        Packet::StartGame(packet) => {
-            user.char_id = packet.char_id;
-            let sql = sql_provider.read().unwrap();
-            user.character = Some(sql.get_character(user.player_id, user.char_id)?);
-
-            // maybe send extra packets before this
-            user.send_packet(&Packet::LoadingScreenTransition)?;
-        }
-        Packet::InitialLoad => {
-            // TODO: send inventory, storage, etc
-            return Ok(Action::LoadLobby);
-        }
-        Packet::Movement(ref data) => {
-            if let Some(n) = data.rot_x {
-                user.position.rot_x = n;
-            }
-            if let Some(n) = data.rot_y {
-                user.position.rot_y = n;
-            }
-            if let Some(n) = data.rot_z {
-                user.position.rot_z = n;
-            }
-            if let Some(n) = data.rot_w {
-                user.position.rot_w = n;
-            }
-            if let Some(n) = data.cur_x {
-                user.position.pos_x = n;
-            }
-            if let Some(n) = data.cur_y {
-                user.position.pos_y = n;
-            }
-            if let Some(n) = data.cur_z {
-                user.position.pos_z = n;
-            }
-            return Ok(Action::SendPosition(packet));
-        }
-        Packet::MovementEnd(ref data) => {
-            user.position = data.cur_pos;
-            return Ok(Action::SendPosition(packet));
-        }
-        Packet::MovementAction(_) => {
-            return Ok(Action::SendPosition(packet));
-        }
-        Packet::ChatMessage(ref data) => {
-            if let ChatArea::Map = data.area {
-                return Ok(Action::SendMapMessage(packet));
+        Action::TransferLeader(data) => {
+            let user = &mut clients[pos];
+            if let Some(party) = user.get_current_party() {
+                party.borrow_mut().change_leader(clients, data)?;
             }
         }
-        Packet::SymbolArtListRequest => {
-            let sql = sql_provider.read().unwrap();
-            let uuids = sql.get_symbol_art_list(user.player_id)?;
-            user.send_packet(&Packet::SymbolArtList(SymbolArtListPacket {
-                object: ObjectHeader {
-                    id: user.player_id,
-                    entity_type: protocol::EntityType::Player,
-                    ..Default::default()
-                },
-                character_id: user.char_id,
-                uuids,
-            }))?;
+        Action::DisbandParty => {
+            let user = &mut clients[pos];
+            let id = user.get_user_id();
+            party::Party::disband_party(clients, id, latest_partyid)?;
         }
-        Packet::ChangeSymbolArt(data) => {
-            let mut sql = sql_provider.write().unwrap();
-            let mut uuids = sql.get_symbol_art_list(user.player_id)?;
-            for uuid in data.uuids {
-                let slot = uuid.slot;
-                let uuid = uuid.uuid;
-                if let Some(data) = uuids.get_mut(slot as usize) {
-                    *data = uuid;
-                }
-                if uuid == 0 {
-                    continue;
-                }
-                if sql.get_symbol_art(uuid)?.is_none() {
-                    user.send_packet(&Packet::SymbolArtDataRequest(SymbolArtDataRequestPacket {
-                        uuid,
-                    }))?;
-                }
-            }
-            sql.set_symbol_art_list(uuids, user.player_id)?;
-            user.send_packet(&Packet::SymbolArtResult(Default::default()))?;
-        }
-        Packet::SymbolArtData(data) => {
-            let mut sql = sql_provider.write().unwrap();
-            sql.add_symbol_art(data.uuid, &data.data, &data.name)?;
-        }
-        Packet::SymbolArtClientDataRequest(data) => {
-            let sql = sql_provider.read().unwrap();
-            if let Some(sa) = sql.get_symbol_art(data.uuid)? {
-                user.send_packet(&Packet::SymbolArtClientData(SymbolArtClientDataPacket {
-                    uuid: data.uuid,
-                    data: sa,
-                }))?;
+        Action::KickPartyMember(data) => {
+            let user = &mut clients[pos];
+            if let Some(party) = user.get_current_party() {
+                party
+                    .borrow_mut()
+                    .kick_player(clients, data.id, latest_partyid)?;
             }
         }
-        Packet::SendSymbolArt(data) => {
-            if let ChatArea::Map = data.area {
-                return Ok(Action::SendMapSA(data));
+        Action::SetPartySettings(packet) => {
+            let user = &mut clients[pos];
+            if let Some(party) = user.get_current_party() {
+                party.borrow_mut().set_settings(clients, packet)?;
             }
         }
-        Packet::MapLoaded(_) => {
-            user.send_packet(&Packet::UnlockControls)?;
-            user.send_packet(&Packet::FinishLoading)?;
-        }
-        Packet::QuestCounterRequest => {
-            //TODO: send (0x0E, 0x2B), (0x49, 0x01), (0x0E, 0x65), (0x0B, 0x22)
-        }
-        Packet::AvailableQuestsRequest(_) => {
-            //TODO: send (0x0B, 0x16)
-        }
-        Packet::MissionListRequest => {
-            //TODO:
-        }
-        Packet::MissionPassInfoRequest => {
-            //TODO:
-        }
-        Packet::MissionPassRequest => {
-            //TODO:
-        }
-        Packet::Interact(packet) => {
-            if packet.action == "READY" {
-                let packett = protocol::objects::SetTagPacket {
-                    object1: packet.object3,
-                    object2: packet.object1,
-                    object3: packet.object1,
-                    attribute: "FavsNeutral".into(),
-                    ..Default::default()
-                };
-                user.send_packet(&Packet::SetTag(packett))?;
-                let packett = protocol::objects::SetTagPacket {
-                    object1: packet.object3,
-                    object2: packet.object1,
-                    object3: packet.object1,
-                    attribute: "AP".into(),
-                    ..Default::default()
-                };
-                user.send_packet(&Packet::SetTag(packett))?;
-            //This should not be here
-            } else if packet.action == "Transfer" {
-                let location = protocol::models::Position {
-                    rot_y: half::f16::from_f32(-0.00242615),
-                    rot_w: half::f16::from_f32(0.999512),
-                    pos_x: half::f16::from_f32(-0.0609131),
-                    pos_y: half::f16::from_f32(14.0),
-                    pos_z: half::f16::from_f32(-167.125),
-                    ..Default::default()
-                };
-                let packett = protocol::objects::TeleportTransferPacket {
-                    source_tele: packet.object1,
-                    location,
-                    ..Default::default()
-                };
-                user.send_packet(&Packet::TeleportTransfer(packett))?;
-                let packett = protocol::objects::SetTagPacket {
-                    object1: packet.object3,
-                    object2: packet.object1,
-                    attribute: "Forwarded".into(),
-                    ..Default::default()
-                };
-                user.send_packet(&Packet::SetTag(packett))?;
-            } else {
-                println!("{:?}", packet)
+        Action::SendPosition(packet) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().send_movement(clients, packet, id);
             }
         }
-        Packet::SalonEntryRequest => {
-            user.send_packet(&Packet::SalonEntryResponse(login::SalonResponse {
-                ..Default::default()
-            }))?;
-        }
-        Packet::LoginHistoryRequest => {
-            let sql = sql_provider.read().unwrap();
-            let attempts = sql.get_logins(user.player_id)?;
-            user.send_packet(&Packet::LoginHistoryResponse(login::LoginHistoryPacket {
-                attempts,
-            }))?;
-        }
-        Packet::SegaIDInfoRequest => {
-            let mut dataout = vec![];
-            for _ in 0..0x30 {
-                dataout.push(0x42);
-                dataout.push(0x41);
+        Action::SendMapMessage(packet) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().send_message(clients, packet, id);
             }
-            for _ in 0..0x12 {
-                dataout.write_u32::<LittleEndian>(1)?;
-            }
-            user.send_packet(&Packet::Unknown((
-                PacketHeader {
-                    id: 0x11,
-                    subid: 108,
-                    ..Default::default()
-                },
-                dataout,
-            )))?;
         }
-        x => println!("{:?}", x),
+        Action::SendMapSA(packet) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().send_sa(clients, packet, id);
+            }
+        }
+        Action::Interact(packet) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().interaction(clients, packet, id)?;
+            }
+        }
+        Action::MapLuaReload => {
+            let user = &clients[pos];
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().reload_lua()?;
+            }
+        }
+        Action::SetBusyState(state) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(party) = user.get_current_party() {
+                party.borrow().set_busy_state(clients, state, id);
+            }
+        }
+        Action::SetChatState(state) => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(party) = user.get_current_party() {
+                party.borrow().set_chat_status(clients, state, id);
+            }
+        }
     }
-    Ok(Action::Nothing)
+    Ok(())
 }
 
-fn respond_enc(key: Vec<u8>) -> Packet {
-    Packet::EncryptionResponse(login::EncryptionResponsePacket { data: key })
+fn handle_error<T>(
+    result: Result<T, Error>,
+    to_remove: &mut Vec<usize>,
+    user: &mut User,
+    pos: usize,
+) -> Option<T> {
+    match result {
+        Ok(t) => Some(t),
+        Err(Error::IOError(x)) if x.kind() == io::ErrorKind::ConnectionAborted => {
+            to_remove.push(pos);
+            None
+        }
+        Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => None,
+        Err(x) => {
+            // to_remove.push(pos);
+            let error_msg = format!("Client error: {x}");
+            let _ = user.send_error(&error_msg);
+            eprintln!("{}", style(error_msg).red());
+            None
+        }
+    }
 }
 
 pub fn send_querry(
@@ -481,9 +316,9 @@ pub fn send_querry(
     stream.set_nonblocking(true)?;
     stream.set_nodelay(true)?;
     let local_addr = stream.local_addr()?.ip();
-    let mut con = Connection::new(stream, false, None, None);
+    let mut con = Connection::new(stream, PacketType::Classic, None, None);
     let mut ships = vec![];
-    for server in servers.read().unwrap().iter() {
+    for server in servers.read().iter() {
         let mut ship = server.clone();
         if ship.ip == Ipv4Addr::UNSPECIFIED {
             if let std::net::IpAddr::V4(addr) = local_addr {
@@ -501,13 +336,13 @@ pub fn send_querry(
 
 pub fn send_block_balance(
     stream: std::net::TcpStream,
-    servers: Arc<Mutex<Vec<BlockInfo>>>,
+    servers: Arc<RwLock<Vec<BlockInfo>>>,
 ) -> io::Result<()> {
     stream.set_nonblocking(true)?;
     stream.set_nodelay(true)?;
     let local_addr = stream.local_addr()?.ip();
-    let mut con = Connection::new(stream, false, None, None);
-    let mut servers = servers.lock().unwrap();
+    let mut con = Connection::new(stream, PacketType::Classic, None, None);
+    let mut servers = servers.write();
     let server_count = servers.len() as u32;
     let server = servers
         .get_mut(rand::thread_rng().gen_range(0..server_count) as usize)
@@ -529,4 +364,49 @@ pub fn send_block_balance(
     };
     con.write_packet(&Packet::BlockBalance(packet))?;
     Ok(())
+}
+
+pub fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u8>), Error> {
+    let progress = mul_progress.add(ProgressBar::new_spinner());
+    progress.set_message("Loading item attributes...");
+    //INFO: maybe move attr files to memory?
+    let attrs_str = std::fs::read_to_string("item_attrs.json")?;
+    progress.set_message("Parsing item attributes...");
+    let attrs: item_attrs::ItemAttributes = serde_json::from_str(&attrs_str)?;
+    // PC attributes
+    progress.set_message("Creating PC item attributes...");
+    let outdata_pc = Cursor::new(vec![]);
+    let attrs: item_attrs::ItemAttributesPC = attrs.into();
+    let mut attrs_data_pc = Cursor::new(vec![]);
+    attrs.write_attrs(&mut attrs_data_pc)?;
+    attrs_data_pc.set_position(0);
+    let mut ice_writer = IceWriter::new(outdata_pc)?;
+    ice_writer.load_group(ice::Group::Group2);
+    ice_writer.new_file(IceFileInfo {
+        filename: "item_parameter.bin".into(),
+        file_extension: "bin".into(),
+        ..Default::default()
+    })?;
+    std::io::copy(&mut attrs_data_pc, &mut ice_writer)?;
+    let outdata_pc = ice_writer.into_inner().map_err(|(_, e)| e)?.into_inner();
+
+    // Vita attributes
+    progress.set_message("Creating Vita item attributes...");
+    let outdata_vita = Cursor::new(vec![]);
+    let attrs: item_attrs::ItemAttributesVita = attrs.into();
+    let mut attrs_data_vita = Cursor::new(vec![]);
+    attrs.write_attrs(&mut attrs_data_vita)?;
+    attrs_data_vita.set_position(0);
+    let mut ice_writer = IceWriter::new(outdata_vita)?;
+    ice_writer.load_group(ice::Group::Group2);
+    ice_writer.new_file(IceFileInfo {
+        filename: "item_parameter.bin".into(),
+        file_extension: "bin".into(),
+        ..Default::default()
+    })?;
+    std::io::copy(&mut attrs_data_vita, &mut ice_writer)?;
+    let outdata_vita = ice_writer.into_inner().map_err(|(_, e)| e)?.into_inner();
+
+    progress.finish_with_message("Created item attributes");
+    Ok((outdata_pc, outdata_vita))
 }
