@@ -1,24 +1,98 @@
 use crate::Error;
+use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
     self,
     models::Position,
     server::LoadLevelPacket,
     spawn::{CharacterSpawnPacket, CharacterSpawnType, NPCSpawnPacket, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
-    EntityType, ObjectHeader, Packet, SetPlayerIDPacket,
+    EntityType, ObjectHeader, Packet, PacketType, SetPlayerIDPacket,
 };
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 
 pub struct Map {
+    lua: Lua,
     data: MapData,
     players: Vec<u32>,
+    load_path: std::path::PathBuf,
 }
 impl Map {
-    pub fn new<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
-        Ok(Self {
-            data: MapData::load_from_mp_file(path)?,
+    pub fn new<T: AsRef<std::path::Path>>(path: T, mapid: &mut u32) -> Result<Self, Error> {
+        // will be increased as needed
+        let lua_libs = StdLib::NONE;
+        let mut map = Self {
+            lua: Lua::new_with(lua_libs, mlua::LuaOptions::default())?,
+            data: MapData::load_from_mp_file(path.as_ref())?,
             players: vec![],
-        })
+            load_path: path.as_ref().to_owned(),
+        };
+        map.data.map_data.map_object = ObjectHeader {
+            id: *mapid,
+            entity_type: EntityType::Map,
+            ..Default::default()
+        };
+        *mapid += 1;
+        map.init_lua()?;
+        Ok(map)
+    }
+    fn init_lua(&mut self) -> Result<(), Error> {
+        self.lua
+            .globals()
+            .set("object_data", self.data.object_data.clone())?;
+        // default object handler
+        for object in self.data.objects.iter() {
+            let name: &str = &object.name;
+            if self.data.luas.contains_key(name) {
+                continue;
+            }
+            self.data.luas.insert(
+                name.to_owned(),
+                "print(packet[\"object1\"][\"id\"], packet[\"action\"])".into(),
+            );
+        }
+        // default npc handler
+        for npc in self.data.npcs.iter() {
+            let name: &str = &npc.name;
+            if self.data.luas.contains_key(name) {
+                continue;
+            }
+            self.data.luas.insert(
+                name.to_owned(),
+                "if packet[\"action\"] == \"READY\" then
+                    local ready_data = {}; 
+                    local packet_data = {};
+                    packet_data[\"attribute\"] = \"FavsNeutral\";
+                    packet_data[\"object1\"] = packet[\"object3\"];
+                    packet_data[\"object2\"] = packet[\"object1\"];
+                    packet_data[\"object3\"] = packet[\"object1\"];
+                    ready_data[\"SetTag\"] = packet_data; 
+                    send(sender, ready_data);
+                    ready_data[\"SetTag\"][\"attribute\"] = \"AP\";
+                    send(sender, ready_data);
+                    else
+                    print(packet[\"object1\"][\"id\"], packet[\"action\"]);
+                    end"
+                .into(),
+            );
+        }
+        Ok(())
+    }
+    // called by block
+    pub fn reload_lua(&mut self) -> Result<(), Error> {
+        let map = MapData::load_from_mp_file(&self.load_path)?;
+        self.data.luas = map.luas;
+        self.data.object_data = map.object_data;
+        self.init_lua()?;
+        Ok(())
+    }
+    // called by player
+    pub fn lua_gc_collect(&self) -> Result<(), Error> {
+        self.lua.gc_collect()?;
+        self.lua.gc_collect()?;
+        Ok(())
+    }
+    pub fn get_mapid(&self) -> u32 {
+        self.data.map_data.settings.map_id
     }
     // called by block
     pub fn add_player(&mut self, players: &mut [crate::User], new_id: u32) -> Result<(), Error> {
@@ -53,17 +127,22 @@ impl Map {
             ..Default::default()
         })?;
         for object in &self.data.objects {
-            new_player.send_packet(&Packet::ObjectSpawn(object.clone()))?;
+            let mut obj = object.clone();
+            if new_player.packet_type == PacketType::Vita {
+                obj.data.remove(7);
+            }
+            new_player.send_packet(&Packet::ObjectSpawn(obj))?;
         }
         for npc in &self.data.npcs {
             new_player.send_packet(&Packet::NPCSpawn(npc.clone()))?;
         }
         for (character, position) in other_characters {
+            let player_id = character.player_id;
             new_player.spawn_character(CharacterSpawnPacket {
                 position,
                 is_me: CharacterSpawnType::Other,
                 player_obj: ObjectHeader {
-                    id: character.player_id,
+                    id: player_id,
                     entity_type: EntityType::Player,
                     ..Default::default()
                 },
@@ -136,6 +215,24 @@ impl Map {
                     let _ = player.send_packet(&packet);
                 }
             }
+            Packet::ActionUpdate(data) => {
+                let packet = protocol::objects::ActionUpdateServerPacket {
+                    performer: data.performer,
+                    unk2: data.unk2,
+                    receiver: ObjectHeader {
+                        id: 0,
+                        entity_type: EntityType::Player,
+                        ..Default::default()
+                    },
+                };
+                let mut packet = Packet::ActionUpdateServer(packet);
+                for player in players {
+                    if let Packet::ActionUpdateServer(ref mut data) = packet {
+                        data.receiver.id = player.player_id;
+                    }
+                    let _ = player.send_packet(&packet);
+                }
+            }
             _ => {}
         }
     }
@@ -178,7 +275,9 @@ impl Map {
     }
     // called by block
     pub fn remove_player(&mut self, players: &mut [crate::User], id: u32) {
-        let Some((pos, _)) = self.players.iter().enumerate().find(|(_, &n)| n == id) else {return};
+        let Some((pos, _)) = self.players.iter().enumerate().find(|(_, &n)| n == id) else {
+            return;
+        };
         self.players.swap_remove(pos);
         let players = players
             .iter_mut()
@@ -202,6 +301,97 @@ impl Map {
             }
         }
     }
+    // called by block
+    pub fn interaction(
+        &self,
+        players: &mut [crate::User],
+        packet: protocol::objects::InteractPacket,
+        sender_id: u32,
+    ) -> Result<(), Error> {
+        let name = self
+            .data
+            .objects
+            .iter()
+            .map(|x| (x.object.id, &x.name))
+            .chain(self.data.npcs.iter().map(|x| (x.object.id, &x.name)))
+            .find(|(id, _)| *id == packet.object1.id)
+            .map(|(_, name)| name.to_string())
+            .ok_or(Error::InvalidInput)?;
+        if !self.data.luas.contains_key(&name) {
+            return Ok(());
+        }
+        let globals = self.lua.globals();
+        globals.set("packet", self.lua.to_value(&packet)?)?;
+        globals.set("sender", sender_id)?;
+        globals.set("players", self.players.clone())?;
+        let mut pending_packets: Vec<(u32, Packet)> = vec![];
+        self.lua.scope(|scope| {
+            /* LUA FUNCTIONS */
+
+            // prepare packets for sending
+            let send =
+                scope.create_function_mut(|lua, (receiver, packet): (u32, mlua::Value)| {
+                    let packet = lua.from_value(packet)?;
+                    pending_packets.push((receiver, packet));
+                    Ok(())
+                })?;
+            self.lua.globals().set("send", send)?;
+            // get object data
+            let get_object = scope.create_function(|lua, id: u32| {
+                let object = self
+                    .data
+                    .objects
+                    .iter()
+                    .find(|obj| obj.object.id == id)
+                    .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
+                lua.to_value(object)
+            })?;
+            self.lua.globals().set("get_object", get_object)?;
+            // get npc data
+            let get_npc = scope.create_function(|lua, id: u32| {
+                let object = self
+                    .data
+                    .npcs
+                    .iter()
+                    .find(|obj| obj.object.id == id)
+                    .ok_or(mlua::Error::runtime("Couldn't find requested npc"))?;
+                lua.to_value(object)
+            })?;
+            self.lua.globals().set("get_npc", get_npc)?;
+            // get additional data
+            let get_extra_data = scope.create_function(|lua, id: u32| {
+                let object = self
+                    .data
+                    .object_data
+                    .iter()
+                    .find(|(&obj_id, _)| obj_id == id)
+                    .map(|(_, data)| data)
+                    .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
+                let object: serde_json::Value = serde_json::from_str(object)
+                    .map_err(|e| mlua::Error::runtime(format!("serde_json error: {e}")))?;
+                lua.to_value(&object)
+            })?;
+            self.lua.globals().set("get_extra_data", get_extra_data)?;
+
+            /* LUA FUNCTIONS END */
+
+            let lua_data = self.data.luas.get(&name).unwrap();
+            let chunk = self.lua.load(lua_data);
+            chunk.exec()?;
+            Ok(())
+        })?;
+        globals.raw_remove("packet")?;
+        globals.raw_remove("sender")?;
+        globals.raw_remove("players")?;
+        for (id, packet) in pending_packets {
+            let player = players
+                .iter_mut()
+                .find(|p| p.player_id == id)
+                .ok_or(Error::InvalidInput)?;
+            player.send_packet(&packet)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
@@ -211,6 +401,8 @@ pub struct MapData {
     objects: Vec<ObjectSpawnPacket>,
     npcs: Vec<NPCSpawnPacket>,
     default_location: Position,
+    luas: HashMap<String, String>,
+    object_data: HashMap<u32, String>,
 }
 
 impl MapData {

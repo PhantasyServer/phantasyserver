@@ -4,7 +4,10 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use crate::Error;
+use crate::{
+    inventory::{AccountStorages, Inventory},
+    Error,
+};
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher};
 use pso2packetlib::{
     protocol::{
@@ -22,6 +25,7 @@ pub struct Sql {
 
 pub struct User {
     pub id: u32,
+    pub nickname: String,
 }
 
 impl Sql {
@@ -36,14 +40,16 @@ impl Sql {
                 PSNNickname text default NULL,
                 Settings text default NULL,
                 CharacterIds text default NULL,
-                SymbolArtIds text default NULL
+                SymbolArtIds text default NULL,
+                Storage text default NULL
             );
         ";
         connection.execute(query)?;
         let query = "
             create table if not exists Characters (
                 Id integer primary key autoincrement,
-                Data text default NULL 
+                Data text default NULL,
+                Inventory text default NULL
             );
         ";
         connection.execute(query)?;
@@ -65,6 +71,13 @@ impl Sql {
             );
         ";
         connection.execute(query)?;
+        let query = "
+            create table if not exists ServerStats (
+                Tag string default NULL,
+                Value string default NULL
+            );
+        ";
+        connection.execute(query)?;
         Ok(Sql { connection })
     }
 
@@ -79,6 +92,12 @@ impl Sql {
             State::Row => {
                 let stored_password = statement.read::<String, _>("Password")?;
                 let id = statement.read::<i64, _>("Id")? as u32;
+                let col_typee = statement.column_type("Nickname")?;
+                let nickname = if let Type::Null = col_typee {
+                    String::new()
+                } else {
+                    statement.read::<String, _>("Nickname")?
+                };
                 let hash = match PasswordHash::new(&stored_password) {
                     Ok(x) => x,
                     Err(_) => return Err(Error::InvalidPassword(id)),
@@ -87,7 +106,7 @@ impl Sql {
                     Ok(_) => {}
                     Err(_) => return Err(Error::InvalidPassword(id)),
                 }
-                Ok(User { id })
+                Ok(User { id, nickname })
             }
             State::Done => {
                 drop(statement);
@@ -105,7 +124,13 @@ impl Sql {
         match statement.next()? {
             State::Row => {
                 let id = statement.read::<i64, _>("Id")? as u32;
-                Ok(User { id })
+                let col_typee = statement.column_type("Nickname")?;
+                let nickname = if let Type::Null = col_typee {
+                    String::new()
+                } else {
+                    statement.read::<String, _>("Nickname")?
+                };
+                Ok(User { id, nickname })
             }
             State::Done => {
                 drop(statement);
@@ -125,7 +150,10 @@ impl Sql {
         statement.bind((1, username))?;
         if let State::Row = statement.next()? {
             let id = statement.read::<i64, _>("Id")? as u32;
-            Ok(User { id })
+            Ok(User {
+                id,
+                nickname: String::new(),
+            })
         } else {
             Err(Error::HashError)
         }
@@ -148,7 +176,10 @@ impl Sql {
         statement.bind((1, username))?;
         if let State::Row = statement.next()? {
             let id = statement.read::<i64, _>("Id")? as u32;
-            Ok(User { id })
+            Ok(User {
+                id,
+                nickname: String::new(),
+            })
         } else {
             Err(Error::HashError)
         }
@@ -249,6 +280,17 @@ impl Sql {
         }
         Err(Error::InvalidCharacter)
     }
+    pub fn update_character(&mut self, char: &Character) -> Result<(), Error> {
+        let char_data = serde_json::to_string(&char)?;
+        let char_id = char.character_id;
+        let query = "update Characters set Data = ? where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind::<&[(_, Value)]>(
+            &[(1, char_data.as_str().into()), (2, (char_id as i64).into())][..],
+        )?;
+        statement.into_iter().count();
+        Ok(())
+    }
     pub fn put_character(&mut self, id: u32, char: &Character) -> Result<u32, Error> {
         let mut char_id = 0;
         let query = "select CharacterIds from Users where id = ?";
@@ -336,6 +378,87 @@ impl Sql {
                 (3, data.into()),
             ][..],
         )?;
+        statement.into_iter().count();
+        Ok(())
+    }
+    pub fn get_inventory(&self, char_id: u32, user_id: u32) -> Result<Inventory, Error> {
+        let mut inventory = self.get_player_inventory(char_id)?;
+        inventory.storages = self.get_account_storage(user_id)?;
+        Ok(inventory)
+    }
+    fn get_player_inventory(&self, char_id: u32) -> Result<Inventory, Error> {
+        let query = "select Inventory from Characters where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind((1, char_id as i64))?;
+        if let State::Row = statement.next()? {
+            let col_typee = statement.column_type("Inventory")?;
+            if let Type::Null = col_typee {
+                return Ok(Default::default());
+            }
+            let inventory = statement.read::<String, _>("Inventory")?;
+            let storage = serde_json::from_str::<Inventory>(&inventory)?;
+            return Ok(storage);
+        }
+        Ok(Default::default())
+    }
+    fn get_account_storage(&self, user_id: u32) -> Result<AccountStorages, Error> {
+        let query = "select Storage from Users where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind((1, user_id as i64))?;
+        if let State::Row = statement.next()? {
+            let col_typee = statement.column_type("Storage")?;
+            if let Type::Null = col_typee {
+                return Ok(Default::default());
+            }
+            let storage = statement.read::<String, _>("Storage")?;
+            let storage = serde_json::from_str::<AccountStorages>(&storage)?;
+            return Ok(storage);
+        }
+        Ok(Default::default())
+    }
+    pub fn update_inventory(
+        &mut self,
+        char_id: u32,
+        user_id: u32,
+        inv: &Inventory,
+    ) -> Result<(), Error> {
+        let inventory = serde_json::to_string(&inv)?;
+        let storage = serde_json::to_string(&inv.storages)?;
+        let query = "update Characters set Inventory = ? where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind::<&[(_, Value)]>(
+            &[(1, inventory.as_str().into()), (2, (char_id as i64).into())][..],
+        )?;
+        statement.into_iter().count();
+        let query = "update Users set Storage = ? where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind::<&[(_, Value)]>(
+            &[(1, storage.as_str().into()), (2, (user_id as i64).into())][..],
+        )?;
+        statement.into_iter().count();
+        Ok(())
+    }
+    pub fn get_uuid(&self) -> Result<u64, Error> {
+        let query = "select Value from ServerStats where Tag = \"UUID\"";
+        let mut statement = self.connection.prepare(query)?;
+        if let State::Row = statement.next()? {
+            let col_typee = statement.column_type("Value")?;
+            if let Type::Null = col_typee {
+                return Ok(1);
+            }
+            let uuid = statement.read::<String, _>("Value")?;
+            let uuid = uuid.parse().unwrap();
+            Ok(uuid)
+        } else {
+            let query = "insert into ServerStats (Tag, Value) values (\"UUID\", 1)";
+            self.connection.execute(query)?;
+            Ok(1)
+        }
+    }
+    pub fn set_uuid(&mut self, uuid: u64) -> Result<(), Error> {
+        let query = "update ServerStats set Value = ? where Tag = \"UUID\"";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind((1, uuid as i64))?;
         statement.into_iter().count();
         Ok(())
     }
