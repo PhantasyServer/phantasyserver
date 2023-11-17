@@ -445,6 +445,20 @@ pub fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
         data,
     )))?;
 
+    user.send_packet(&Packet::LoadPAs(protocol::objects::LoadPAsPacket {
+        receiver: protocol::ObjectHeader {
+            id: user.player_id,
+            entity_type: protocol::EntityType::Player,
+            ..Default::default()
+        },
+        target: protocol::ObjectHeader {
+            id: user.player_id,
+            entity_type: protocol::EntityType::Player,
+            ..Default::default()
+        },
+        levels: vec![1; 0xee],
+        ..Default::default()
+    }))?;
     // unlock controls?
     user.send_packet(&Packet::UnlockControls)?;
     user.send_packet(&Packet::FinishLoading)?;

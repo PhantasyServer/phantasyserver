@@ -27,6 +27,7 @@ pub fn login_request(user: &mut User, packet: Packet) -> HResult {
                 Ok(x) => {
                     id = x.id;
                     user.nickname = x.nickname;
+                    user.text_lang = packet.text_lang;
                     sql.put_login(id, user.get_ip()?, login::LoginResult::Successful)?;
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                         data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
@@ -83,6 +84,13 @@ pub fn login_request(user: &mut User, packet: Packet) -> HResult {
     };
     user.send_packet(&Packet::UserInfo(packett))?;
 
+    Ok(Action::Nothing)
+}
+
+pub fn block_list(user: &mut User) -> HResult {
+    let packet = serde_json::from_str(&std::fs::read_to_string("block.json")?)?;
+    println!("{:?}", packet);
+    user.send_packet(&Packet::BlockList(packet))?;
     Ok(Action::Nothing)
 }
 
@@ -180,6 +188,7 @@ pub fn new_character(user: &mut User, packet: login::CharacterCreatePacket) -> H
     character.player_id = user.player_id;
     user.character = Some(character);
     user.inventory = sql.get_inventory(user.char_id, user.player_id)?;
+    user.palette = sql.get_palette(user.char_id)?;
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }
@@ -190,6 +199,7 @@ pub fn start_game(user: &mut User, packet: login::StartGamePacket) -> HResult {
     let sql = sql_provider.read();
     user.character = Some(sql.get_character(user.player_id, user.char_id)?);
     user.inventory = sql.get_inventory(user.char_id, user.player_id)?;
+    user.palette = sql.get_palette(user.char_id)?;
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }

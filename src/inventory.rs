@@ -1,12 +1,13 @@
 use crate::Error;
 use pso2packetlib::protocol::{
     items::{
-        DiscardItemRequestPacket, DiscardStorageItemRequestPacket, InventoryMesetaPacket, Item,
-        ItemId, ItemType, LoadItemPacket, LoadPlayerInventoryPacket, LoadStoragesPacket,
-        MesetaDirection, MoveMesetaPacket, MoveStoragesPacket, MoveStoragesRequestPacket,
-        MoveToInventoryPacket, MoveToInventoryRequestPacket, MoveToStoragePacket,
-        MoveToStorageRequestPacket, NamedId, NewInventoryItem, NewStorageItem, StorageInfo,
-        StorageMesetaPacket, UpdateInventoryPacket, UpdateStoragePacket,
+        DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipedItem,
+        InventoryMesetaPacket, Item, ItemId, ItemType, LoadEquipedPacket, LoadItemPacket,
+        LoadPlayerInventoryPacket, LoadStoragesPacket, MesetaDirection, MoveMesetaPacket,
+        MoveStoragesPacket, MoveStoragesRequestPacket, MoveToInventoryPacket,
+        MoveToInventoryRequestPacket, MoveToStoragePacket, MoveToStorageRequestPacket, NamedId,
+        NewInventoryItem, NewStorageItem, StorageInfo, StorageMesetaPacket, UpdateInventoryPacket,
+        UpdateStoragePacket,
     },
     login::Language,
     ObjectHeader, Packet,
@@ -31,6 +32,7 @@ pub struct PlayerInventory {
     pub(crate) meseta: u64,
     pub(crate) max_capacity: u32,
     pub(crate) items: Vec<Item>,
+    equiped: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +123,7 @@ impl Inventory {
             max_capacity: self.inventory.max_capacity,
             items: self.inventory.items.clone(),
         }));
+        packets.push(self.send_equiped(player_id));
 
         // load storages
         //BUG: i think that this packet should be split if there are too many items
@@ -185,6 +188,55 @@ impl Inventory {
             items: storage_items,
         }));
         packets
+    }
+    pub fn send_equiped(&self, player_id: u32) -> Packet {
+        let mut equiped_items = LoadEquipedPacket::default();
+        for (pos, equiped) in self.inventory.equiped.iter().enumerate() {
+            let Some(item) = self.inventory.items.iter().find(|x| x.uuid == *equiped) else {
+                continue;
+            };
+            equiped_items.items.push(EquipedItem {
+                item: item.clone(),
+                unk: pos as u32,
+            });
+        }
+        equiped_items.player = ObjectHeader {
+            id: player_id,
+            entity_type: pso2packetlib::protocol::EntityType::Player,
+            ..Default::default()
+        };
+        Packet::LoadEquiped(equiped_items)
+    }
+    pub fn equip_item(&mut self, uuid: u64) -> Result<(), Error> {
+        if self.inventory.equiped.iter().any(|&x| x == uuid) {
+            return Ok(());
+        }
+        self.inventory
+            .items
+            .iter()
+            .find(|x| x.uuid == uuid)
+            .ok_or(Error::InvalidInput)?;
+        self.inventory.equiped.push(uuid);
+        Ok(())
+    }
+    pub fn unequip_item(&mut self, uuid: u64) -> Result<(), Error> {
+        let (pos, _) = self
+            .inventory
+            .equiped
+            .iter()
+            .enumerate()
+            .find(|(_, &x)| x == uuid)
+            .ok_or(Error::InvalidInput)?;
+        self.inventory.equiped.remove(pos);
+        Ok(())
+    }
+    pub fn get_inv_item(&self, uuid: u64) -> Result<Item, Error> {
+        self.inventory
+            .items
+            .iter()
+            .find(|x| x.uuid == uuid)
+            .ok_or(Error::InvalidInput)
+            .cloned()
     }
     pub fn move_to_storage(
         &mut self,
@@ -640,6 +692,7 @@ impl Default for PlayerInventory {
             meseta: 0,
             max_capacity: 50,
             items: vec![],
+            equiped: vec![],
         }
     }
 }

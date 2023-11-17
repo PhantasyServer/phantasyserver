@@ -101,6 +101,15 @@ impl Map {
             .filter(|p| self.players.contains(&p.player_id) && p.character.is_some())
             .map(|p| (p.character.clone().unwrap(), p.position))
             .collect();
+        let mut other_equipment: Vec<_> = Vec::with_capacity(self.players.len() * 2);
+        players
+            .iter()
+            .filter(|p| self.players.contains(&p.player_id) && p.character.is_some())
+            .for_each(|p| {
+                other_equipment.push(p.palette.send_change_palette(p.player_id));
+                other_equipment.push(p.palette.send_cur_weapon(p.player_id, &p.inventory));
+                other_equipment.push(p.inventory.send_equiped(p.player_id));
+            });
         let new_player = players
             .iter_mut()
             .find(|p| p.player_id == new_id)
@@ -150,6 +159,19 @@ impl Map {
                 ..Default::default()
             })?;
         }
+        for equipment in other_equipment {
+            new_player.send_packet(&equipment)?;
+        }
+        let new_eqipment = (
+            new_player.palette.send_change_palette(new_player.player_id),
+            new_player
+                .palette
+                .send_cur_weapon(new_player.player_id, &new_player.inventory),
+            new_player.inventory.send_equiped(new_player.player_id),
+        );
+        new_player.send_packet(&new_player.palette.send_palette())?;
+        new_player.send_packet(&new_eqipment.0)?;
+        new_player.send_packet(&new_eqipment.1)?;
         let other_players = players
             .iter_mut()
             .filter(|p| self.players.contains(&p.player_id));
@@ -165,8 +187,34 @@ impl Map {
                 character: new_character.clone(),
                 ..Default::default()
             });
+            let _ = player.send_packet(&new_eqipment.0);
+            let _ = player.send_packet(&new_eqipment.1);
+            let _ = player.send_packet(&new_eqipment.2);
         }
         self.players.push(new_id);
+        Ok(())
+    }
+    pub fn send_palette_change(
+        &self,
+        players: &mut [crate::User],
+        sender_id: u32,
+    ) -> Result<(), Error> {
+        let sender = players
+            .iter_mut()
+            .find(|p| p.player_id == sender_id)
+            .ok_or(Error::InvalidInput)?;
+        let new_eqipment = (
+            sender.palette.send_change_palette(sender_id),
+            sender.palette.send_cur_weapon(sender_id, &sender.inventory),
+        );
+        let players = players
+            .iter_mut()
+            .filter(|p| self.players.contains(&p.player_id));
+        for player in players {
+            let _ = player.send_packet(&new_eqipment.0);
+            let _ = player.send_packet(&new_eqipment.1);
+        }
+
         Ok(())
     }
     // called by block

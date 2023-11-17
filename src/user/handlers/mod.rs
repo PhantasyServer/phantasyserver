@@ -7,6 +7,7 @@ pub mod item;
 pub mod login;
 pub mod missionpass;
 pub mod object;
+pub mod palette;
 pub mod quest;
 pub mod server;
 pub mod settings;

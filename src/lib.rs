@@ -2,6 +2,7 @@ pub mod ice;
 pub mod inventory;
 pub mod invites;
 pub mod map;
+pub mod palette;
 pub mod party;
 pub mod sql;
 pub mod user;
@@ -86,6 +87,7 @@ pub enum Action {
     SendMapSA(SendSymbolArtPacket),
     Interact(protocol::objects::InteractPacket),
     MapLuaReload,
+    PaletteUpdate,
 }
 
 pub fn init_block(
@@ -154,6 +156,7 @@ pub fn init_block(
             println!("{}", style("Client disconnected").cyan());
             let user = &mut clients[pos];
             let _ = user.save_inventory();
+            let _ = user.save_palette().unwrap();
             let id = user.get_user_id();
             if let Some(party) = user.get_current_party() {
                 let _ = party.borrow_mut().remove_player(&mut clients, id);
@@ -280,6 +283,13 @@ fn run_action(
             let id = user.get_user_id();
             if let Some(party) = user.get_current_party() {
                 party.borrow().set_chat_status(clients, state, id);
+            }
+        }
+        Action::PaletteUpdate => {
+            let user = &clients[pos];
+            let id = user.get_user_id();
+            if let Some(map) = user.get_current_map() {
+                map.borrow_mut().send_palette_change(clients, id)?;
             }
         }
     }

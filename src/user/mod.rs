@@ -3,6 +3,7 @@ use crate::{
     inventory::{Inventory, ItemParameters},
     invites::PartyInvite,
     map::Map,
+    palette::Palette,
     party::{self, Party},
     sql::Sql,
     Action, Error,
@@ -40,6 +41,7 @@ pub struct User {
     pub(crate) party_invites: Vec<PartyInvite>,
     pub(crate) party_ignore: protocol::party::RejectStatus,
     pub(crate) inventory: Inventory,
+    pub(crate) palette: Palette,
     pub(crate) item_attrs: Arc<RwLock<ItemParameters>>,
 }
 
@@ -85,6 +87,7 @@ impl User {
             party_invites: vec![],
             party_ignore: Default::default(),
             inventory: Default::default(),
+            palette: Default::default(),
             item_attrs,
         })
     }
@@ -142,6 +145,14 @@ impl User {
         if self.character.is_some() {
             let mut sql = self.sql.write();
             sql.update_inventory(self.char_id, self.player_id, &self.inventory)
+        } else {
+            Ok(())
+        }
+    }
+    pub fn save_palette(&mut self) -> Result<(), Error> {
+        if self.character.is_some() {
+            let mut sql = self.sql.write();
+            sql.update_palette(self.char_id, &self.palette)
         } else {
             Ok(())
         }
@@ -215,6 +226,7 @@ fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
         Packet::CharacterNewNameRequest(data) => handlers::login::newname_request(user, data),
         Packet::StartGame(data) => handlers::login::start_game(user, data),
         Packet::LoginHistoryRequest => handlers::login::login_history(user),
+        Packet::BlockListRequest => handlers::login::block_list(user),
         Packet::ChallengeResponse(..) => {
             user.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);
@@ -271,6 +283,12 @@ fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
         Packet::SetBusy => Ok(Action::SetBusyState(BusyState::Busy)),
         Packet::SetNotBusy => Ok(Action::SetBusyState(BusyState::NotBusy)),
         Packet::ChatStatus(data) => Ok(Action::SetChatState(data)),
+        Packet::FullPaletteInfoRequest => handlers::palette::send_full_palette(user),
+        Packet::SetPalette(data) => handlers::palette::set_palette(user, data),
+        Packet::SetSubPalette(data) => handlers::palette::set_subpalette(user, data),
+        Packet::UpdatePalette(data) => handlers::palette::update_palette(user, data),
+        Packet::UpdateSubPalette(data) => handlers::palette::update_subpalette(user, data),
+        Packet::SetDefaultPAs(data) => handlers::palette::set_default_pa(user, data),
         data => {
             println!("{data:?}");
             Ok(Action::Nothing)

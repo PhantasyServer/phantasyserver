@@ -1,11 +1,5 @@
 if packet.action == "Sit" then
 	local sit_packet_data = {}
-	--1 - receiver
-	--2 - chair
-	--3 - sitter
-	
-	--1 - chair
-	--3 - player
 	
 	-- receiver
 	local receiver = {}

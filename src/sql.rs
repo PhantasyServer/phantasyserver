@@ -6,6 +6,7 @@ use std::{
 
 use crate::{
     inventory::{AccountStorages, Inventory},
+    palette::Palette,
     Error,
 };
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher};
@@ -49,7 +50,8 @@ impl Sql {
             create table if not exists Characters (
                 Id integer primary key autoincrement,
                 Data text default NULL,
-                Inventory text default NULL
+                Inventory text default NULL,
+                Palette text default NULL
             );
         ";
         connection.execute(query)?;
@@ -459,6 +461,32 @@ impl Sql {
         let query = "update ServerStats set Value = ? where Tag = \"UUID\"";
         let mut statement = self.connection.prepare(query)?;
         statement.bind((1, uuid as i64))?;
+        statement.into_iter().count();
+        Ok(())
+    }
+    pub fn get_palette(&self, char_id: u32) -> Result<Palette, Error> {
+        let query = "select Palette from Characters where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind((1, char_id as i64))?;
+        if let State::Row = statement.next()? {
+            let col_typee = statement.column_type("Palette")?;
+            if let Type::Null = col_typee {
+                println!("wtf??");
+                return Ok(Default::default());
+            }
+            let palette = statement.read::<String, _>("Palette")?;
+            let palette = serde_json::from_str::<Palette>(&palette)?;
+            return Ok(palette);
+        }
+        Ok(Default::default())
+    }
+    pub fn update_palette(&mut self, char_id: u32, palette: &Palette) -> Result<(), Error> {
+        let palette = serde_json::to_string(&palette)?;
+        let query = "update Characters set Palette = ? where Id = ?";
+        let mut statement = self.connection.prepare(query)?;
+        statement.bind::<&[(_, Value)]>(
+            &[(1, palette.as_str().into()), (2, (char_id as i64).into())][..],
+        )?;
         statement.into_iter().count();
         Ok(())
     }
