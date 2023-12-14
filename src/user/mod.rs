@@ -93,7 +93,8 @@ impl User {
             item_attrs,
         })
     }
-    pub fn tick(mut s: MutexGuard<Self>) -> Result<Action, Error> {
+    // I hope async guard won't cause me troubles in the future
+    pub async fn tick(mut s: MutexGuard<'_, Self>) -> Result<Action, Error> {
         let _ = s.connection.flush();
         if s.ready_to_shutdown && s.last_ping.elapsed().as_millis() >= 500 {
             return Err(Error::IOError(std::io::ErrorKind::ConnectionAborted.into()));
@@ -107,7 +108,7 @@ impl User {
             let _ = s.connection.write_packet(&Packet::ServerPing);
         }
         match s.connection.read_packet() {
-            Ok(packet) => match packet_handler(s, packet) {
+            Ok(packet) => match packet_handler(s, packet).await {
                 Ok(action) => return Ok(action),
                 Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => {}
                 Err(x) => return Err(x),
@@ -190,13 +191,16 @@ impl User {
     }
 }
 
-fn packet_handler(mut user_guard: MutexGuard<User>, packet: Packet) -> Result<Action, Error> {
+async fn packet_handler(
+    mut user_guard: MutexGuard<'_, User>,
+    packet: Packet,
+) -> Result<Action, Error> {
     let user: &mut User = &mut user_guard;
     use handlers as H;
     match packet {
         Packet::EncryptionRequest(data) => H::login::encryption_request(user, data),
-        Packet::SegaIDLogin(..) => H::login::login_request(user, packet),
-        Packet::VitaLogin(..) => H::login::login_request(user, packet),
+        Packet::SegaIDLogin(..) => H::login::login_request(user, packet).await,
+        Packet::VitaLogin(..) => H::login::login_request(user, packet).await,
         Packet::ServerPong => {
             user.failed_pings = 0;
             Ok(Action::Nothing)

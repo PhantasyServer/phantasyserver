@@ -15,7 +15,7 @@ pub fn encryption_request(user: &mut User, _: login::EncryptionRequestPacket) ->
     Ok(Action::Nothing)
 }
 
-pub fn login_request(user: &mut User, packet: Packet) -> HResult {
+pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
     let sql_provider = user.sql.clone();
     let (mut id, mut status, mut error) = Default::default();
     let mut sql = sql_provider.write();
@@ -23,7 +23,18 @@ pub fn login_request(user: &mut User, packet: Packet) -> HResult {
         Packet::SegaIDLogin(packet) => {
             user.packet_type = PacketType::JP;
             user.connection.change_packet_type(PacketType::JP);
-            match sql.get_sega_user(&packet.username, &packet.password) {
+            let sega_user = {
+                // SAFETY: 'sql' won't outlive the closure because we immediately await it.
+                let sql: &mut crate::sql::Sql = &mut *sql;
+                let sql: &'static mut crate::sql::Sql = unsafe { std::mem::transmute(sql) };
+
+                tokio::task::spawn_blocking(move || {
+                    sql.get_sega_user(&packet.username, &packet.password)
+                })
+                .await
+                .unwrap()
+            };
+            match sega_user {
                 Ok(x) => {
                     id = x.id;
                     user.nickname = x.nickname;

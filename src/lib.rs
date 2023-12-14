@@ -5,13 +5,12 @@ pub mod map;
 pub mod palette;
 pub mod party;
 pub mod sql;
-mod thread_pool;
 pub mod user;
 use console::style;
 use ice::{IceFileInfo, IceWriter};
 use indicatif::{MultiProgress, ProgressBar};
 use inventory::ItemParameters;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use pso2packetlib::{
     protocol::{self, login, models::item_attrs, Packet, PacketType},
     Connection,
@@ -21,11 +20,9 @@ use std::{
     io::{self, Cursor},
     net::{Ipv4Addr, TcpListener},
     sync::{mpsc, Arc},
-    thread,
     time::Duration,
 };
 use thiserror::Error;
-use thread_pool::ThreadPool;
 pub use user::*;
 
 #[derive(Debug, Error)]
@@ -66,6 +63,7 @@ pub struct BlockInfo {
 pub enum Action {
     #[default]
     Nothing,
+    Disconnect,
     InitialLoad,
     // party related
     SendPartyInvite(u32),
@@ -77,7 +75,7 @@ pub enum Action {
     LoadLobby,
 }
 
-pub fn init_block(
+pub async fn init_block(
     _server_statuses: Arc<RwLock<Vec<BlockInfo>>>,
     this_block: BlockInfo,
     sql: Arc<RwLock<sql::Sql>>,
@@ -102,28 +100,48 @@ pub fn init_block(
     };
 
     let mut clients = vec![];
-    let mut to_remove = vec![];
-    let mut actions = vec![];
     let mut conn_id = 0usize;
     let (send, recv) = mpsc::channel();
-
-    let pool = ThreadPool::new(thread::available_parallelism().unwrap().get(), send.clone());
 
     loop {
         for stream in listener.incoming() {
             match stream {
                 Ok(s) => {
                     println!("{}", style("Client connected").cyan());
-                    clients.push((
-                        conn_id,
-                        Arc::new(Mutex::new(User::new(
-                            s,
-                            sql.clone(),
-                            name.clone(),
-                            this_block.id as u16,
-                            item_attrs.clone(),
-                        )?)),
-                    ));
+                    let client = Arc::new(Mutex::new(User::new(
+                        s,
+                        sql.clone(),
+                        name.clone(),
+                        this_block.id as u16,
+                        item_attrs.clone(),
+                    )?));
+                    clients.push((conn_id, client.clone()));
+                    let send = send.clone();
+                    tokio::spawn(async move {
+                        loop {
+                            match User::tick(async_lock(&client).await).await {
+                                Ok(a) if matches!(a, Action::Nothing) => {}
+                                Ok(a) => {
+                                    send.send((conn_id, a)).unwrap();
+                                }
+                                Err(Error::IOError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                                }
+                                Err(Error::IOError(e))
+                                    if e.kind() == io::ErrorKind::ConnectionAborted =>
+                                {
+                                    send.send((conn_id, Action::Disconnect)).unwrap();
+                                    return;
+                                }
+                                Err(e) => {
+                                    let error_msg = format!("Client error: {e}");
+                                    let _ = async_lock(&client).await.send_error(&error_msg);
+                                    eprintln!("{}", style(error_msg).red());
+                                }
+                            }
+                            tokio::time::sleep(Duration::from_millis(1)).await;
+                        }
+                    });
+
                     conn_id += 1;
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
@@ -132,67 +150,39 @@ pub fn init_block(
                 }
             }
         }
-        while let Ok((id, result)) = recv.try_recv() {
-            match result {
-                Ok(action) => {
-                    let Some((pos, (_, _))) = clients
-                        .iter()
-                        .enumerate()
-                        .find(|(_, (conn_id, _))| *conn_id == id)
-                    else {
-                        continue;
-                    };
-                    actions.push((action, pos))
-                }
-                Err(e) => {
-                    let Some((pos, (_, user))) = clients
-                        .iter()
-                        .enumerate()
-                        .find(|(_, (conn_id, _))| *conn_id == id)
-                    else {
-                        continue;
-                    };
-                    if let Some(_) = to_remove.iter().find(|&&vec_pos| vec_pos == pos) {
-                        continue;
-                    }
-                    handle_error(Err::<Action, _>(e), &mut to_remove, &mut *user.lock(), pos);
-                }
-            }
+        while let Ok((id, action)) = recv.try_recv() {
+            match run_action(&mut clients, id, action, &lobby, &mut latest_partyid).await {
+                Ok(_) => {}
+                Err(e) => eprintln!("{}", style(format!("Client error: {e}")).red()),
+            };
         }
-        for (conn_id, client) in clients.iter() {
-            let client = client.clone();
-            pool.exec(*conn_id, move || User::tick(client.lock()));
-        }
-        for (action, pos) in actions.drain(..) {
-            handle_error(
-                run_action(&clients, pos, action, &lobby, &mut latest_partyid),
-                &mut to_remove,
-                &mut clients[pos].1.lock(),
-                pos,
-            );
-        }
-        to_remove.sort_unstable();
-        to_remove.dedup();
-        for pos in to_remove.drain(..).rev() {
-            println!("{}", style("Client disconnected").cyan());
-            clients.remove(pos);
-        }
-        thread::sleep(Duration::from_millis(1));
+        tokio::time::sleep(Duration::from_millis(1)).await;
     }
 }
 
-fn run_action(
-    clients: &[(usize, Arc<Mutex<User>>)],
-    pos: usize,
+async fn run_action(
+    clients: &mut Vec<(usize, Arc<Mutex<User>>)>,
+    conn_id: usize,
     action: Action,
     lobby: &Arc<Mutex<map::Map>>,
     latest_partyid: &mut u32,
 ) -> Result<(), Error> {
+    let Some((pos, _)) = clients
+        .iter()
+        .enumerate()
+        .find(|(_, (c_conn_id, _))| *c_conn_id == conn_id)
+    else {
+        return Ok(());
+    };
     match action {
         Action::Nothing => {}
+        Action::Disconnect => {
+            println!("{}", style("Client disconnected").cyan());
+            clients.remove(pos);
+        }
         Action::InitialLoad => {
             let (_, user) = &clients[pos];
-            let mut user_lock = user.lock();
+            let mut user_lock = async_lock(&user).await;
             user_lock.set_map(lobby.clone());
             drop(user_lock);
             party::Party::init_player(user.clone(), latest_partyid)?;
@@ -212,7 +202,7 @@ fn run_action(
         }
         Action::LoadLobby => {
             let (_, user) = &clients[pos];
-            user.lock().set_map(lobby.clone());
+            async_lock(&user).await.set_map(lobby.clone());
             lobby.lock().add_player(user.clone())?;
         }
         Action::AcceptPartyInvite(party_id) => {
@@ -221,7 +211,8 @@ fn run_action(
         }
         Action::LeaveParty => {
             let (_, user) = &clients[pos];
-            user.lock()
+            async_lock(&user)
+                .await
                 .send_packet(&pso2packetlib::protocol::Packet::RemovedFromParty)?;
             party::Party::init_player(user.clone(), latest_partyid)?;
         }
@@ -231,36 +222,13 @@ fn run_action(
         }
         Action::KickPartyMember(data) => {
             let (_, user) = &clients[pos];
-            let party = user.lock().get_current_party();
+            let party = async_lock(&user).await.get_current_party();
             if let Some(party) = party {
                 party.write().kick_player(data.id, latest_partyid)?;
             }
         }
     }
     Ok(())
-}
-
-fn handle_error<T>(
-    result: Result<T, Error>,
-    to_remove: &mut Vec<usize>,
-    user: &mut User,
-    pos: usize,
-) -> Option<T> {
-    match result {
-        Ok(t) => Some(t),
-        Err(Error::IOError(x)) if x.kind() == io::ErrorKind::ConnectionAborted => {
-            to_remove.push(pos);
-            None
-        }
-        Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => None,
-        Err(x) => {
-            // to_remove.push(pos);
-            let error_msg = format!("Client error: {x}");
-            let _ = user.send_error(&error_msg);
-            eprintln!("{}", style(error_msg).red());
-            None
-        }
-    }
 }
 
 pub fn send_querry(
@@ -363,4 +331,13 @@ pub fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u
 
     progress.finish_with_message("Created item attributes");
     Ok((outdata_pc, outdata_vita))
+}
+
+async fn async_lock<T>(mutex: &Mutex<T>) -> MutexGuard<T> {
+    loop {
+        match mutex.try_lock() {
+            Some(lock) => return lock,
+            None => tokio::time::sleep(Duration::from_millis(1)).await,
+        }
+    }
 }

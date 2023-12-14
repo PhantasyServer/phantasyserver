@@ -114,7 +114,8 @@ impl Party {
         } else {
             vec![]
         };
-        exec_users(&self.players, |id, mut player| {
+        let mut i = 1;
+        exec_users(&self.players, |_, mut player| {
             let other_player_obj = ObjectHeader {
                 id: player.player_id,
                 entity_type: EntityType::Player,
@@ -125,7 +126,7 @@ impl Party {
                 in_party: 1,
                 ..Default::default()
             });
-            party_init.entries[id as usize + 1] = party::PartyEntry {
+            party_init.entries[i] = party::PartyEntry {
                 id: other_player_obj,
                 nickname: player.nickname.clone(),
                 char_name: player.character.as_ref().unwrap().name.clone(),
@@ -148,6 +149,7 @@ impl Party {
             let _ = player.send_packet(&Packet::PartySetupFinish(party::PartySetupFinishPacket {
                 unk: 1,
             }));
+            i += 1;
         });
         self.players
             .push((np_lock.player_id, Arc::downgrade(&new_id)));

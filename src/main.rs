@@ -4,15 +4,10 @@ use parking_lot::RwLock;
 use pso2packetlib::protocol::login::ShipEntry;
 use pso2server::{init_block, inventory::ItemParameters, sql, BlockInfo};
 use rsa::{pkcs8::EncodePrivateKey, RsaPrivateKey};
-use std::{
-    error, io,
-    net::{Ipv4Addr, TcpListener},
-    sync::Arc,
-    thread,
-    time::Duration,
-};
+use std::{error, io, net::Ipv4Addr, sync::Arc, time::Duration};
 
-fn main() -> Result<(), Box<dyn error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn error::Error>> {
     let mul_progress = MultiProgress::new();
     let startup_progress = mul_progress.add(ProgressBar::new_spinner());
     startup_progress.set_message("Starting server...");
@@ -56,10 +51,8 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     }
     {
         let sql = Arc::new(RwLock::new(sql::Sql::new().unwrap()));
-        let status_copy = ship_statuses;
-        let querry = thread::spawn(move || querry_srv(status_copy));
-        let status_copy = server_statuses.clone();
-        let block_balance = thread::spawn(move || block_balance(status_copy));
+        make_query(ship_statuses.clone()).await?;
+        make_block_balance(server_statuses.clone()).await?;
         let mut blocks = vec![];
         for i in 100..101 {
             let mut blockstatus_lock = server_statuses.write();
@@ -73,82 +66,77 @@ fn main() -> Result<(), Box<dyn error::Error>> {
             let server_statuses = server_statuses.clone();
             let sql = sql.clone();
             let item_data = item_data.clone();
-            blocks.push(thread::spawn(move || {
-                init_block(server_statuses, new_block, sql, item_data)
+            blocks.push(tokio::spawn(async move {
+                init_block(server_statuses, new_block, sql, item_data).await
             }))
         }
 
         startup_progress.finish_with_message("Server started.");
-        while !querry.is_finished() || !block_balance.is_finished() {
+        loop {
             std::thread::sleep(Duration::from_millis(100));
         }
     }
 
-    Ok(())
+    // Ok(())
 }
 
-fn block_balance(server_statuses: Arc<RwLock<Vec<BlockInfo>>>) -> io::Result<()> {
+async fn make_block_balance(server_statuses: Arc<RwLock<Vec<BlockInfo>>>) -> io::Result<()> {
+    use tokio::net::TcpListener;
     // TODO: add ship id config
     let mut listeners = vec![];
     for i in 0..10 {
         //pc balance
-        listeners.push(TcpListener::bind(("0.0.0.0", 12100 + (i * 100)))?);
+        listeners.push(TcpListener::bind(("0.0.0.0", 12100 + (i * 100))).await?);
         //vita balance
-        listeners.push(TcpListener::bind(("0.0.0.0", 12193 + (i * 100)))?);
+        listeners.push(TcpListener::bind(("0.0.0.0", 12193 + (i * 100))).await?);
     }
-    listeners
-        .iter_mut()
-        .map(|x| x.set_nonblocking(true).unwrap())
-        .count();
-    loop {
-        for info_listener in &listeners {
-            for stream in info_listener.incoming() {
-                match stream {
-                    Ok(s) => {
-                        let _ = pso2server::send_block_balance(s, server_statuses.clone());
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(1));
-                        break;
+    for listener in listeners {
+        let server_statuses = server_statuses.clone();
+        tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((s, _)) => {
+                        let _ = pso2server::send_block_balance(
+                            s.into_std().unwrap(),
+                            server_statuses.clone(),
+                        );
                     }
                     Err(e) => {
-                        return Err(e);
+                        eprintln!("Failed to accept connection: {}", e);
+                        return;
                     }
                 }
             }
-        }
+        });
     }
+    Ok(())
 }
 
-fn querry_srv(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
+async fn make_query(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
+    use tokio::net::TcpListener;
     let mut info_listeners: Vec<TcpListener> = vec![];
     for i in 0..10 {
         //pc ships
-        info_listeners.push(TcpListener::bind(("0.0.0.0", 12199 + (i * 100)))?);
+        info_listeners.push(TcpListener::bind(("0.0.0.0", 12199 + (i * 100))).await?);
         //vita ships
-        info_listeners.push(TcpListener::bind(("0.0.0.0", 12194 + (i * 100)))?);
+        info_listeners.push(TcpListener::bind(("0.0.0.0", 12194 + (i * 100))).await?);
     }
-    info_listeners
-        .iter_mut()
-        .map(|x| x.set_nonblocking(true).unwrap())
-        .count();
-    loop {
-        for info_listener in &info_listeners {
-            for stream in info_listener.incoming() {
-                match stream {
-                    Ok(s) => {
-                        let _ = pso2server::send_querry(s, server_statuses.clone());
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(1));
-                        break;
+    for listener in info_listeners {
+        let server_statuses = server_statuses.clone();
+        tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((s, _)) => {
+                        let _ =
+                            pso2server::send_querry(s.into_std().unwrap(), server_statuses.clone());
                     }
                     Err(e) => {
-                        eprintln!("Querry error: {}", e);
-                        break;
+                        eprintln!("Failed to accept connection: {}", e);
+                        return;
                     }
                 }
             }
-        }
+        });
     }
+    Ok(())
 }
