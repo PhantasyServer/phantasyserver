@@ -5,29 +5,27 @@ pub mod map;
 pub mod palette;
 pub mod party;
 pub mod sql;
+mod thread_pool;
 pub mod user;
 use console::style;
 use ice::{IceFileInfo, IceWriter};
 use indicatif::{MultiProgress, ProgressBar};
 use inventory::ItemParameters;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use pso2packetlib::{
-    protocol::{
-        self, login, models::item_attrs, symbolart::SendSymbolArtPacket, Packet, PacketType,
-    },
+    protocol::{self, login, models::item_attrs, Packet, PacketType},
     Connection,
 };
 use rand::Rng;
 use std::{
-    cell::RefCell,
     io::{self, Cursor},
     net::{Ipv4Addr, TcpListener},
-    rc::Rc,
-    sync::Arc,
+    sync::{mpsc, Arc},
     thread,
     time::Duration,
 };
 use thiserror::Error;
+use thread_pool::ThreadPool;
 pub use user::*;
 
 #[derive(Debug, Error)]
@@ -71,23 +69,12 @@ pub enum Action {
     InitialLoad,
     // party related
     SendPartyInvite(u32),
-    GetPartyDetails(protocol::party::GetPartyDetailsPacket),
-    SetPartySettings(protocol::party::NewPartySettingsPacket),
     AcceptPartyInvite(u32),
-    TransferLeader(protocol::ObjectHeader),
     KickPartyMember(protocol::ObjectHeader),
     DisbandParty,
     LeaveParty,
-    SetBusyState(protocol::party::BusyState),
-    SetChatState(protocol::party::ChatStatusPacket),
     // map related
     LoadLobby,
-    SendPosition(Packet),
-    SendMapMessage(Packet),
-    SendMapSA(SendSymbolArtPacket),
-    Interact(protocol::objects::InteractPacket),
-    MapLuaReload,
-    PaletteUpdate,
 }
 
 pub fn init_block(
@@ -104,7 +91,7 @@ pub fn init_block(
     let mut latest_partyid = 0;
 
     let lobby = match map::Map::new("lobby.mp", &mut latest_mapid) {
-        Ok(x) => Rc::new(RefCell::new(x)),
+        Ok(x) => Arc::new(Mutex::new(x)),
         Err(e) => {
             eprintln!(
                 "{}",
@@ -117,19 +104,27 @@ pub fn init_block(
     let mut clients = vec![];
     let mut to_remove = vec![];
     let mut actions = vec![];
+    let mut conn_id = 0usize;
+    let (send, recv) = mpsc::channel();
+
+    let pool = ThreadPool::new(thread::available_parallelism().unwrap().get(), send.clone());
 
     loop {
         for stream in listener.incoming() {
             match stream {
                 Ok(s) => {
                     println!("{}", style("Client connected").cyan());
-                    clients.push(User::new(
-                        s,
-                        sql.clone(),
-                        name.clone(),
-                        this_block.id as u16,
-                        item_attrs.clone(),
-                    )?);
+                    clients.push((
+                        conn_id,
+                        Arc::new(Mutex::new(User::new(
+                            s,
+                            sql.clone(),
+                            name.clone(),
+                            this_block.id as u16,
+                            item_attrs.clone(),
+                        )?)),
+                    ));
+                    conn_id += 1;
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
@@ -137,16 +132,42 @@ pub fn init_block(
                 }
             }
         }
-        for (pos, client) in clients.iter_mut().enumerate() {
-            if let Some(action) = handle_error(client.tick(), &mut to_remove, client, pos) {
-                actions.push((action, pos));
+        while let Ok((id, result)) = recv.try_recv() {
+            match result {
+                Ok(action) => {
+                    let Some((pos, (_, _))) = clients
+                        .iter()
+                        .enumerate()
+                        .find(|(_, (conn_id, _))| *conn_id == id)
+                    else {
+                        continue;
+                    };
+                    actions.push((action, pos))
+                }
+                Err(e) => {
+                    let Some((pos, (_, user))) = clients
+                        .iter()
+                        .enumerate()
+                        .find(|(_, (conn_id, _))| *conn_id == id)
+                    else {
+                        continue;
+                    };
+                    if let Some(_) = to_remove.iter().find(|&&vec_pos| vec_pos == pos) {
+                        continue;
+                    }
+                    handle_error(Err::<Action, _>(e), &mut to_remove, &mut *user.lock(), pos);
+                }
             }
+        }
+        for (conn_id, client) in clients.iter() {
+            let client = client.clone();
+            pool.exec(*conn_id, move || User::tick(client.lock()));
         }
         for (action, pos) in actions.drain(..) {
             handle_error(
-                run_action(&mut clients, pos, action, &lobby, &mut latest_partyid),
+                run_action(&clients, pos, action, &lobby, &mut latest_partyid),
                 &mut to_remove,
-                &mut clients[pos],
+                &mut clients[pos].1.lock(),
                 pos,
             );
         }
@@ -154,17 +175,6 @@ pub fn init_block(
         to_remove.dedup();
         for pos in to_remove.drain(..).rev() {
             println!("{}", style("Client disconnected").cyan());
-            let user = &mut clients[pos];
-            let _ = user.save_inventory();
-            let _ = user.save_palette().unwrap();
-            let id = user.get_user_id();
-            if let Some(party) = user.get_current_party() {
-                let _ = party.borrow_mut().remove_player(&mut clients, id);
-            }
-            let user = &clients[pos];
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().remove_player(&mut clients, id);
-            }
             clients.remove(pos);
         }
         thread::sleep(Duration::from_millis(1));
@@ -172,124 +182,58 @@ pub fn init_block(
 }
 
 fn run_action(
-    clients: &mut [User],
+    clients: &[(usize, Arc<Mutex<User>>)],
     pos: usize,
     action: Action,
-    lobby: &Rc<RefCell<map::Map>>,
+    lobby: &Arc<Mutex<map::Map>>,
     latest_partyid: &mut u32,
 ) -> Result<(), Error> {
     match action {
         Action::Nothing => {}
         Action::InitialLoad => {
-            let user = &mut clients[pos];
-            let id = user.get_user_id();
-            user.set_map(lobby.clone());
-            party::Party::init_player(clients, id, latest_partyid)?;
-            lobby.borrow_mut().add_player(clients, id)?;
+            let (_, user) = &clients[pos];
+            let mut user_lock = user.lock();
+            user_lock.set_map(lobby.clone());
+            drop(user_lock);
+            party::Party::init_player(user.clone(), latest_partyid)?;
+            lobby.lock().add_player(user.clone())?;
         }
         Action::SendPartyInvite(invitee) => {
-            let user = &mut clients[pos];
-            let inviter = user.get_user_id();
-            party::Party::send_invite(clients, inviter, invitee)?;
+            let (_, inviter) = &clients[pos];
+            let Some(invitee) = clients
+                .iter()
+                .map(|(_, p)| p)
+                .find(|p| p.lock().player_id == invitee)
+                .cloned()
+            else {
+                return Ok(());
+            };
+            party::Party::send_invite(inviter.clone(), invitee)?;
         }
         Action::LoadLobby => {
-            let user = &mut clients[pos];
-            let id = user.get_user_id();
-            user.set_map(lobby.clone());
-            lobby.borrow_mut().add_player(clients, id)?;
-        }
-        Action::GetPartyDetails(packet) => {
-            party::Party::get_details(clients, pos, packet)?;
+            let (_, user) = &clients[pos];
+            user.lock().set_map(lobby.clone());
+            lobby.lock().add_player(user.clone())?;
         }
         Action::AcceptPartyInvite(party_id) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            party::Party::accept_invite(clients, id, party_id)?;
+            let (_, user) = &clients[pos];
+            party::Party::accept_invite(user.clone(), party_id)?;
         }
         Action::LeaveParty => {
-            let user = &mut clients[pos];
-            let id = user.get_user_id();
-            user.send_packet(&pso2packetlib::protocol::Packet::RemovedFromParty)?;
-            party::Party::init_player(clients, id, latest_partyid)?;
-        }
-        Action::TransferLeader(data) => {
-            let user = &mut clients[pos];
-            if let Some(party) = user.get_current_party() {
-                party.borrow_mut().change_leader(clients, data)?;
-            }
+            let (_, user) = &clients[pos];
+            user.lock()
+                .send_packet(&pso2packetlib::protocol::Packet::RemovedFromParty)?;
+            party::Party::init_player(user.clone(), latest_partyid)?;
         }
         Action::DisbandParty => {
-            let user = &mut clients[pos];
-            let id = user.get_user_id();
-            party::Party::disband_party(clients, id, latest_partyid)?;
+            let (_, user) = &clients[pos];
+            party::Party::disband_party(user.clone(), latest_partyid)?;
         }
         Action::KickPartyMember(data) => {
-            let user = &mut clients[pos];
-            if let Some(party) = user.get_current_party() {
-                party
-                    .borrow_mut()
-                    .kick_player(clients, data.id, latest_partyid)?;
-            }
-        }
-        Action::SetPartySettings(packet) => {
-            let user = &mut clients[pos];
-            if let Some(party) = user.get_current_party() {
-                party.borrow_mut().set_settings(clients, packet)?;
-            }
-        }
-        Action::SendPosition(packet) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().send_movement(clients, packet, id);
-            }
-        }
-        Action::SendMapMessage(packet) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().send_message(clients, packet, id);
-            }
-        }
-        Action::SendMapSA(packet) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().send_sa(clients, packet, id);
-            }
-        }
-        Action::Interact(packet) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().interaction(clients, packet, id)?;
-            }
-        }
-        Action::MapLuaReload => {
-            let user = &clients[pos];
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().reload_lua()?;
-            }
-        }
-        Action::SetBusyState(state) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(party) = user.get_current_party() {
-                party.borrow().set_busy_state(clients, state, id);
-            }
-        }
-        Action::SetChatState(state) => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(party) = user.get_current_party() {
-                party.borrow().set_chat_status(clients, state, id);
-            }
-        }
-        Action::PaletteUpdate => {
-            let user = &clients[pos];
-            let id = user.get_user_id();
-            if let Some(map) = user.get_current_map() {
-                map.borrow_mut().send_palette_change(clients, id)?;
+            let (_, user) = &clients[pos];
+            let party = user.lock().get_current_party();
+            if let Some(party) = party {
+                party.write().kick_player(data.id, latest_partyid)?;
             }
         }
     }

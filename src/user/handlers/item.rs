@@ -66,8 +66,7 @@ pub fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HRes
 
 pub fn get_description(user: &mut User, packet: GetItemDescriptionPacket) -> HResult {
     let names_ref = user.item_attrs.clone();
-    let names = names_ref.read();
-    match names.names.iter().find(|x| x.id == packet.item) {
+    match names_ref.read().names.iter().find(|x| x.id == packet.item) {
         Some(name) => {
             let packet = LoadItemDescriptionPacket {
                 unk1: 1,

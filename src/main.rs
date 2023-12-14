@@ -140,6 +140,7 @@ fn querry_srv(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
                         let _ = pso2server::send_querry(s, server_statuses.clone());
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(1));
                         break;
                     }
                     Err(e) => {
@@ -147,7 +148,6 @@ fn querry_srv(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
                         break;
                     }
                 }
-                thread::sleep(Duration::from_millis(1));
             }
         }
     }

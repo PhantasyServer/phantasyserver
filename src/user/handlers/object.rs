@@ -1,8 +1,9 @@
 use super::HResult;
 use crate::{Action, User};
+use parking_lot::MutexGuard;
 use pso2packetlib::protocol::{objects, Packet};
 
-pub fn movement(user: &mut User, packet: objects::MovementPacket) -> HResult {
+pub fn movement(mut user: MutexGuard<User>, packet: objects::MovementPacket) -> HResult {
     if let Some(n) = packet.rot_x {
         user.position.rot_x = n;
     }
@@ -24,5 +25,15 @@ pub fn movement(user: &mut User, packet: objects::MovementPacket) -> HResult {
     if let Some(n) = packet.cur_z {
         user.position.pos_z = n;
     }
-    Ok(Action::SendPosition(Packet::Movement(packet)))
+    User::send_position(user, Packet::Movement(packet))
+}
+
+pub fn action(user: MutexGuard<User>, packet: objects::InteractPacket) -> HResult {
+    let id = user.get_user_id();
+    let map = user.get_current_map();
+    drop(user);
+    if let Some(map) = map {
+        map.lock().interaction(packet, id)?;
+    }
+    Ok(Action::Nothing)
 }

@@ -1,5 +1,6 @@
-use crate::Error;
+use crate::{Error, User};
 use mlua::{Lua, LuaSerdeExt, StdLib};
+use parking_lot::{Mutex, MutexGuard};
 use pso2packetlib::protocol::{
     self,
     models::Position,
@@ -8,12 +9,17 @@ use pso2packetlib::protocol::{
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
     EntityType, ObjectHeader, Packet, PacketType, SetPlayerIDPacket,
 };
-use std::{collections::HashMap, io::Write};
+use std::{
+    collections::HashMap,
+    io::Write,
+    sync::{Arc, Weak},
+};
 
 pub struct Map {
     lua: Lua,
     data: MapData,
-    players: Vec<u32>,
+    // id, player
+    players: Vec<(u32, Weak<Mutex<User>>)>,
     load_path: std::path::PathBuf,
 }
 impl Map {
@@ -77,7 +83,6 @@ impl Map {
         }
         Ok(())
     }
-    // called by block
     pub fn reload_lua(&mut self) -> Result<(), Error> {
         let map = MapData::load_from_mp_file(&self.load_path)?;
         self.data.luas = map.luas;
@@ -85,7 +90,6 @@ impl Map {
         self.init_lua()?;
         Ok(())
     }
-    // called by player
     pub fn lua_gc_collect(&self) -> Result<(), Error> {
         self.lua.gc_collect()?;
         self.lua.gc_collect()?;
@@ -95,41 +99,42 @@ impl Map {
         self.data.map_data.settings.map_id
     }
     // called by block
-    pub fn add_player(&mut self, players: &mut [crate::User], new_id: u32) -> Result<(), Error> {
-        let other_characters: Vec<_> = players
-            .iter()
-            .filter(|p| self.players.contains(&p.player_id) && p.character.is_some())
-            .map(|p| (p.character.clone().unwrap(), p.position))
-            .collect();
+    pub fn add_player(&mut self, new_player: Arc<Mutex<User>>) -> Result<(), Error> {
         let mut other_equipment: Vec<_> = Vec::with_capacity(self.players.len() * 2);
-        players
+        let other_characters: Vec<_> = self
+            .players
             .iter()
-            .filter(|p| self.players.contains(&p.player_id) && p.character.is_some())
-            .for_each(|p| {
-                other_equipment.push(p.palette.send_change_palette(p.player_id));
-                other_equipment.push(p.palette.send_cur_weapon(p.player_id, &p.inventory));
-                other_equipment.push(p.inventory.send_equiped(p.player_id));
-            });
-        let new_player = players
-            .iter_mut()
-            .find(|p| p.player_id == new_id)
-            .ok_or(Error::InvalidInput)?;
-        self.data.map_data.receiver.id = new_id;
+            .filter_map(|p| p.1.upgrade())
+            .filter_map(|p| {
+                let p = p.lock();
+                if p.character.is_none() {
+                    None
+                } else {
+                    other_equipment.push(p.palette.send_change_palette(p.player_id));
+                    other_equipment.push(p.palette.send_cur_weapon(p.player_id, &p.inventory));
+                    other_equipment.push(p.inventory.send_equiped(p.player_id));
+                    Some((p.character.clone().unwrap(), p.position))
+                }
+            })
+            .collect();
+        let mut np_lock = new_player.lock();
+        let np_id = np_lock.player_id;
+        let new_character = np_lock.character.clone().ok_or(Error::NoCharacter)?;
+        self.data.map_data.receiver.id = np_id;
         self.data.map_data.receiver.entity_type = EntityType::Player;
-        new_player.send_packet(&Packet::LoadLevel(self.data.map_data.clone()))?;
-        new_player.send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
-            player_id: new_id,
+        np_lock.send_packet(&Packet::LoadLevel(self.data.map_data.clone()))?;
+        np_lock.send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
+            player_id: np_id,
             unk2: 4,
             ..Default::default()
         }))?;
-        let new_character = new_player.character.clone().ok_or(Error::NoCharacter)?;
-        new_player.position = self.data.default_location;
-        new_player.spawn_character(CharacterSpawnPacket {
+        np_lock.position = self.data.default_location;
+        np_lock.spawn_character(CharacterSpawnPacket {
             position: self.data.default_location,
             character: new_character.clone(),
             is_me: CharacterSpawnType::Myself,
             player_obj: ObjectHeader {
-                id: new_id,
+                id: np_id,
                 entity_type: EntityType::Player,
                 ..Default::default()
             },
@@ -137,17 +142,17 @@ impl Map {
         })?;
         for object in &self.data.objects {
             let mut obj = object.clone();
-            if new_player.packet_type == PacketType::Vita {
+            if np_lock.packet_type == PacketType::Vita {
                 obj.data.remove(7);
             }
-            new_player.send_packet(&Packet::ObjectSpawn(obj))?;
+            np_lock.send_packet(&Packet::ObjectSpawn(obj))?;
         }
         for npc in &self.data.npcs {
-            new_player.send_packet(&Packet::NPCSpawn(npc.clone()))?;
+            np_lock.send_packet(&Packet::NPCSpawn(npc.clone()))?;
         }
         for (character, position) in other_characters {
             let player_id = character.player_id;
-            new_player.spawn_character(CharacterSpawnPacket {
+            np_lock.spawn_character(CharacterSpawnPacket {
                 position,
                 is_me: CharacterSpawnType::Other,
                 player_obj: ObjectHeader {
@@ -160,22 +165,19 @@ impl Map {
             })?;
         }
         for equipment in other_equipment {
-            new_player.send_packet(&equipment)?;
+            np_lock.send_packet(&equipment)?;
         }
         let new_eqipment = (
-            new_player.palette.send_change_palette(new_player.player_id),
-            new_player
-                .palette
-                .send_cur_weapon(new_player.player_id, &new_player.inventory),
-            new_player.inventory.send_equiped(new_player.player_id),
+            np_lock.palette.send_change_palette(np_id),
+            np_lock.palette.send_cur_weapon(np_id, &np_lock.inventory),
+            np_lock.inventory.send_equiped(np_id),
         );
-        new_player.send_packet(&new_player.palette.send_palette())?;
-        new_player.send_packet(&new_eqipment.0)?;
-        new_player.send_packet(&new_eqipment.1)?;
-        let other_players = players
-            .iter_mut()
-            .filter(|p| self.players.contains(&p.player_id));
-        for player in other_players {
+        let palette_packet = np_lock.palette.send_palette();
+        np_lock.send_packet(&palette_packet)?;
+        np_lock.send_packet(&new_eqipment.0)?;
+        np_lock.send_packet(&new_eqipment.1)?;
+        // np_lock.send_packet(&new_eqipment.2)?;
+        exec_users(&self.players, |_, mut player| {
             let _ = player.spawn_character(CharacterSpawnPacket {
                 position: self.data.default_location,
                 is_me: CharacterSpawnType::Other,
@@ -190,52 +192,52 @@ impl Map {
             let _ = player.send_packet(&new_eqipment.0);
             let _ = player.send_packet(&new_eqipment.1);
             let _ = player.send_packet(&new_eqipment.2);
-        }
-        self.players.push(new_id);
+        });
+        drop(np_lock);
+        self.players.push((np_id, Arc::downgrade(&new_player)));
         Ok(())
     }
-    pub fn send_palette_change(
-        &self,
-        players: &mut [crate::User],
-        sender_id: u32,
-    ) -> Result<(), Error> {
-        let sender = players
-            .iter_mut()
-            .find(|p| p.player_id == sender_id)
+    pub fn send_palette_change(&self, sender_id: u32) -> Result<(), Error> {
+        let new_eqipment = self
+            .players
+            .iter()
+            .find(|p| p.0 == sender_id)
+            .and_then(|p| p.1.upgrade())
+            .and_then(|p| {
+                let p = p.lock();
+                Some((
+                    p.palette.send_change_palette(sender_id),
+                    p.palette.send_cur_weapon(sender_id, &p.inventory),
+                ))
+            })
             .ok_or(Error::InvalidInput)?;
-        let new_eqipment = (
-            sender.palette.send_change_palette(sender_id),
-            sender.palette.send_cur_weapon(sender_id, &sender.inventory),
-        );
-        let players = players
-            .iter_mut()
-            .filter(|p| self.players.contains(&p.player_id));
-        for player in players {
+        exec_users(&self.players, |_, mut player| {
             let _ = player.send_packet(&new_eqipment.0);
             let _ = player.send_packet(&new_eqipment.1);
-        }
+        });
 
         Ok(())
     }
     // called by block
-    pub fn send_movement(&self, players: &mut [crate::User], packet: Packet, sender_id: u32) {
-        let players = players
-            .iter_mut()
-            .filter(|p| self.players.contains(&p.player_id) && p.player_id != sender_id);
+    pub fn send_movement(&self, packet: Packet, sender_id: u32) {
         match packet {
             Packet::Movement(_) => {
-                for player in players {
-                    let _ = player.send_packet(&packet);
-                }
+                exec_users(&self.players, |id, mut player| {
+                    if id != sender_id {
+                        let _ = player.send_packet(&packet);
+                    }
+                });
             }
             Packet::MovementEnd(mut data) => {
                 if data.unk1.id == 0 && data.unk2.id != 0 {
                     data.unk1 = data.unk2;
                 }
                 let packet = Packet::MovementEnd(data);
-                for player in players {
-                    let _ = player.send_packet(&packet);
-                }
+                exec_users(&self.players, |id, mut player| {
+                    if id != sender_id {
+                        let _ = player.send_packet(&packet);
+                    }
+                });
             }
             Packet::MovementAction(data) => {
                 let packet = protocol::objects::MovementActionServerPacket {
@@ -256,12 +258,14 @@ impl Map {
                     unk10: data.unk10,
                 };
                 let mut packet = Packet::MovementActionServer(packet);
-                for player in players {
-                    if let Packet::MovementActionServer(ref mut data) = packet {
-                        data.receiver.id = player.player_id;
+                exec_users(&self.players, |id, mut player| {
+                    if id != sender_id {
+                        if let Packet::MovementActionServer(ref mut data) = packet {
+                            data.receiver.id = player.player_id;
+                        }
+                        let _ = player.send_packet(&packet);
                     }
-                    let _ = player.send_packet(&packet);
-                }
+                });
             }
             Packet::ActionUpdate(data) => {
                 let packet = protocol::objects::ActionUpdateServerPacket {
@@ -274,21 +278,20 @@ impl Map {
                     },
                 };
                 let mut packet = Packet::ActionUpdateServer(packet);
-                for player in players {
-                    if let Packet::ActionUpdateServer(ref mut data) = packet {
-                        data.receiver.id = player.player_id;
+                exec_users(&self.players, |id, mut player| {
+                    if id != sender_id {
+                        if let Packet::ActionUpdateServer(ref mut data) = packet {
+                            data.receiver.id = player.player_id;
+                        }
+                        let _ = player.send_packet(&packet);
                     }
-                    let _ = player.send_packet(&packet);
-                }
+                });
             }
             _ => {}
         }
     }
     // called by block
-    pub fn send_message(&self, players: &mut [crate::User], mut packet: Packet, id: u32) {
-        let players = players
-            .iter_mut()
-            .filter(|p| self.players.contains(&p.player_id));
+    pub fn send_message(&self, mut packet: Packet, id: u32) {
         if let Packet::ChatMessage(ref mut data) = packet {
             data.object = ObjectHeader {
                 id,
@@ -296,15 +299,12 @@ impl Map {
                 ..Default::default()
             };
         }
-        for player in players {
+        exec_users(&self.players, |_, mut player| {
             let _ = player.send_packet(&packet);
-        }
+        });
     }
     // called by block
-    pub fn send_sa(&self, players: &mut [crate::User], data: SendSymbolArtPacket, id: u32) {
-        let players = players
-            .iter_mut()
-            .filter(|p| self.players.contains(&p.player_id));
+    pub fn send_sa(&self, data: SendSymbolArtPacket, id: u32) {
         let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
             object: ObjectHeader {
                 id,
@@ -317,19 +317,16 @@ impl Map {
             unk2: data.unk2,
             unk3: data.unk3,
         });
-        for player in players {
+        exec_users(&self.players, |_, mut player| {
             let _ = player.send_packet(&packet);
-        }
+        });
     }
     // called by block
-    pub fn remove_player(&mut self, players: &mut [crate::User], id: u32) {
-        let Some((pos, _)) = self.players.iter().enumerate().find(|(_, &n)| n == id) else {
+    pub fn remove_player(&mut self, id: u32) {
+        let Some((pos, _)) = self.players.iter().enumerate().find(|(_, p)| p.0 == id) else {
             return;
         };
         self.players.swap_remove(pos);
-        let players = players
-            .iter_mut()
-            .filter(|p| self.players.contains(&p.player_id));
         let mut packet = Packet::RemoveObject(protocol::objects::RemoveObjectPacket {
             receiver: ObjectHeader {
                 id: 0,
@@ -342,17 +339,16 @@ impl Map {
                 ..Default::default()
             },
         });
-        for player in players {
+        exec_users(&self.players, |_, mut player| {
             if let Packet::RemoveObject(data) = &mut packet {
                 data.receiver.id = player.player_id;
                 let _ = player.send_packet(&packet);
             }
-        }
+        });
     }
     // called by block
     pub fn interaction(
         &self,
-        players: &mut [crate::User],
         packet: protocol::objects::InteractPacket,
         sender_id: u32,
     ) -> Result<(), Error> {
@@ -369,18 +365,28 @@ impl Map {
             return Ok(());
         }
         let globals = self.lua.globals();
+        let player_ids: Vec<_> = self.players.iter().map(|p| p.0).collect();
         globals.set("packet", self.lua.to_value(&packet)?)?;
         globals.set("sender", sender_id)?;
-        globals.set("players", self.players.clone())?;
-        let mut pending_packets: Vec<(u32, Packet)> = vec![];
+        globals.set("players", player_ids)?;
         self.lua.scope(|scope| {
             /* LUA FUNCTIONS */
 
-            // prepare packets for sending
+            // send packet
             let send =
                 scope.create_function_mut(|lua, (receiver, packet): (u32, mlua::Value)| {
                     let packet = lua.from_value(packet)?;
-                    pending_packets.push((receiver, packet));
+                    self.players
+                        .iter()
+                        .find(|p| p.0 == receiver)
+                        .and_then(|p| p.1.upgrade())
+                        .ok_or(mlua::Error::runtime("Couldn't find requested player"))
+                        .and_then(|p| {
+                            let mut player = p.lock();
+                            player.send_packet(&packet).map_err(|e| {
+                                mlua::Error::runtime(format!("Failed to send packet: {}", e))
+                            })
+                        })?;
                     Ok(())
                 })?;
             self.lua.globals().set("send", send)?;
@@ -431,13 +437,6 @@ impl Map {
         globals.raw_remove("packet")?;
         globals.raw_remove("sender")?;
         globals.raw_remove("players")?;
-        for (id, packet) in pending_packets {
-            let player = players
-                .iter_mut()
-                .find(|p| p.player_id == id)
-                .ok_or(Error::InvalidInput)?;
-            player.send_packet(&packet)?;
-        }
         Ok(())
     }
 }
@@ -474,4 +473,14 @@ impl MapData {
         serde_json::to_writer_pretty(file, self)?;
         Ok(())
     }
+}
+
+fn exec_users<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
+where
+    F: FnMut(u32, MutexGuard<User>),
+{
+    users
+        .iter()
+        .filter_map(|(i, p)| p.upgrade().map(|p| (*i, p)))
+        .for_each(|(i, p)| f(i, p.lock()));
 }

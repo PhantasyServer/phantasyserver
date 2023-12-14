@@ -1,5 +1,6 @@
 use super::HResult;
 use crate::{Action, User};
+use parking_lot::MutexGuard;
 use pso2packetlib::protocol::{
     self,
     symbolart::{
@@ -69,9 +70,14 @@ pub fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPacket) -
     Ok(Action::Nothing)
 }
 
-pub fn send_sa(_: &mut User, packet: SendSymbolArtPacket) -> HResult {
+pub fn send_sa(user: MutexGuard<User>, packet: SendSymbolArtPacket) -> HResult {
     if let ChatArea::Map = packet.area {
-        return Ok(Action::SendMapSA(packet));
+        let id = user.player_id;
+        let map = user.map.clone();
+        drop(user);
+        if let Some(map) = map {
+            map.lock().send_sa(packet, id)
+        }
     }
     Ok(Action::Nothing)
 }

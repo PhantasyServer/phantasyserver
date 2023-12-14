@@ -2,9 +2,10 @@ use super::HResult;
 use crate::{create_attr_files, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
+use parking_lot::MutexGuard;
 use pso2packetlib::protocol::{ChatArea, Packet};
 
-pub fn send_chat(user: &mut User, packet: Packet) -> HResult {
+pub fn send_chat(mut user: MutexGuard<User>, packet: Packet) -> HResult {
     let Packet::ChatMessage(ref data) = packet else {
         unreachable!()
     };
@@ -24,13 +25,16 @@ pub fn send_chat(user: &mut User, packet: Packet) -> HResult {
                 };
                 user.send_system_msg(&mem_data_msg)?;
             }
-            "!reload_map_lua" => return Ok(Action::MapLuaReload),
+            "!reload_map_lua" => {
+                user.map.as_ref().map(|map| map.lock().reload_lua());
+            }
             "!map_gc" => {
-                user.map.as_ref().map(|map| map.borrow().lua_gc_collect());
+                user.map.as_ref().map(|map| map.lock().lua_gc_collect());
             }
             "!reload_items" => {
                 let mul_progress = indicatif::MultiProgress::new();
-                let (pc, vita) = create_attr_files(&mul_progress)?;
+                let (pc, vita) =
+                    MutexGuard::unlocked(&mut user, || create_attr_files(&mul_progress))?;
                 let mut attrs = user.item_attrs.write();
                 attrs.pc_attrs = pc;
                 attrs.vita_attrs = vita;
@@ -43,7 +47,12 @@ pub fn send_chat(user: &mut User, packet: Packet) -> HResult {
         return Ok(Action::Nothing);
     }
     if let ChatArea::Map = data.area {
-        return Ok(Action::SendMapMessage(packet));
+        let id = user.player_id;
+        let map = user.map.clone();
+        drop(user);
+        if let Some(map) = map {
+            map.lock().send_message(packet, id)
+        }
     }
     Ok(Action::Nothing)
 }

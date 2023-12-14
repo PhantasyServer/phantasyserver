@@ -8,6 +8,7 @@ pub mod login;
 pub mod missionpass;
 pub mod object;
 pub mod palette;
+pub mod party;
 pub mod quest;
 pub mod server;
 pub mod settings;

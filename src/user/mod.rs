@@ -8,7 +8,7 @@ use crate::{
     sql::Sql,
     Action, Error,
 };
-use parking_lot::RwLock;
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use pso2packetlib::{
     protocol::{
         self,
@@ -20,7 +20,7 @@ use pso2packetlib::{
     },
     Connection,
 };
-use std::{cell::RefCell, io, net::Ipv4Addr, rc::Rc, sync::Arc, time::Instant};
+use std::{io, net::Ipv4Addr, sync::Arc, time::Instant};
 
 pub struct User {
     pub(crate) connection: Connection,
@@ -29,8 +29,8 @@ pub struct User {
     pub(crate) char_id: u32,
     pub(crate) position: Position,
     pub(crate) text_lang: Language,
-    pub(crate) map: Option<Rc<RefCell<Map>>>,
-    pub(crate) party: Option<Rc<RefCell<Party>>>,
+    pub(crate) map: Option<Arc<Mutex<Map>>>,
+    pub(crate) party: Option<Arc<RwLock<Party>>>,
     pub(crate) character: Option<Character>,
     pub(crate) last_ping: Instant,
     pub(crate) failed_pings: u32,
@@ -91,24 +91,21 @@ impl User {
             item_attrs,
         })
     }
-    pub fn get_ip(&self) -> Result<Ipv4Addr, Error> {
-        Ok(self.connection.get_ip()?)
-    }
-    pub fn tick(&mut self) -> Result<Action, Error> {
-        let _ = self.connection.flush();
-        if self.ready_to_shutdown && self.last_ping.elapsed().as_millis() >= 500 {
+    pub fn tick(mut s: MutexGuard<Self>) -> Result<Action, Error> {
+        let _ = s.connection.flush();
+        if s.ready_to_shutdown && s.last_ping.elapsed().as_millis() >= 500 {
             return Err(Error::IOError(std::io::ErrorKind::ConnectionAborted.into()));
         }
-        if self.failed_pings >= 5 {
+        if s.failed_pings >= 5 {
             return Err(Error::IOError(std::io::ErrorKind::ConnectionAborted.into()));
         }
-        if self.last_ping.elapsed().as_secs() >= 10 {
-            self.last_ping = Instant::now();
-            self.failed_pings += 1;
-            let _ = self.connection.write_packet(&Packet::ServerPing);
+        if s.last_ping.elapsed().as_secs() >= 10 {
+            s.last_ping = Instant::now();
+            s.failed_pings += 1;
+            let _ = s.connection.write_packet(&Packet::ServerPing);
         }
-        match self.connection.read_packet() {
-            Ok(packet) => match packet_handler(self, packet) {
+        match s.connection.read_packet() {
+            Ok(packet) => match packet_handler(s, packet) {
                 Ok(action) => return Ok(action),
                 Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => {}
                 Err(x) => return Err(x),
@@ -118,6 +115,10 @@ impl User {
         }
         Ok(Action::Nothing)
     }
+    // Helper functions
+    pub fn get_ip(&self) -> Result<Ipv4Addr, Error> {
+        Ok(self.connection.get_ip()?)
+    }
     pub fn send_packet(&mut self, packet: &Packet) -> Result<(), Error> {
         self.connection.write_packet(packet)?;
         Ok(())
@@ -126,36 +127,17 @@ impl User {
         self.send_packet(&Packet::CharacterSpawn(packet))?;
         Ok(())
     }
-    pub fn get_current_map(&self) -> Option<Rc<RefCell<Map>>> {
+    pub fn get_current_map(&self) -> Option<Arc<Mutex<Map>>> {
         self.map.clone()
     }
-    pub fn get_current_party(&self) -> Option<Rc<RefCell<Party>>> {
+    pub fn get_current_party(&self) -> Option<Arc<RwLock<Party>>> {
         self.party.clone()
     }
-    pub fn set_map(&mut self, map: Rc<RefCell<Map>>) {
+    pub fn set_map(&mut self, map: Arc<Mutex<Map>>) {
         self.map = Some(map)
-    }
-    pub fn set_party(&mut self, party: Rc<RefCell<Party>>) {
-        self.party = Some(party)
     }
     pub fn get_user_id(&self) -> u32 {
         self.player_id
-    }
-    pub fn save_inventory(&mut self) -> Result<(), Error> {
-        if self.character.is_some() {
-            let mut sql = self.sql.write();
-            sql.update_inventory(self.char_id, self.player_id, &self.inventory)
-        } else {
-            Ok(())
-        }
-    }
-    pub fn save_palette(&mut self) -> Result<(), Error> {
-        if self.character.is_some() {
-            let mut sql = self.sql.write();
-            sql.update_palette(self.char_id, &self.palette)
-        } else {
-            Ok(())
-        }
     }
     pub fn send_item_attrs(&mut self) -> Result<(), Error> {
         let item_attrs = self.item_attrs.read();
@@ -195,9 +177,19 @@ impl User {
         }))?;
         Ok(())
     }
+    pub fn send_position(user: MutexGuard<User>, packet: Packet) -> Result<Action, Error> {
+        let id = user.get_user_id();
+        let map = user.get_current_map();
+        drop(user);
+        if let Some(map) = map {
+            map.lock().send_movement(packet, id);
+        }
+        Ok(Action::Nothing)
+    }
 }
 
-fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
+fn packet_handler(mut user_guard: MutexGuard<User>, packet: Packet) -> Result<Action, Error> {
+    let user: &mut User = &mut user_guard;
     match packet {
         Packet::EncryptionRequest(data) => handlers::login::encryption_request(user, data),
         Packet::SegaIDLogin(..) => handlers::login::login_request(user, packet),
@@ -234,20 +226,20 @@ fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
         }
         Packet::SystemInformation(..) => Ok(Action::Nothing),
         Packet::InitialLoad => Ok(Action::InitialLoad),
-        Packet::Movement(data) => handlers::object::movement(user, data),
+        Packet::Movement(data) => handlers::object::movement(user_guard, data),
         Packet::MovementEnd(ref data) => {
             user.position = data.cur_pos;
-            Ok(Action::SendPosition(packet))
+            User::send_position(user_guard, packet)
         }
-        Packet::MovementAction(..) => Ok(Action::SendPosition(packet)),
-        Packet::ActionUpdate(..) => Ok(Action::SendPosition(packet)),
-        Packet::Interact(data) => Ok(Action::Interact(data)),
-        Packet::ChatMessage(..) => handlers::chat::send_chat(user, packet),
+        Packet::MovementAction(..) => User::send_position(user_guard, packet),
+        Packet::ActionUpdate(..) => User::send_position(user_guard, packet),
+        Packet::Interact(data) => handlers::object::action(user_guard, data),
+        Packet::ChatMessage(..) => handlers::chat::send_chat(user_guard, packet),
         Packet::SymbolArtListRequest => handlers::symbolart::list_sa(user),
         Packet::ChangeSymbolArt(data) => handlers::symbolart::change_sa(user, data),
         Packet::SymbolArtData(data) => handlers::symbolart::add_sa(user, data),
         Packet::SymbolArtClientDataRequest(data) => handlers::symbolart::data_request(user, data),
-        Packet::SendSymbolArt(data) => handlers::symbolart::send_sa(user, data),
+        Packet::SendSymbolArt(data) => handlers::symbolart::send_sa(user_guard, data),
         Packet::MapLoaded(data) => handlers::server::map_loaded(user, data),
         Packet::QuestCounterRequest => handlers::quest::counter_request(user),
         Packet::AvailableQuestsRequest(data) => handlers::quest::avaliable_quests(user, data),
@@ -260,13 +252,16 @@ fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
             party::Party::get_info(user, data)?;
             Ok(Action::Nothing)
         }
-        Packet::GetPartyDetails(data) => Ok(Action::GetPartyDetails(data)),
+        Packet::GetPartyDetails(data) => {
+            party::Party::get_details(user_guard, data)?;
+            Ok(Action::Nothing)
+        }
         Packet::AcceptInvite(protocol::party::AcceptInvitePacket { party_object, .. }) => {
             Ok(Action::AcceptPartyInvite(party_object.id))
         }
-        Packet::NewPartySettings(data) => Ok(Action::SetPartySettings(data)),
+        Packet::NewPartySettings(data) => handlers::party::set_party_settings(user_guard, data),
         Packet::LeaveParty => Ok(Action::LeaveParty),
-        Packet::TransferLeader(data) => Ok(Action::TransferLeader(data.target)),
+        Packet::TransferLeader(data) => handlers::party::transfer_leader(user_guard, data),
         Packet::DisbandParty(..) => Ok(Action::DisbandParty),
         Packet::KickMember(data) => Ok(Action::KickPartyMember(data.member)),
         Packet::SetInviteDecline(protocol::party::InviteDeclinePacket { decline_status }) => {
@@ -280,17 +275,17 @@ fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
         Packet::DiscardItemRequest(data) => handlers::item::discard_inventory(user, data),
         Packet::DiscardStorageItemRequest(data) => handlers::item::discard_storage(user, data),
         Packet::GetItemDescription(data) => handlers::item::get_description(user, data),
-        Packet::SetBusy => Ok(Action::SetBusyState(BusyState::Busy)),
-        Packet::SetNotBusy => Ok(Action::SetBusyState(BusyState::NotBusy)),
-        Packet::ChatStatus(data) => Ok(Action::SetChatState(data)),
+        Packet::SetBusy => handlers::party::set_busy_state(user_guard, BusyState::Busy),
+        Packet::SetNotBusy => handlers::party::set_busy_state(user_guard, BusyState::NotBusy),
+        Packet::ChatStatus(data) => handlers::party::set_chat_state(user_guard, data),
         Packet::FullPaletteInfoRequest => handlers::palette::send_full_palette(user),
-        Packet::SetPalette(data) => handlers::palette::set_palette(user, data),
+        Packet::SetPalette(data) => handlers::palette::set_palette(user_guard, data),
         Packet::SetSubPalette(data) => handlers::palette::set_subpalette(user, data),
-        Packet::UpdatePalette(data) => handlers::palette::update_palette(user, data),
+        Packet::UpdatePalette(data) => handlers::palette::update_palette(user_guard, data),
         Packet::UpdateSubPalette(data) => handlers::palette::update_subpalette(user, data),
         Packet::SetDefaultPAs(data) => handlers::palette::set_default_pa(user, data),
         data => {
-            println!("{data:?}");
+            println!("Client {}: {data:?}", user.player_id);
             Ok(Action::Nothing)
         }
     }
@@ -317,4 +312,22 @@ fn packet_handler(user: &mut User, packet: Packet) -> Result<Action, Error> {
     //         dataout,
     //     )))?;
     // }
+}
+
+impl Drop for User {
+    fn drop(&mut self) {
+        if self.character.is_some() {
+            let mut sql = self.sql.write();
+            sql.update_inventory(self.char_id, self.player_id, &self.inventory)
+                .unwrap();
+            sql.update_palette(self.char_id, &self.palette).unwrap();
+        }
+        if let Some(party) = self.party.take() {
+            let _ = party.write().remove_player(self.player_id);
+        }
+        if let Some(map) = self.map.take() {
+            map.lock().remove_player(self.player_id);
+        }
+        println!("User {} dropped", self.player_id);
+    }
 }
