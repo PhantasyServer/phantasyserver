@@ -3,7 +3,7 @@ use crate::{Action, User};
 use pso2packetlib::protocol::{self, server::MapLoadedPacket, Packet, PacketHeader};
 
 pub fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
-    let packet = protocol::LobbyMonitorPacket { video_id: 1 };
+    let packet = protocol::unk19::LobbyMonitorPacket { video_id: 1 };
     user.send_packet(&Packet::LobbyMonitor(packet))?;
     let packets = user.inventory.send(
         user.player_id,

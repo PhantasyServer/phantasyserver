@@ -3,7 +3,7 @@ use crate::{create_attr_files, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
 use parking_lot::MutexGuard;
-use pso2packetlib::protocol::{ChatArea, Packet};
+use pso2packetlib::protocol::{chat::ChatArea, Packet};
 
 pub fn send_chat(mut user: MutexGuard<User>, packet: Packet) -> HResult {
     let Packet::ChatMessage(ref data) = packet else {

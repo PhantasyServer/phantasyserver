@@ -1,6 +1,6 @@
 use super::HResult;
 use crate::{Action, User};
-use pso2packetlib::protocol::{self, Packet};
+use pso2packetlib::protocol::{missionpass, Packet};
 
 pub fn mission_pass_info(user: &mut User) -> HResult {
     let mut temp = [0u32; 47];
@@ -10,13 +10,13 @@ pub fn mission_pass_info(user: &mut User) -> HResult {
     //6 - gold status
     //7 - over run
     //8 - already claimed
-    let packet = protocol::MissionPassInfoPacket { unk: temp.into() };
+    let packet = missionpass::MissionPassInfoPacket { unk: temp.into() };
     user.send_packet(&Packet::MissionPassInfo(packet))?;
     Ok(Action::Nothing)
 }
 
 pub fn mission_pass(user: &mut User) -> HResult {
-    let packet = protocol::MissionPassPacket {
+    let packet = missionpass::MissionPassPacket {
         unk1: 1,
         cur_season_id: 2,
         cur_season: "ew".to_string(),

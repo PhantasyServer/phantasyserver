@@ -1,14 +1,15 @@
 use super::HResult;
 use crate::{Action, User};
-use pso2packetlib::protocol::{self, Packet, SaveSettingsPacket};
+use pso2packetlib::protocol::{
+    settings::{LoadSettingsPacket, SaveSettingsPacket},
+    Packet,
+};
 
 pub fn settings_request(user: &mut User) -> HResult {
     let sql_provider = user.sql.clone();
     let sql = sql_provider.read();
     let settings = sql.get_settings(user.player_id)?;
-    user.send_packet(&Packet::LoadSettings(protocol::LoadSettingsPacket {
-        settings,
-    }))?;
+    user.send_packet(&Packet::LoadSettings(LoadSettingsPacket { settings }))?;
     Ok(Action::Nothing)
 }
 

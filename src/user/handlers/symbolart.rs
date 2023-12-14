@@ -3,12 +3,13 @@ use crate::{Action, User};
 use parking_lot::MutexGuard;
 use pso2packetlib::protocol::{
     self,
+    chat::ChatArea,
     symbolart::{
         ChangeSymbolArtPacket, SendSymbolArtPacket, SymbolArtClientDataPacket,
         SymbolArtClientDataRequestPacket, SymbolArtDataPacket, SymbolArtDataRequestPacket,
         SymbolArtListPacket,
     },
-    ChatArea, ObjectHeader, Packet,
+    ObjectHeader, Packet,
 };
 
 pub fn list_sa(user: &mut User) -> HResult {

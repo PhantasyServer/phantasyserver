@@ -11,7 +11,7 @@ use crate::{
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use pso2packetlib::{
     protocol::{
-        self,
+        self as Pr,
         login::Language,
         models::{character::Character, Position},
         party::BusyState,
@@ -39,7 +39,7 @@ pub struct User {
     pub(crate) blockname: String,
     pub(crate) nickname: String,
     pub(crate) party_invites: Vec<PartyInvite>,
-    pub(crate) party_ignore: protocol::party::RejectStatus,
+    pub(crate) party_ignore: Pr::party::RejectStatus,
     pub(crate) inventory: Inventory,
     pub(crate) palette: Palette,
     pub(crate) item_attrs: Arc<RwLock<ItemParameters>>,
@@ -61,8 +61,10 @@ impl User {
             Some("keypair.pem".into()),
             None,
         );
-        match con.write_packet(&Packet::ServerHello(protocol::server::ServerHelloPacket {
+        match con.write_packet(&Packet::ServerHello(Pr::server::ServerHelloPacket {
+            unk1: 3,
             blockid,
+            unk2: 68833280,
         })) {
             Ok(_) => {}
             Err(x) if x.kind() == std::io::ErrorKind::WouldBlock => {}
@@ -147,7 +149,7 @@ impl User {
         };
         let size = data.len();
         for (id, chunk) in data.chunks(0x32000).enumerate() {
-            let packet = protocol::items::ItemAttributesPacket {
+            let packet = Pr::items::ItemAttributesPacket {
                 id: 0,
                 segment: id as u16,
                 total_size: size as u32,
@@ -162,17 +164,17 @@ impl User {
         &mut self,
         msg: &(impl std::fmt::Display + ?Sized),
     ) -> Result<(), Error> {
-        self.send_packet(&Packet::SystemMessage(protocol::SystemMessagePacket {
+        self.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket {
             message: msg.to_string(),
-            msg_type: pso2packetlib::protocol::MessageType::SystemMessage,
+            msg_type: Pr::unk19::MessageType::SystemMessage,
             ..Default::default()
         }))?;
         Ok(())
     }
     pub fn send_error(&mut self, msg: &(impl std::fmt::Display + ?Sized)) -> Result<(), Error> {
-        self.send_packet(&Packet::SystemMessage(protocol::SystemMessagePacket {
+        self.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket {
             message: msg.to_string(),
-            msg_type: pso2packetlib::protocol::MessageType::AdminMessageInstant,
+            msg_type: Pr::unk19::MessageType::AdminMessageInstant,
             ..Default::default()
         }))?;
         Ok(())
@@ -190,35 +192,36 @@ impl User {
 
 fn packet_handler(mut user_guard: MutexGuard<User>, packet: Packet) -> Result<Action, Error> {
     let user: &mut User = &mut user_guard;
+    use handlers as H;
     match packet {
-        Packet::EncryptionRequest(data) => handlers::login::encryption_request(user, data),
-        Packet::SegaIDLogin(..) => handlers::login::login_request(user, packet),
-        Packet::VitaLogin(..) => handlers::login::login_request(user, packet),
+        Packet::EncryptionRequest(data) => H::login::encryption_request(user, data),
+        Packet::SegaIDLogin(..) => H::login::login_request(user, packet),
+        Packet::VitaLogin(..) => H::login::login_request(user, packet),
         Packet::ServerPong => {
             user.failed_pings = 0;
             Ok(Action::Nothing)
         }
-        Packet::SettingsRequest => handlers::settings::settings_request(user),
-        Packet::SaveSettings(data) => handlers::settings::save_settings(user, data),
-        Packet::ClientPing(data) => handlers::login::client_ping(user, data),
+        Packet::SettingsRequest => H::settings::settings_request(user),
+        Packet::SaveSettings(data) => H::settings::save_settings(user, data),
+        Packet::ClientPing(data) => H::login::client_ping(user, data),
         Packet::ClientGoodbye => {
             user.ready_to_shutdown = true;
             user.last_ping = Instant::now();
             Ok(Action::Nothing)
         }
-        Packet::FriendListRequest(data) => handlers::friends::get_friends(user, data),
-        Packet::CharacterListRequest => handlers::login::character_list(user),
-        Packet::CreateCharacter1 => handlers::login::character_create1(user),
-        Packet::CreateCharacter2 => handlers::login::character_create2(user),
-        Packet::CharacterCreate(data) => handlers::login::new_character(user, data),
-        Packet::CharacterDeletionRequest(data) => handlers::login::delete_request(user, data),
-        Packet::CharacterUndeletionRequest(data) => handlers::login::undelete_request(user, data),
-        Packet::CharacterMoveRequest(data) => handlers::login::move_request(user, data),
-        Packet::CharacterRenameRequest(data) => handlers::login::rename_request(user, data),
-        Packet::CharacterNewNameRequest(data) => handlers::login::newname_request(user, data),
-        Packet::StartGame(data) => handlers::login::start_game(user, data),
-        Packet::LoginHistoryRequest => handlers::login::login_history(user),
-        Packet::BlockListRequest => handlers::login::block_list(user),
+        Packet::FriendListRequest(data) => H::friends::get_friends(user, data),
+        Packet::CharacterListRequest => H::login::character_list(user),
+        Packet::CreateCharacter1 => H::login::character_create1(user),
+        Packet::CreateCharacter2 => H::login::character_create2(user),
+        Packet::CharacterCreate(data) => H::login::new_character(user, data),
+        Packet::CharacterDeletionRequest(data) => H::login::delete_request(user, data),
+        Packet::CharacterUndeletionRequest(data) => H::login::undelete_request(user, data),
+        Packet::CharacterMoveRequest(data) => H::login::move_request(user, data),
+        Packet::CharacterRenameRequest(data) => H::login::rename_request(user, data),
+        Packet::CharacterNewNameRequest(data) => H::login::newname_request(user, data),
+        Packet::StartGame(data) => H::login::start_game(user, data),
+        Packet::LoginHistoryRequest => H::login::login_history(user),
+        Packet::BlockListRequest => H::login::block_list(user),
         Packet::ChallengeResponse(..) => {
             user.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);
@@ -226,26 +229,26 @@ fn packet_handler(mut user_guard: MutexGuard<User>, packet: Packet) -> Result<Ac
         }
         Packet::SystemInformation(..) => Ok(Action::Nothing),
         Packet::InitialLoad => Ok(Action::InitialLoad),
-        Packet::Movement(data) => handlers::object::movement(user_guard, data),
+        Packet::Movement(data) => H::object::movement(user_guard, data),
         Packet::MovementEnd(ref data) => {
             user.position = data.cur_pos;
             User::send_position(user_guard, packet)
         }
         Packet::MovementAction(..) => User::send_position(user_guard, packet),
         Packet::ActionUpdate(..) => User::send_position(user_guard, packet),
-        Packet::Interact(data) => handlers::object::action(user_guard, data),
-        Packet::ChatMessage(..) => handlers::chat::send_chat(user_guard, packet),
-        Packet::SymbolArtListRequest => handlers::symbolart::list_sa(user),
-        Packet::ChangeSymbolArt(data) => handlers::symbolart::change_sa(user, data),
-        Packet::SymbolArtData(data) => handlers::symbolart::add_sa(user, data),
-        Packet::SymbolArtClientDataRequest(data) => handlers::symbolart::data_request(user, data),
-        Packet::SendSymbolArt(data) => handlers::symbolart::send_sa(user_guard, data),
-        Packet::MapLoaded(data) => handlers::server::map_loaded(user, data),
-        Packet::QuestCounterRequest => handlers::quest::counter_request(user),
-        Packet::AvailableQuestsRequest(data) => handlers::quest::avaliable_quests(user, data),
-        Packet::MissionListRequest => handlers::arksmission::mission_list(user),
-        Packet::MissionPassInfoRequest => handlers::missionpass::mission_pass_info(user),
-        Packet::MissionPassRequest => handlers::missionpass::mission_pass(user),
+        Packet::Interact(data) => H::object::action(user_guard, data),
+        Packet::ChatMessage(..) => H::chat::send_chat(user_guard, packet),
+        Packet::SymbolArtListRequest => H::symbolart::list_sa(user),
+        Packet::ChangeSymbolArt(data) => H::symbolart::change_sa(user, data),
+        Packet::SymbolArtData(data) => H::symbolart::add_sa(user, data),
+        Packet::SymbolArtClientDataRequest(data) => H::symbolart::data_request(user, data),
+        Packet::SendSymbolArt(data) => H::symbolart::send_sa(user_guard, data),
+        Packet::MapLoaded(data) => H::server::map_loaded(user, data),
+        Packet::QuestCounterRequest => H::quest::counter_request(user),
+        Packet::AvailableQuestsRequest(data) => H::quest::avaliable_quests(user, data),
+        Packet::MissionListRequest => H::arksmission::mission_list(user),
+        Packet::MissionPassInfoRequest => H::missionpass::mission_pass_info(user),
+        Packet::MissionPassRequest => H::missionpass::mission_pass(user),
 
         Packet::PartyInviteRequest(data) => Ok(Action::SendPartyInvite(data.invitee.id)),
         Packet::GetPartyInfo(data) => {
@@ -256,34 +259,34 @@ fn packet_handler(mut user_guard: MutexGuard<User>, packet: Packet) -> Result<Ac
             party::Party::get_details(user_guard, data)?;
             Ok(Action::Nothing)
         }
-        Packet::AcceptInvite(protocol::party::AcceptInvitePacket { party_object, .. }) => {
+        Packet::AcceptInvite(Pr::party::AcceptInvitePacket { party_object, .. }) => {
             Ok(Action::AcceptPartyInvite(party_object.id))
         }
-        Packet::NewPartySettings(data) => handlers::party::set_party_settings(user_guard, data),
+        Packet::NewPartySettings(data) => H::party::set_party_settings(user_guard, data),
         Packet::LeaveParty => Ok(Action::LeaveParty),
-        Packet::TransferLeader(data) => handlers::party::transfer_leader(user_guard, data),
+        Packet::TransferLeader(data) => H::party::transfer_leader(user_guard, data),
         Packet::DisbandParty(..) => Ok(Action::DisbandParty),
         Packet::KickMember(data) => Ok(Action::KickPartyMember(data.member)),
-        Packet::SetInviteDecline(protocol::party::InviteDeclinePacket { decline_status }) => {
+        Packet::SetInviteDecline(Pr::party::InviteDeclinePacket { decline_status }) => {
             user.party_ignore = decline_status;
             Ok(Action::Nothing)
         }
-        Packet::MoveToStorageRequest(data) => handlers::item::move_to_storage(user, data),
-        Packet::MoveToInventoryRequest(data) => handlers::item::move_to_inventory(user, data),
-        Packet::MoveStoragesRequest(data) => handlers::item::move_storages(user, data),
-        Packet::MoveMeseta(data) => handlers::item::move_meseta(user, data),
-        Packet::DiscardItemRequest(data) => handlers::item::discard_inventory(user, data),
-        Packet::DiscardStorageItemRequest(data) => handlers::item::discard_storage(user, data),
-        Packet::GetItemDescription(data) => handlers::item::get_description(user, data),
-        Packet::SetBusy => handlers::party::set_busy_state(user_guard, BusyState::Busy),
-        Packet::SetNotBusy => handlers::party::set_busy_state(user_guard, BusyState::NotBusy),
-        Packet::ChatStatus(data) => handlers::party::set_chat_state(user_guard, data),
-        Packet::FullPaletteInfoRequest => handlers::palette::send_full_palette(user),
-        Packet::SetPalette(data) => handlers::palette::set_palette(user_guard, data),
-        Packet::SetSubPalette(data) => handlers::palette::set_subpalette(user, data),
-        Packet::UpdatePalette(data) => handlers::palette::update_palette(user_guard, data),
-        Packet::UpdateSubPalette(data) => handlers::palette::update_subpalette(user, data),
-        Packet::SetDefaultPAs(data) => handlers::palette::set_default_pa(user, data),
+        Packet::MoveToStorageRequest(data) => H::item::move_to_storage(user, data),
+        Packet::MoveToInventoryRequest(data) => H::item::move_to_inventory(user, data),
+        Packet::MoveStoragesRequest(data) => H::item::move_storages(user, data),
+        Packet::MoveMeseta(data) => H::item::move_meseta(user, data),
+        Packet::DiscardItemRequest(data) => H::item::discard_inventory(user, data),
+        Packet::DiscardStorageItemRequest(data) => H::item::discard_storage(user, data),
+        Packet::GetItemDescription(data) => H::item::get_description(user, data),
+        Packet::SetBusy => H::party::set_busy_state(user_guard, BusyState::Busy),
+        Packet::SetNotBusy => H::party::set_busy_state(user_guard, BusyState::NotBusy),
+        Packet::ChatStatus(data) => H::party::set_chat_state(user_guard, data),
+        Packet::FullPaletteInfoRequest => H::palette::send_full_palette(user),
+        Packet::SetPalette(data) => H::palette::set_palette(user_guard, data),
+        Packet::SetSubPalette(data) => H::palette::set_subpalette(user, data),
+        Packet::UpdatePalette(data) => H::palette::update_palette(user_guard, data),
+        Packet::UpdateSubPalette(data) => H::palette::update_subpalette(user, data),
+        Packet::SetDefaultPAs(data) => H::palette::set_default_pa(user, data),
         data => {
             println!("Client {}: {data:?}", user.player_id);
             Ok(Action::Nothing)

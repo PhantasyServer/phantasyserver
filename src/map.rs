@@ -4,10 +4,11 @@ use parking_lot::{Mutex, MutexGuard};
 use pso2packetlib::protocol::{
     self,
     models::Position,
+    playerstatus::SetPlayerIDPacket,
     server::LoadLevelPacket,
     spawn::{CharacterSpawnPacket, CharacterSpawnType, NPCSpawnPacket, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
-    EntityType, ObjectHeader, Packet, PacketType, SetPlayerIDPacket,
+    EntityType, ObjectHeader, Packet, PacketType,
 };
 use std::{
     collections::HashMap,

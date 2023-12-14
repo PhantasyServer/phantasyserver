@@ -183,8 +183,8 @@ impl Inventory {
 
         packets.push(Packet::LoadStorages(LoadStoragesPacket {
             stored_meseta: self.storages.storage_meseta,
-            unk3: infos,
-            unk5: 2,
+            unk1: infos,
+            unk2: 2,
             items: storage_items,
         }));
         packets
