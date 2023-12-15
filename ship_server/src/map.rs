@@ -1,20 +1,15 @@
 use crate::{Error, User};
+use data_structs::MapData;
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use parking_lot::{Mutex, MutexGuard};
 use pso2packetlib::protocol::{
     self,
-    models::Position,
     playerstatus::SetPlayerIDPacket,
-    server::LoadLevelPacket,
-    spawn::{CharacterSpawnPacket, CharacterSpawnType, NPCSpawnPacket, ObjectSpawnPacket},
+    spawn::{CharacterSpawnPacket, CharacterSpawnType},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
     EntityType, ObjectHeader, Packet, PacketType,
 };
-use std::{
-    collections::HashMap,
-    io::Write,
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 
 pub struct Map {
     lua: Lua,
@@ -438,40 +433,6 @@ impl Map {
         globals.raw_remove("packet")?;
         globals.raw_remove("sender")?;
         globals.raw_remove("players")?;
-        Ok(())
-    }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
-#[serde(default)]
-pub struct MapData {
-    map_data: LoadLevelPacket,
-    objects: Vec<ObjectSpawnPacket>,
-    npcs: Vec<NPCSpawnPacket>,
-    default_location: Position,
-    luas: HashMap<String, String>,
-    object_data: HashMap<u32, String>,
-}
-
-impl MapData {
-    pub fn load_from_mp_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
-        let data = std::fs::File::open(path)?;
-        let map = rmp_serde::from_read(&data)?;
-        Ok(map)
-    }
-    pub fn load_from_json_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
-        let data = std::fs::read_to_string(path)?;
-        let map = serde_json::from_str(&data)?;
-        Ok(map)
-    }
-    pub fn save_to_mp_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
-        let mut file = std::fs::File::create(path)?;
-        file.write_all(&rmp_serde::to_vec(self)?)?;
-        Ok(())
-    }
-    pub fn save_to_json_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
-        let file = std::fs::File::create(path)?;
-        serde_json::to_writer_pretty(file, self)?;
         Ok(())
     }
 }

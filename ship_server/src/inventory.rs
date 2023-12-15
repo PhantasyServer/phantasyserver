@@ -1,4 +1,5 @@
 use crate::Error;
+use data_structs::ItemParameters;
 use pso2packetlib::protocol::{
     items::{
         DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipedItem,
@@ -53,26 +54,6 @@ pub struct StorageInventory {
     pub(crate) is_purchased: bool,
     pub(crate) storage_type: u8,
     pub(crate) items: Vec<Item>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ItemParameters {
-    #[serde(skip)]
-    pub pc_attrs: Vec<u8>,
-    #[serde(skip)]
-    pub vita_attrs: Vec<u8>,
-    pub names: Vec<ItemName>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ItemName {
-    #[serde(flatten)]
-    pub id: ItemId,
-    pub en_name: String,
-    pub jp_name: String,
-    pub en_desc: String,
-    pub jp_desc: String,
 }
 
 enum ChangeItemResult {
@@ -647,29 +628,6 @@ fn increase_item(
             items.push(item.clone());
             Ok(ChangeItemResult::New { item, amount })
         }
-    }
-}
-
-impl ItemParameters {
-    pub fn load_from_mp_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
-        let data = std::fs::File::open(path)?;
-        let names = rmp_serde::from_read(&data)?;
-        Ok(names)
-    }
-    pub fn load_from_json_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
-        let data = std::fs::read_to_string(path)?;
-        let names = serde_json::from_str(&data)?;
-        Ok(names)
-    }
-    pub fn save_to_mp_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
-        let mut file = std::fs::File::create(path)?;
-        std::io::Write::write_all(&mut file, &rmp_serde::to_vec(self)?)?;
-        Ok(())
-    }
-    pub fn save_to_json_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
-        let file = std::fs::File::create(path)?;
-        serde_json::to_writer_pretty(file, self)?;
-        Ok(())
     }
 }
 

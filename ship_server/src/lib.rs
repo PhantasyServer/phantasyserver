@@ -7,9 +7,9 @@ pub mod party;
 pub mod sql;
 pub mod user;
 use console::style;
+use data_structs::ItemParameters;
 use ice::{IceFileInfo, IceWriter};
 use indicatif::{MultiProgress, ProgressBar};
-use inventory::ItemParameters;
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use pso2packetlib::{
     protocol::{self, login, models::item_attrs, Packet, PacketType},
@@ -44,9 +44,7 @@ pub enum Error {
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
     #[error(transparent)]
-    RMPDecodeError(#[from] rmp_serde::decode::Error),
-    #[error(transparent)]
-    RMPEncodeError(#[from] rmp_serde::encode::Error),
+    DataError(#[from] data_structs::Error),
     #[error(transparent)]
     LuaError(#[from] mlua::Error),
 }

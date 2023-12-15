@@ -1,6 +1,6 @@
 pub(crate) mod handlers;
 use crate::{
-    inventory::{Inventory, ItemParameters},
+    inventory::Inventory,
     invites::PartyInvite,
     map::Map,
     palette::Palette,
@@ -8,6 +8,7 @@ use crate::{
     sql::Sql,
     Action, Error,
 };
+use data_structs::ItemParameters;
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use pso2packetlib::{
     protocol::{

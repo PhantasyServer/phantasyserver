@@ -1,4 +1,4 @@
-use pso2server::{inventory::ItemParameters, map::MapData};
+use data_structs::{ItemParameters, MapData};
 use std::env;
 
 fn main() {
