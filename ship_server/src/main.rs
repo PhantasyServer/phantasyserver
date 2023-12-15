@@ -1,8 +1,9 @@
 use console::style;
+use data_structs::ItemParameters;
 use indicatif::{MultiProgress, ProgressBar};
 use parking_lot::RwLock;
 use pso2packetlib::protocol::login::ShipEntry;
-use pso2server::{init_block, inventory::ItemParameters, sql, BlockInfo};
+use pso2ship_server::{init_block, sql, BlockInfo};
 use rsa::{pkcs8::EncodePrivateKey, RsaPrivateKey};
 use std::{
     error, io,
@@ -30,7 +31,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
             return Err(e.into());
         }
     }
-    let (data_pc, data_vita) = pso2server::create_attr_files(&mul_progress)?;
+    let (data_pc, data_vita) = pso2ship_server::create_attr_files(&mul_progress)?;
     let mut item_data = ItemParameters::load_from_mp_file("names.mp")?;
     item_data.pc_attrs = data_pc;
     item_data.vita_attrs = data_vita;
@@ -105,7 +106,7 @@ fn block_balance(server_statuses: Arc<RwLock<Vec<BlockInfo>>>) -> io::Result<()>
             for stream in info_listener.incoming() {
                 match stream {
                     Ok(s) => {
-                        let _ = pso2server::send_block_balance(s, server_statuses.clone());
+                        let _ = pso2ship_server::send_block_balance(s, server_statuses.clone());
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(1));
@@ -137,7 +138,7 @@ fn querry_srv(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
             for stream in info_listener.incoming() {
                 match stream {
                     Ok(s) => {
-                        let _ = pso2server::send_querry(s, server_statuses.clone());
+                        let _ = pso2ship_server::send_querry(s, server_statuses.clone());
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(1));

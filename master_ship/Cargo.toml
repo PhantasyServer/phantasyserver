@@ -1,0 +1,12 @@
+[package]
+name = "master_ship"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.35.0", features = ["full"] }
+pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "0710c93", default-features = false, features = ["serde", "connection"] }
+parking_lot = { version = "0.12.1", features = ["send_guard"] }
+data_structs = { path = "../data_structs", features = ["rmp", "json", "ship"] }
