@@ -1,5 +1,5 @@
 use crate::Error;
-use data_structs::ItemParameters;
+use data_structs::{AccountStorages, ItemParameters, StorageInventory};
 use pso2packetlib::protocol::{
     items::{
         DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipedItem,
@@ -7,7 +7,7 @@ use pso2packetlib::protocol::{
         LoadPlayerInventoryPacket, LoadStoragesPacket, MesetaDirection, MoveMesetaPacket,
         MoveStoragesPacket, MoveStoragesRequestPacket, MoveToInventoryPacket,
         MoveToInventoryRequestPacket, MoveToStoragePacket, MoveToStorageRequestPacket, NamedId,
-        NewInventoryItem, NewStorageItem, StorageInfo, StorageMesetaPacket, UpdateInventoryPacket,
+        NewInventoryItem, NewStorageItem, StorageMesetaPacket, UpdateInventoryPacket,
         UpdateStoragePacket,
     },
     login::Language,
@@ -34,26 +34,6 @@ pub struct PlayerInventory {
     pub(crate) max_capacity: u32,
     pub(crate) items: Vec<Item>,
     equiped: Vec<u64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct AccountStorages {
-    pub(crate) storage_meseta: u64,
-    pub(crate) default: StorageInventory,
-    pub(crate) premium: StorageInventory,
-    pub(crate) extend1: StorageInventory,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct StorageInventory {
-    pub(crate) total_space: u32,
-    pub(crate) storage_id: u8,
-    pub(crate) is_enabled: bool,
-    pub(crate) is_purchased: bool,
-    pub(crate) storage_type: u8,
-    pub(crate) items: Vec<Item>,
 }
 
 enum ChangeItemResult {
@@ -631,19 +611,6 @@ fn increase_item(
     }
 }
 
-impl StorageInventory {
-    fn generate_info(&self) -> StorageInfo {
-        StorageInfo {
-            total_space: self.total_space,
-            used_space: self.items.len() as u32,
-            storage_id: self.storage_id,
-            storage_type: self.storage_type,
-            is_locked: (!self.is_purchased) as u8,
-            is_enabled: self.is_enabled as u8,
-        }
-    }
-}
-
 impl Default for PlayerInventory {
     fn default() -> Self {
         Self {
@@ -651,50 +618,6 @@ impl Default for PlayerInventory {
             max_capacity: 50,
             items: vec![],
             equiped: vec![],
-        }
-    }
-}
-
-impl Default for AccountStorages {
-    fn default() -> Self {
-        Self {
-            storage_meseta: 0,
-            default: StorageInventory {
-                total_space: 200,
-                storage_id: 0,
-                is_enabled: true,
-                is_purchased: true,
-                storage_type: 0,
-                items: vec![],
-            },
-            premium: StorageInventory {
-                total_space: 400,
-                storage_id: 1,
-                is_enabled: false,
-                is_purchased: false,
-                storage_type: 1,
-                items: vec![],
-            },
-            extend1: StorageInventory {
-                total_space: 500,
-                storage_id: 2,
-                is_enabled: false,
-                is_purchased: false,
-                storage_type: 2,
-                items: vec![],
-            },
-        }
-    }
-}
-impl Default for StorageInventory {
-    fn default() -> Self {
-        Self {
-            total_space: 300,
-            storage_id: 14,
-            is_enabled: true,
-            is_purchased: true,
-            storage_type: 4,
-            items: vec![],
         }
     }
 }

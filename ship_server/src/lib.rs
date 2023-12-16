@@ -2,6 +2,7 @@ pub mod ice;
 pub mod inventory;
 pub mod invites;
 pub mod map;
+pub mod master_conn;
 pub mod palette;
 pub mod party;
 pub mod sql;
@@ -31,6 +32,8 @@ pub enum Error {
     InvalidInput,
     #[error("Invalid password")]
     InvalidPassword(u32),
+    #[error("No user found")]
+    NoUser,
     #[error("Unable to hash the password")]
     HashError,
     #[error("Invalid character")]
@@ -38,7 +41,7 @@ pub enum Error {
     #[error("No character loaded")]
     NoCharacter,
     #[error(transparent)]
-    SQLError(#[from] sqlite::Error),
+    SqlError(#[from] sqlx::Error),
     #[error(transparent)]
     IOError(#[from] std::io::Error),
     #[error(transparent)]
@@ -47,6 +50,12 @@ pub enum Error {
     DataError(#[from] data_structs::Error),
     #[error(transparent)]
     LuaError(#[from] mlua::Error),
+    #[error(transparent)]
+    RMPEncodeError(#[from] rmp_serde::encode::Error),
+    #[error(transparent)]
+    UTF8Error(#[from] std::str::Utf8Error),
+    #[error("{0}")]
+    Generic(String),
 }
 
 #[derive(Clone)]
@@ -76,10 +85,10 @@ pub enum Action {
 pub async fn init_block(
     _server_statuses: Arc<RwLock<Vec<BlockInfo>>>,
     this_block: BlockInfo,
-    sql: Arc<RwLock<sql::Sql>>,
+    sql: Arc<sql::Sql>,
     item_attrs: Arc<RwLock<ItemParameters>>,
 ) -> Result<(), Error> {
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", this_block.port))?;
+    let listener = TcpListener::bind(("0.0.0.0", this_block.port))?;
     let name = &this_block.name;
     listener.set_nonblocking(true)?;
 
@@ -226,31 +235,6 @@ async fn run_action(
             }
         }
     }
-    Ok(())
-}
-
-pub fn send_querry(
-    stream: std::net::TcpStream,
-    servers: Arc<RwLock<Vec<login::ShipEntry>>>,
-) -> io::Result<()> {
-    stream.set_nonblocking(true)?;
-    stream.set_nodelay(true)?;
-    let local_addr = stream.local_addr()?.ip();
-    let mut con = Connection::new(stream, PacketType::Classic, None, None);
-    let mut ships = vec![];
-    for server in servers.read().iter() {
-        let mut ship = server.clone();
-        if ship.ip == Ipv4Addr::UNSPECIFIED {
-            if let std::net::IpAddr::V4(addr) = local_addr {
-                ship.ip = addr
-            }
-        }
-        ships.push(ship);
-    }
-    con.write_packet(&Packet::ShipList(login::ShipListPacket {
-        ships,
-        ..Default::default()
-    }))?;
     Ok(())
 }
 

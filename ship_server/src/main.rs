@@ -1,11 +1,10 @@
 use console::style;
-use data_structs::ItemParameters;
+use data_structs::{ItemParameters, ShipInfo};
 use indicatif::{MultiProgress, ProgressBar};
 use parking_lot::RwLock;
-use pso2packetlib::protocol::login::ShipEntry;
-use pso2ship_server::{init_block, sql, BlockInfo};
+use pso2ship_server::{init_block, master_conn::MasterConnection, sql, BlockInfo};
 use rsa::{pkcs8::EncodePrivateKey, RsaPrivateKey};
-use std::{error, io, net::Ipv4Addr, sync::Arc, time::Duration};
+use std::{error, io, net::Ipv4Addr, sync::Arc};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn error::Error>> {
@@ -32,27 +31,29 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     item_data.vita_attrs = data_vita;
     let item_data = Arc::new(RwLock::new(item_data));
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
-    let ship_statuses = Arc::new(RwLock::new(Vec::<ShipEntry>::new()));
-    {
-        let mut ships = ship_statuses.write();
-        ships.push(ShipEntry {
-            id: 1000,
-            name: "Ship01".to_string(),
+    let master_conn = MasterConnection::new("192.168.0.104:15000".parse()?).await?;
+    let resp = MasterConnection::register_ship(
+        &master_conn,
+        ShipInfo {
             ip: Ipv4Addr::UNSPECIFIED,
+            id: 1,
+            port: 12000,
+            max_players: 32,
+            name: "Test".into(),
+            data_type: data_structs::DataTypeDef::Parsed,
             status: pso2packetlib::protocol::login::ShipStatus::Online,
-            order: 1,
-        });
-        ships.push(ShipEntry {
-            id: 2000,
-            name: "Ship02".to_string(),
-            ip: Ipv4Addr::UNSPECIFIED,
-            status: pso2packetlib::protocol::login::ShipStatus::Online,
-            order: 2,
-        });
+        },
+    )
+    .await?;
+    match resp {
+        data_structs::RegisterShipResult::Success => {}
+        data_structs::RegisterShipResult::AlreadyTaken => {
+            eprintln!("Ship id is already taken");
+            return Ok(());
+        }
     }
     {
-        let sql = Arc::new(RwLock::new(sql::Sql::new().unwrap()));
-        make_query(ship_statuses.clone()).await?;
+        let sql = Arc::new(sql::Sql::new("sqlite://server.db", master_conn).await?);
         make_block_balance(server_statuses.clone()).await?;
         let mut blocks = vec![];
         for i in 100..101 {
@@ -73,9 +74,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         }
 
         startup_progress.finish_with_message("Server started.");
-        loop {
-            std::thread::sleep(Duration::from_millis(100));
-        }
+        tokio::signal::ctrl_c().await?;
+
+        Ok(())
     }
 
     // Ok(())
@@ -84,62 +85,22 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
 async fn make_block_balance(server_statuses: Arc<RwLock<Vec<BlockInfo>>>) -> io::Result<()> {
     use tokio::net::TcpListener;
     // TODO: add ship id config
-    let mut listeners = vec![];
-    for i in 0..10 {
-        //pc balance
-        listeners.push(TcpListener::bind(("0.0.0.0", 12100 + (i * 100))).await?);
-        //vita balance
-        listeners.push(TcpListener::bind(("0.0.0.0", 12193 + (i * 100))).await?);
-    }
-    for listener in listeners {
-        let server_statuses = server_statuses.clone();
-        tokio::spawn(async move {
-            loop {
-                match listener.accept().await {
-                    Ok((s, _)) => {
-                        let _ = pso2ship_server::send_block_balance(
-                            s.into_std().unwrap(),
-                            server_statuses.clone(),
-                        );
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to accept connection: {}", e);
-                        return;
-                    }
+    let listener = TcpListener::bind(("0.0.0.0", 12000)).await?;
+    tokio::spawn(async move {
+        loop {
+            match listener.accept().await {
+                Ok((s, _)) => {
+                    let _ = pso2ship_server::send_block_balance(
+                        s.into_std().unwrap(),
+                        server_statuses.clone(),
+                    );
+                }
+                Err(e) => {
+                    eprintln!("Failed to accept connection: {}", e);
+                    return;
                 }
             }
-        });
-    }
-    Ok(())
-}
-
-async fn make_query(server_statuses: Arc<RwLock<Vec<ShipEntry>>>) -> io::Result<()> {
-    use tokio::net::TcpListener;
-    let mut info_listeners: Vec<TcpListener> = vec![];
-    for i in 0..10 {
-        //pc ships
-        info_listeners.push(TcpListener::bind(("0.0.0.0", 12199 + (i * 100))).await?);
-        //vita ships
-        info_listeners.push(TcpListener::bind(("0.0.0.0", 12194 + (i * 100))).await?);
-    }
-    for listener in info_listeners {
-        let server_statuses = server_statuses.clone();
-        tokio::spawn(async move {
-            loop {
-                match listener.accept().await {
-                    Ok((s, _)) => {
-                        let _ = pso2ship_server::send_querry(
-                            s.into_std().unwrap(),
-                            server_statuses.clone(),
-                        );
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to accept connection: {}", e);
-                        return;
-                    }
-                }
-            }
-        });
-    }
+        }
+    });
     Ok(())
 }

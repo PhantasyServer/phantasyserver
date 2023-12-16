@@ -25,7 +25,7 @@ use std::{io, net::Ipv4Addr, sync::Arc, time::Instant};
 
 pub struct User {
     pub(crate) connection: Connection,
-    pub(crate) sql: Arc<RwLock<Sql>>,
+    pub(crate) sql: Arc<Sql>,
     pub(crate) player_id: u32,
     pub(crate) char_id: u32,
     pub(crate) position: Position,
@@ -49,7 +49,7 @@ pub struct User {
 impl User {
     pub fn new(
         stream: std::net::TcpStream,
-        sql: Arc<RwLock<Sql>>,
+        sql: Arc<Sql>,
         blockname: String,
         blockid: u16,
         item_attrs: Arc<RwLock<ItemParameters>>,
@@ -112,7 +112,9 @@ impl User {
             Ok(packet) => match packet_handler(s, packet).await {
                 Ok(action) => return Ok(action),
                 Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => {}
-                Err(x) => return Err(x),
+                Err(x) => {
+                    return Err(x);
+                }
             },
             Err(x) if x.kind() == io::ErrorKind::WouldBlock => {}
             Err(x) => return Err(x.into()),
@@ -206,8 +208,8 @@ async fn packet_handler(
             user.failed_pings = 0;
             Ok(Action::Nothing)
         }
-        Packet::SettingsRequest => H::settings::settings_request(user),
-        Packet::SaveSettings(data) => H::settings::save_settings(user, data),
+        Packet::SettingsRequest => H::settings::settings_request(user).await,
+        Packet::SaveSettings(data) => H::settings::save_settings(user, data).await,
         Packet::ClientPing(data) => H::login::client_ping(user, data),
         Packet::ClientGoodbye => {
             user.ready_to_shutdown = true;
@@ -215,17 +217,17 @@ async fn packet_handler(
             Ok(Action::Nothing)
         }
         Packet::FriendListRequest(data) => H::friends::get_friends(user, data),
-        Packet::CharacterListRequest => H::login::character_list(user),
+        Packet::CharacterListRequest => H::login::character_list(user).await,
         Packet::CreateCharacter1 => H::login::character_create1(user),
         Packet::CreateCharacter2 => H::login::character_create2(user),
-        Packet::CharacterCreate(data) => H::login::new_character(user, data),
+        Packet::CharacterCreate(data) => H::login::new_character(user, data).await,
         Packet::CharacterDeletionRequest(data) => H::login::delete_request(user, data),
         Packet::CharacterUndeletionRequest(data) => H::login::undelete_request(user, data),
         Packet::CharacterMoveRequest(data) => H::login::move_request(user, data),
         Packet::CharacterRenameRequest(data) => H::login::rename_request(user, data),
-        Packet::CharacterNewNameRequest(data) => H::login::newname_request(user, data),
-        Packet::StartGame(data) => H::login::start_game(user, data),
-        Packet::LoginHistoryRequest => H::login::login_history(user),
+        Packet::CharacterNewNameRequest(data) => H::login::newname_request(user, data).await,
+        Packet::StartGame(data) => H::login::start_game(user, data).await,
+        Packet::LoginHistoryRequest => H::login::login_history(user).await,
         Packet::BlockListRequest => H::login::block_list(user),
         Packet::ChallengeResponse(..) => {
             user.packet_type = PacketType::NA;
@@ -243,10 +245,10 @@ async fn packet_handler(
         Packet::ActionUpdate(..) => User::send_position(user_guard, packet),
         Packet::Interact(data) => H::object::action(user_guard, data),
         Packet::ChatMessage(..) => H::chat::send_chat(user_guard, packet),
-        Packet::SymbolArtListRequest => H::symbolart::list_sa(user),
-        Packet::ChangeSymbolArt(data) => H::symbolart::change_sa(user, data),
-        Packet::SymbolArtData(data) => H::symbolart::add_sa(user, data),
-        Packet::SymbolArtClientDataRequest(data) => H::symbolart::data_request(user, data),
+        Packet::SymbolArtListRequest => H::symbolart::list_sa(user).await,
+        Packet::ChangeSymbolArt(data) => H::symbolart::change_sa(user, data).await,
+        Packet::SymbolArtData(data) => H::symbolart::add_sa(user, data).await,
+        Packet::SymbolArtClientDataRequest(data) => H::symbolart::data_request(user, data).await,
         Packet::SendSymbolArt(data) => H::symbolart::send_sa(user_guard, data),
         Packet::MapLoaded(data) => H::server::map_loaded(user, data),
         Packet::QuestCounterRequest => H::quest::counter_request(user),
@@ -276,9 +278,9 @@ async fn packet_handler(
             user.party_ignore = decline_status;
             Ok(Action::Nothing)
         }
-        Packet::MoveToStorageRequest(data) => H::item::move_to_storage(user, data),
-        Packet::MoveToInventoryRequest(data) => H::item::move_to_inventory(user, data),
-        Packet::MoveStoragesRequest(data) => H::item::move_storages(user, data),
+        Packet::MoveToStorageRequest(data) => H::item::move_to_storage(user, data).await,
+        Packet::MoveToInventoryRequest(data) => H::item::move_to_inventory(user, data).await,
+        Packet::MoveStoragesRequest(data) => H::item::move_storages(user, data).await,
         Packet::MoveMeseta(data) => H::item::move_meseta(user, data),
         Packet::DiscardItemRequest(data) => H::item::discard_inventory(user, data),
         Packet::DiscardStorageItemRequest(data) => H::item::discard_storage(user, data),
@@ -325,10 +327,17 @@ async fn packet_handler(
 impl Drop for User {
     fn drop(&mut self) {
         if self.character.is_some() {
-            let mut sql = self.sql.write();
-            sql.update_inventory(self.char_id, self.player_id, &self.inventory)
-                .unwrap();
-            sql.update_palette(self.char_id, &self.palette).unwrap();
+            let sql = self.sql.clone();
+            let inventory = std::mem::take(&mut self.inventory);
+            let palette = std::mem::take(&mut self.palette);
+            let char_id = self.char_id;
+            let player_id = self.player_id;
+            tokio::spawn(async move {
+                sql.update_inventory(char_id, player_id, &inventory)
+                    .await
+                    .unwrap();
+                sql.update_palette(char_id, &palette).await.unwrap()
+            });
         }
         if let Some(party) = self.party.take() {
             let _ = party.write().remove_player(self.player_id);

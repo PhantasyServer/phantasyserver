@@ -1,27 +1,16 @@
-use std::{
-    fs::File,
-    net::Ipv4Addr,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
-
-use crate::{
-    inventory::{AccountStorages, Inventory},
-    palette::Palette,
-    Error,
-};
-use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher};
+use crate::{inventory::Inventory, master_conn::MasterConnection, palette::Palette, Error};
+use data_structs::{AccountStorages, MasterShipAction, UserCreds};
+use parking_lot::Mutex;
 use pso2packetlib::{
-    protocol::{
-        login::{LoginAttempt, LoginResult},
-        models::character::Character,
-    },
+    protocol::{login::LoginAttempt, models::character::Character},
     AsciiString,
 };
-use rsa::rand_core::OsRng;
-use sqlite::{ConnectionWithFullMutex as SqliteConnection, State, Type, Value};
+use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
+use std::{net::Ipv4Addr, str::from_utf8};
 
 pub struct Sql {
-    connection: SqliteConnection,
+    connection: sqlx::AnyPool,
+    master_ship: Mutex<MasterConnection>,
 }
 
 pub struct User {
@@ -30,464 +19,427 @@ pub struct User {
 }
 
 impl Sql {
-    pub fn new() -> sqlite::Result<Sql> {
-        let connection = sqlite::Connection::open_with_full_mutex("server.db")?;
-        let query = "
-            create table if not exists Users (
-                Id integer primary key autoincrement,
-                Username text default NULL,
-                Nickname text default NULL,
-                Password text default NULL,
-                PSNNickname text default NULL,
-                Settings text default NULL,
-                CharacterIds text default NULL,
-                SymbolArtIds text default NULL,
-                Storage text default NULL
-            );
-        ";
-        connection.execute(query)?;
-        let query = "
-            create table if not exists Characters (
-                Id integer primary key autoincrement,
-                Data text default NULL,
-                Inventory text default NULL,
-                Palette text default NULL
-            );
-        ";
-        connection.execute(query)?;
-        let query = "
-            create table if not exists Logins (
-                Id integer primary key autoincrement,
-                UserId integer default NULL,
-                IpAddress text default NULL,
-                Status text default NULL,
-                Timestamp integer default NULL
-            );
-        ";
-        connection.execute(query)?;
-        let query = "
-            create table if not exists SymbolArts (
-                UUID string default NULL,
-                name string default NULL,
-                data blob default NULL
-            );
-        ";
-        connection.execute(query)?;
-        let query = "
-            create table if not exists ServerStats (
-                Tag string default NULL,
-                Value string default NULL
-            );
-        ";
-        connection.execute(query)?;
-        Ok(Sql { connection })
+    pub async fn new(path: &str, master_ship: Mutex<MasterConnection>) -> Result<Self, Error> {
+        sqlx::any::install_default_drivers();
+        if !sqlx::Any::database_exists(path).await.unwrap_or(false) {
+            return Self::create_db(path, master_ship).await;
+        }
+        let conn = sqlx::AnyPool::connect(path).await?;
+        Ok(Self {
+            connection: conn,
+            master_ship,
+        })
     }
 
-    pub fn get_sega_user(&mut self, username: &str, password: &str) -> Result<User, Error> {
-        if username.is_empty() || password.is_empty() {
-            return Err(Error::InvalidInput);
-        }
-        let query = "select * from Users where Username = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, username))?;
-        match statement.next()? {
-            State::Row => {
-                let stored_password = statement.read::<String, _>("Password")?;
-                let id = statement.read::<i64, _>("Id")? as u32;
-                let col_typee = statement.column_type("Nickname")?;
-                let nickname = if let Type::Null = col_typee {
-                    String::new()
-                } else {
-                    statement.read::<String, _>("Nickname")?
-                };
-                let hash = match PasswordHash::new(&stored_password) {
-                    Ok(x) => x,
-                    Err(_) => return Err(Error::InvalidPassword(id)),
-                };
-                match hash.verify_password(&[&Argon2::default()], password) {
-                    Ok(_) => {}
-                    Err(_) => return Err(Error::InvalidPassword(id)),
-                }
-                Ok(User { id, nickname })
-            }
-            State::Done => {
-                drop(statement);
-                self.create_sega_user(username, password)
-            }
-        }
-    }
-    pub fn get_psn_user(&mut self, username: &str) -> Result<User, Error> {
-        if username.is_empty() {
-            return Err(Error::InvalidInput);
-        }
-        let query = "select * from Users where PSNNickname = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, username))?;
-        match statement.next()? {
-            State::Row => {
-                let id = statement.read::<i64, _>("Id")? as u32;
-                let col_typee = statement.column_type("Nickname")?;
-                let nickname = if let Type::Null = col_typee {
-                    String::new()
-                } else {
-                    statement.read::<String, _>("Nickname")?
-                };
-                Ok(User { id, nickname })
-            }
-            State::Done => {
-                drop(statement);
-                self.create_psn_user(username)
-            }
-        }
-    }
-    fn create_psn_user(&mut self, username: &str) -> Result<User, Error> {
-        let query = "insert into Users (PSNNickname, Settings) values (?, ?)";
-        let settings_file = File::open("settings.txt")?;
-        let settings = std::io::read_to_string(settings_file)?;
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind(&[(1, username), (2, settings.as_str())][..])?;
-        statement.into_iter().count();
-        let query = "select Id from Users where PSNNickname = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, username))?;
-        if let State::Row = statement.next()? {
-            let id = statement.read::<i64, _>("Id")? as u32;
-            Ok(User {
-                id,
-                nickname: String::new(),
-            })
-        } else {
-            Err(Error::HashError)
-        }
-    }
-    fn create_sega_user(&mut self, username: &str, password: &str) -> Result<User, Error> {
-        let query = "insert into Users (Username, Password, Settings) values (?, ?, ?)";
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::default();
-        let hash = match argon2.hash_password(password.as_bytes(), &salt) {
-            Ok(x) => x.to_string(),
-            Err(_) => return Err(Error::HashError),
+    async fn create_db(path: &str, master_ship: Mutex<MasterConnection>) -> Result<Self, Error> {
+        sqlx::Any::create_database(path).await?;
+        let auto_inc = match sqlx::AnyConnection::connect(path).await?.backend_name() {
+            "SQLite" => "autoincrement",
+            _ => "auto_increment",
         };
-        let settings_file = File::open("settings.txt")?;
-        let settings = std::io::read_to_string(settings_file)?;
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind(&[(1, username), (2, &hash), (3, &settings)][..])?;
-        statement.into_iter().count();
-        let query = "select Id from Users where Username = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, username))?;
-        if let State::Row = statement.next()? {
-            let id = statement.read::<i64, _>("Id")? as u32;
-            Ok(User {
+        let conn = sqlx::AnyPool::connect(path).await?;
+        conn.execute(
+            format!(
+                "
+            create table if not exists Users (
+                Id integer primary key {},
+                CharacterIds blob default NULL,
+                SymbolArtIds blob default NULL
+            );
+        ",
+                auto_inc
+            )
+            .as_str(),
+        )
+        .await?;
+        conn.execute(
+            format!(
+                "
+            create table if not exists Characters (
+                Id integer primary key {},
+                Data blob default NULL,
+                Inventory blob default NULL,
+                Palette blob default NULL
+            );
+        ",
+                auto_inc
+            )
+            .as_str(),
+        )
+        .await?;
+        conn.execute(
+            "
+            create table if not exists SymbolArts (
+                UUID blob default NULL,
+                name blob default NULL,
+                data blob default NULL
+            );
+        ",
+        )
+        .await?;
+        conn.execute(
+            "
+            create table if not exists ServerStats (
+                Tag blob default NULL,
+                Value blob default NULL
+            );
+        ",
+        )
+        .await?;
+        sqlx::query("insert into ServerStats (Tag, Value) values (?, ?)")
+            .bind("UUID".as_bytes())
+            .bind("1".as_bytes())
+            .execute(&conn)
+            .await?;
+        Ok(Self {
+            connection: conn,
+            master_ship,
+        })
+    }
+
+    pub async fn run_action(&self, action: MasterShipAction) -> Result<MasterShipAction, Error> {
+        MasterConnection::run_action(&self.master_ship, action).await
+    }
+
+    pub async fn get_sega_user(
+        &self,
+        username: &str,
+        password: &str,
+        ip: Ipv4Addr,
+    ) -> Result<User, Error> {
+        let result = self
+            .run_action(MasterShipAction::UserLogin(UserCreds {
+                username: username.to_string(),
+                password: password.to_string(),
+                ip,
+            }))
+            .await?;
+        match result {
+            MasterShipAction::UserLoginResult(d) => match d {
+                data_structs::UserLoginResult::Success { id, nickname } => {
+                    if sqlx::query("select count(*) from Users where Id = ?")
+                        .bind(id as i64)
+                        .fetch_one(&self.connection)
+                        .await?
+                        .get::<i64, _>(0)
+                        == 0
+                    {
+                        sqlx::query("insert into Users (Id) values (?)")
+                            .bind(id as i64)
+                            .execute(&self.connection)
+                            .await?;
+                    }
+                    Ok(User { id, nickname })
+                }
+                data_structs::UserLoginResult::InvalidPassword(id) => {
+                    Err(Error::InvalidPassword(id))
+                }
+                data_structs::UserLoginResult::NotFound => {
+                    self.create_sega_user(username, password).await
+                }
+            },
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    pub async fn get_psn_user(&self, username: &str, ip: Ipv4Addr) -> Result<User, Error> {
+        let result = self
+            .run_action(MasterShipAction::UserLoginVita(UserCreds {
+                username: username.to_string(),
+                password: String::new(),
+                ip,
+            }))
+            .await?;
+        match result {
+            MasterShipAction::UserLoginResult(d) => match d {
+                data_structs::UserLoginResult::Success { id, nickname } => {
+                    if sqlx::query("select count(*) from Users where Id = ?")
+                        .bind(id as i64)
+                        .fetch_one(&self.connection)
+                        .await?
+                        .get::<i64, _>(0)
+                        == 0
+                    {
+                        sqlx::query("insert into Users (Id) values (?)")
+                            .bind(id as i64)
+                            .execute(&self.connection)
+                            .await?;
+                    }
+                    Ok(User { id, nickname })
+                }
+                data_structs::UserLoginResult::InvalidPassword(id) => {
+                    Err(Error::InvalidPassword(id))
+                }
+                data_structs::UserLoginResult::NotFound => self.create_psn_user(username).await,
+            },
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    async fn create_psn_user(&self, username: &str) -> Result<User, Error> {
+        let result = self
+            .run_action(MasterShipAction::UserRegisterVita(UserCreds {
+                username: username.to_string(),
+                password: String::new(),
+                ip: Ipv4Addr::UNSPECIFIED,
+            }))
+            .await?;
+        let user = match result {
+            MasterShipAction::UserLoginResult(d) => match d {
+                data_structs::UserLoginResult::Success { id, nickname } => {
+                    Ok(User { id, nickname })
+                }
+                _ => unimplemented!(),
+            },
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }?;
+        sqlx::query("insert into Users (Id) values (?)")
+            .bind(user.id as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(user)
+    }
+    async fn create_sega_user(&self, username: &str, password: &str) -> Result<User, Error> {
+        let result = self
+            .run_action(MasterShipAction::UserRegister(UserCreds {
+                username: username.to_string(),
+                password: password.to_string(),
+                ip: Ipv4Addr::UNSPECIFIED,
+            }))
+            .await?;
+        let user = match result {
+            MasterShipAction::UserLoginResult(d) => match d {
+                data_structs::UserLoginResult::Success { id, nickname } => {
+                    Ok(User { id, nickname })
+                }
+                _ => unimplemented!(),
+            },
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }?;
+        sqlx::query("insert into Users (Id) values (?)")
+            .bind(user.id as i64)
+            .execute(&self.connection)
+            .await?;
+
+        Ok(user)
+    }
+    pub async fn get_logins(&self, id: u32) -> Result<Vec<LoginAttempt>, Error> {
+        let result = self.run_action(MasterShipAction::GetLogins(id)).await?;
+        match result {
+            MasterShipAction::GetLoginsResult(d) => Ok(d),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    pub async fn get_settings(&self, id: u32) -> Result<AsciiString, Error> {
+        let result = self.run_action(MasterShipAction::GetSettings(id)).await?;
+        match result {
+            MasterShipAction::GetSettingsResult(d) => Ok(d),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    pub async fn save_settings(&self, id: u32, settings: &str) -> Result<(), Error> {
+        let result = self
+            .run_action(MasterShipAction::PutSettings {
                 id,
-                nickname: String::new(),
+                settings: settings.into(),
             })
-        } else {
-            Err(Error::HashError)
+            .await?;
+        match result {
+            MasterShipAction::Ok => Ok(()),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
         }
     }
-    pub fn get_logins(&self, id: u32) -> Result<Vec<LoginAttempt>, Error> {
-        let mut attempts = vec![];
-        let query = "select * from Logins where UserId = ? order by Timestamp desc limit 50";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, id as i64))?;
-        while let State::Row = statement.next()? {
-            let ip_data = statement.read::<String, _>("IpAddress")?;
-            let status_data = statement.read::<String, _>("Status")?;
-            let timestamp_int = statement.read::<i64, _>("Timestamp")?;
-            let mut attempt = LoginAttempt::default();
-            attempt.ip = serde_json::from_str(&ip_data)?;
-            attempt.status = serde_json::from_str(&status_data)?;
-            attempt.timestamp = Duration::from_secs(timestamp_int as u64);
-            attempts.push(attempt);
-        }
-        Ok(attempts)
-    }
-    pub fn put_login(&mut self, id: u32, ip: Ipv4Addr, status: LoginResult) -> Result<(), Error> {
-        let ip_data = serde_json::to_string(&ip)?;
-        let status_data = serde_json::to_string(&status)?;
-        let timestamp_int = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let query = "insert into Logins (UserId, IpAddress, Status, Timestamp) values (?, ?, ?, ?)";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(
-            &[
-                (1, (id as i64).into()),
-                (2, ip_data.into()),
-                (3, status_data.into()),
-                (4, (timestamp_int as i64).into()),
-            ][..],
-        )?;
-        statement.into_iter().count();
-        Ok(())
-    }
-    pub fn get_settings(&self, id: u32) -> Result<AsciiString, Error> {
-        let query = "select Settings from Users where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, id as i64))?;
-        match statement.next()? {
-            State::Row => {
-                let settings = statement.read::<String, _>("Settings")?;
-                Ok(settings.into())
-            }
-            State::Done => Ok(Default::default()),
-        }
-    }
-    pub fn save_settings(&mut self, id: u32, settings: &str) -> Result<(), Error> {
-        let query = "update Users set Settings = ? where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(&[(1, settings.into()), (2, (id as i64).into())][..])?;
-        statement.into_iter().count();
-        Ok(())
-    }
-    pub fn get_characters(&self, id: u32) -> Result<Vec<Character>, Error> {
+    pub async fn get_characters(&self, id: u32) -> Result<Vec<Character>, Error> {
         let mut chars = vec![];
-        let query = "select CharacterIds from Users where id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, id as i64))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("CharacterIds")?;
-            if let Type::Null = col_typee {
-                return Ok(chars);
-            }
-            let ids = statement.read::<String, _>("CharacterIds")?;
-            let ids = serde_json::from_str::<Vec<i64>>(&ids)?;
-            for char_id in ids {
-                let query = "select Data from Characters where Id = ?";
-                let mut statement = self.connection.prepare(query)?;
-                statement.bind((1, char_id))?;
-                while let State::Row = statement.next()? {
-                    let data = statement.read::<String, _>("Data")?;
-                    let mut char: Character = serde_json::from_str(&data)?;
+        let row = sqlx::query("select CharacterIds from Users where Id = ?")
+            .bind(id as i64)
+            .fetch_one(&self.connection)
+            .await?;
+        let data = from_utf8(row.try_get("CharacterIds").unwrap_or_default())?;
+        let ids = serde_json::from_str::<Vec<i64>>(data).unwrap_or_default();
+        for char_id in ids {
+            let row = sqlx::query("select Data from Characters where Id = ?")
+                .bind(char_id)
+                .fetch_optional(&self.connection)
+                .await?;
+            match row {
+                Some(data) => {
+                    let mut char: Character =
+                        serde_json::from_str(from_utf8(data.try_get("Data")?)?)?;
                     char.player_id = id;
                     char.character_id = char_id as u32;
                     chars.push(char);
                 }
+                None => {}
             }
         }
         Ok(chars)
     }
-    pub fn get_character(&self, id: u32, char_id: u32) -> Result<Character, Error> {
-        let query = "select Data from Characters where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, char_id as i64))?;
-        if let State::Row = statement.next()? {
-            let data = statement.read::<String, _>("Data")?;
-            let mut char: Character = serde_json::from_str(&data)?;
-            char.player_id = id;
-            char.character_id = char_id;
-            return Ok(char);
-        }
-        Err(Error::InvalidCharacter)
+    pub async fn get_character(&self, id: u32, char_id: u32) -> Result<Character, Error> {
+        let row = sqlx::query("select Data from Characters where Id = ?")
+            .bind(char_id as i64)
+            .fetch_one(&self.connection)
+            .await?;
+        let mut char: Character = serde_json::from_str(from_utf8(row.try_get("Data")?)?)?;
+        char.player_id = id;
+        char.character_id = char_id as u32;
+        Ok(char)
     }
-    pub fn update_character(&mut self, char: &Character) -> Result<(), Error> {
-        let char_data = serde_json::to_string(&char)?;
-        let char_id = char.character_id;
-        let query = "update Characters set Data = ? where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(
-            &[(1, char_data.as_str().into()), (2, (char_id as i64).into())][..],
-        )?;
-        statement.into_iter().count();
+    pub async fn update_character(&self, char: &Character) -> Result<(), Error> {
+        sqlx::query("update Characters set Data = ? where Id = ?")
+            .bind(serde_json::to_string(&char)?.as_bytes())
+            .bind(char.character_id as i64)
+            .execute(&self.connection)
+            .await?;
         Ok(())
     }
-    pub fn put_character(&mut self, id: u32, char: &Character) -> Result<u32, Error> {
-        let mut char_id = 0;
-        let query = "select CharacterIds from Users where id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, id as i64))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("CharacterIds")?;
-            let mut ids = if let Type::Null = col_typee {
-                vec![]
-            } else {
-                let ids = statement.read::<String, _>("CharacterIds")?;
-                serde_json::from_str::<Vec<i64>>(&ids)?
-            };
-            let data = serde_json::to_string(&char)?;
-            let query = "insert into Characters (Data) values (?)";
-            let mut statement = self.connection.prepare(query)?;
-            statement.bind((1, data.as_str()))?;
-            statement.into_iter().count();
-            let query = "select last_insert_rowid()";
-            let mut statement = self.connection.prepare(query)?;
-            statement.next()?;
-            let inserted_id = statement.read::<i64, _>(0)?;
-            char_id = inserted_id as u32;
-            ids.push(inserted_id);
-            let ids = serde_json::to_string(&ids)?;
-            let query = "update Users set CharacterIds = ? where Id = ?";
-            let mut statement = self.connection.prepare(query)?;
-            statement.bind::<&[(_, Value)]>(&[(1, ids.into()), (2, (id as i64).into())][..])?;
-            statement.into_iter().count();
-        }
-
-        Ok(char_id)
+    pub async fn put_character(&self, id: u32, char: &Character) -> Result<u32, Error> {
+        let row = sqlx::query("select CharacterIds from Users where Id = ?")
+            .bind(id as i64)
+            .fetch_one(&self.connection)
+            .await?;
+        let mut ids: Vec<i64> =
+            serde_json::from_str(from_utf8(row.try_get("CharacterIds").unwrap_or_default())?)
+                .unwrap_or_default();
+        let data = serde_json::to_string(&char)?;
+        sqlx::query("insert into Characters (Data) values (?)")
+            .bind(data.as_bytes())
+            .execute(&self.connection)
+            .await?;
+        let char_id = sqlx::query("select Id from Characters where Data = ?")
+            .bind(data.as_bytes())
+            .fetch_one(&self.connection)
+            .await?
+            .try_get::<i64, _>("Id")?;
+        ids.push(char_id);
+        sqlx::query("update Users set CharacterIds = ? where Id = ?")
+            .bind(serde_json::to_string(&ids)?.as_bytes())
+            .bind(id as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(char_id as u32)
     }
-    pub fn get_symbol_art_list(&self, id: u32) -> Result<Vec<u128>, Error> {
-        let mut ids = vec![0; 20];
-        let query = "select SymbolArtIds from Users where id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, id as i64))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("SymbolArtIds")?;
-            if let Type::Null = col_typee {
-                let ids_str = serde_json::to_string(&ids)?;
-                let query = "update Users set SymbolArtIds = ? where Id = ?";
-                let mut statement = self.connection.prepare(query)?;
-                statement
-                    .bind::<&[(_, Value)]>(&[(1, ids_str.into()), (2, (id as i64).into())][..])?;
-                statement.into_iter().count();
-                return Ok(ids);
-            }
-            let ids_str = statement.read::<String, _>("SymbolArtIds")?;
-            ids = serde_json::from_str::<Vec<u128>>(&ids_str)?;
+    pub async fn get_symbol_art_list(&self, id: u32) -> Result<Vec<u128>, Error> {
+        let ids = sqlx::query("select SymbolArtIds from Users where Id = ?")
+            .bind(id as i64)
+            .fetch_one(&self.connection)
+            .await?;
+        match ids.try_get("SymbolArtIds") {
+            Ok(data) => Ok(serde_json::from_str(from_utf8(data)?)?),
+            Err(_) => Ok(vec![0; 20]),
         }
-        Ok(ids)
     }
-    pub fn set_symbol_art_list(&mut self, uuids: Vec<u128>, id: u32) -> Result<(), Error> {
-        let uuids = serde_json::to_string(&uuids)?;
-        let query = "update Users set SymbolArtIds = ? where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement
-            .bind::<&[(_, Value)]>(&[(1, uuids.as_str().into()), (2, (id as i64).into())][..])?;
-        statement.into_iter().count();
+    pub async fn set_symbol_art_list(&self, uuids: Vec<u128>, id: u32) -> Result<(), Error> {
+        sqlx::query("update Users set SymbolArtIds = ? where Id = ?")
+            .bind(serde_json::to_string(&uuids)?.as_bytes())
+            .bind(id as i64)
+            .execute(&self.connection)
+            .await?;
         Ok(())
     }
-    pub fn get_symbol_art(&self, uuid: u128) -> Result<Option<Vec<u8>>, Error> {
-        let query = "select * from SymbolArts where UUID = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, format!("{uuid:X}").as_str()))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("data")?;
-            if let Type::Null = col_typee {
-                return Ok(None);
-            }
-            let data = statement.read::<Vec<u8>, _>("data")?;
-            return Ok(Some(data));
+    pub async fn get_symbol_art(&self, uuid: u128) -> Result<Option<Vec<u8>>, Error> {
+        let row = sqlx::query("select * from SymbolArts where UUID = ?")
+            .bind(format!("{uuid:X}").as_bytes())
+            .fetch_optional(&self.connection)
+            .await?;
+        match row {
+            Some(data) => Ok(Some(data.try_get::<Vec<u8>, _>("Data")?)),
+            None => Ok(None),
         }
-        Ok(None)
     }
-    pub fn add_symbol_art(&mut self, uuid: u128, data: &[u8], name: &str) -> Result<(), Error> {
-        let query = "insert into SymbolArts (UUID, name, data) values (?, ?, ?)";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(
-            &[
-                (1, format!("{uuid:X}").as_str().into()),
-                (2, name.into()),
-                (3, data.into()),
-            ][..],
-        )?;
-        statement.into_iter().count();
+    pub async fn add_symbol_art(&self, uuid: u128, data: &[u8], name: &str) -> Result<(), Error> {
+        sqlx::query("insert into SymbolArts (UUID, Name, Data) values (?, ?, ?)")
+            .bind(format!("{uuid:X}").as_bytes())
+            .bind(name.as_bytes())
+            .bind(data)
+            .execute(&self.connection)
+            .await?;
         Ok(())
     }
-    pub fn get_inventory(&self, char_id: u32, user_id: u32) -> Result<Inventory, Error> {
-        let mut inventory = self.get_player_inventory(char_id)?;
-        inventory.storages = self.get_account_storage(user_id)?;
+    pub async fn get_inventory(&self, char_id: u32, user_id: u32) -> Result<Inventory, Error> {
+        let mut inventory = self.get_player_inventory(char_id).await?;
+        inventory.storages = self.get_account_storage(user_id).await?;
         Ok(inventory)
     }
-    fn get_player_inventory(&self, char_id: u32) -> Result<Inventory, Error> {
-        let query = "select Inventory from Characters where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, char_id as i64))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("Inventory")?;
-            if let Type::Null = col_typee {
-                return Ok(Default::default());
-            }
-            let inventory = statement.read::<String, _>("Inventory")?;
-            let storage = serde_json::from_str::<Inventory>(&inventory)?;
-            return Ok(storage);
+    async fn get_player_inventory(&self, char_id: u32) -> Result<Inventory, Error> {
+        let row = sqlx::query("select Inventory from Characters where Id = ?")
+            .bind(char_id as i64)
+            .fetch_one(&self.connection)
+            .await?;
+        match row.try_get("Inventory") {
+            Ok(d) => Ok(serde_json::from_str(from_utf8(d)?)?),
+            Err(_) => Ok(Default::default()),
         }
-        Ok(Default::default())
     }
-    fn get_account_storage(&self, user_id: u32) -> Result<AccountStorages, Error> {
-        let query = "select Storage from Users where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, user_id as i64))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("Storage")?;
-            if let Type::Null = col_typee {
-                return Ok(Default::default());
-            }
-            let storage = statement.read::<String, _>("Storage")?;
-            let storage = serde_json::from_str::<AccountStorages>(&storage)?;
-            return Ok(storage);
+    async fn get_account_storage(&self, user_id: u32) -> Result<AccountStorages, Error> {
+        let result = self
+            .run_action(MasterShipAction::GetStorage(user_id))
+            .await?;
+        match result {
+            MasterShipAction::GetStorageResult(storages) => Ok(storages),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
         }
-        Ok(Default::default())
     }
-    pub fn update_inventory(
-        &mut self,
+    pub async fn update_inventory(
+        &self,
         char_id: u32,
         user_id: u32,
         inv: &Inventory,
     ) -> Result<(), Error> {
-        let inventory = serde_json::to_string(&inv)?;
-        let storage = serde_json::to_string(&inv.storages)?;
-        let query = "update Characters set Inventory = ? where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(
-            &[(1, inventory.as_str().into()), (2, (char_id as i64).into())][..],
-        )?;
-        statement.into_iter().count();
-        let query = "update Users set Storage = ? where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(
-            &[(1, storage.as_str().into()), (2, (user_id as i64).into())][..],
-        )?;
-        statement.into_iter().count();
-        Ok(())
-    }
-    pub fn get_uuid(&self) -> Result<u64, Error> {
-        let query = "select Value from ServerStats where Tag = \"UUID\"";
-        let mut statement = self.connection.prepare(query)?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("Value")?;
-            if let Type::Null = col_typee {
-                return Ok(1);
-            }
-            let uuid = statement.read::<String, _>("Value")?;
-            let uuid = uuid.parse().unwrap();
-            Ok(uuid)
-        } else {
-            let query = "insert into ServerStats (Tag, Value) values (\"UUID\", 1)";
-            self.connection.execute(query)?;
-            Ok(1)
+        sqlx::query("update Characters set Inventory = ? where Id = ?")
+            .bind(serde_json::to_string(&inv)?.as_bytes())
+            .bind(char_id as i64)
+            .execute(&self.connection)
+            .await?;
+        let result = self
+            .run_action(MasterShipAction::PutStorage {
+                id: user_id,
+                storage: inv.storages.clone(),
+            })
+            .await?;
+        match result {
+            MasterShipAction::Ok => Ok(()),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
         }
     }
-    pub fn set_uuid(&mut self, uuid: u64) -> Result<(), Error> {
-        let query = "update ServerStats set Value = ? where Tag = \"UUID\"";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, uuid as i64))?;
-        statement.into_iter().count();
+    pub async fn get_uuid(&self) -> Result<u64, Error> {
+        Ok(sqlx::query("select Value from ServerStats where Tag = ?")
+            .bind("UUID".as_bytes())
+            .fetch_one(&self.connection)
+            .await?
+            .try_get::<i64, _>("UUID")? as u64)
+    }
+    pub async fn set_uuid(&self, uuid: u64) -> Result<(), Error> {
+        sqlx::query("update ServerStats set Value = ? where Tag = ?")
+            .bind(uuid as i64)
+            .bind("UUID".as_bytes())
+            .execute(&self.connection)
+            .await?;
         Ok(())
     }
-    pub fn get_palette(&self, char_id: u32) -> Result<Palette, Error> {
-        let query = "select Palette from Characters where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind((1, char_id as i64))?;
-        if let State::Row = statement.next()? {
-            let col_typee = statement.column_type("Palette")?;
-            if let Type::Null = col_typee {
-                println!("wtf??");
-                return Ok(Default::default());
-            }
-            let palette = statement.read::<String, _>("Palette")?;
-            let palette = serde_json::from_str::<Palette>(&palette)?;
-            return Ok(palette);
+    pub async fn get_palette(&self, char_id: u32) -> Result<Palette, Error> {
+        let row = sqlx::query("select Palette from Characters where Id = ?")
+            .bind(char_id as i64)
+            .fetch_one(&self.connection)
+            .await?;
+        match row.try_get("Palette") {
+            Ok(d) => Ok(serde_json::from_str(from_utf8(d)?)?),
+            Err(_) => Ok(Default::default()),
         }
-        Ok(Default::default())
     }
-    pub fn update_palette(&mut self, char_id: u32, palette: &Palette) -> Result<(), Error> {
-        let palette = serde_json::to_string(&palette)?;
-        let query = "update Characters set Palette = ? where Id = ?";
-        let mut statement = self.connection.prepare(query)?;
-        statement.bind::<&[(_, Value)]>(
-            &[(1, palette.as_str().into()), (2, (char_id as i64).into())][..],
-        )?;
-        statement.into_iter().count();
+    pub async fn update_palette(&self, char_id: u32, palette: &Palette) -> Result<(), Error> {
+        sqlx::query("update Characters set Palette = ? where Id = ?")
+            .bind(serde_json::to_string(palette)?.as_bytes())
+            .bind(char_id as i64)
+            .execute(&self.connection)
+            .await?;
         Ok(())
     }
 }

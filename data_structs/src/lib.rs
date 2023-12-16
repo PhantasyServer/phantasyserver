@@ -5,11 +5,15 @@ use aes_gcm::{
 };
 #[cfg(feature = "ship")]
 use p256::{ecdh::EphemeralSecret, PublicKey};
-use pso2packetlib::protocol::{
-    items::ItemId,
-    models::Position,
-    server::LoadLevelPacket,
-    spawn::{NPCSpawnPacket, ObjectSpawnPacket},
+use pso2packetlib::{
+    protocol::{
+        items::{Item, ItemId, StorageInfo},
+        login::{LoginAttempt, ShipStatus},
+        models::Position,
+        server::LoadLevelPacket,
+        spawn::{NPCSpawnPacket, ObjectSpawnPacket},
+    },
+    AsciiString,
 };
 #[cfg(feature = "ship")]
 use rand_core::OsRng;
@@ -97,7 +101,90 @@ pub struct MasterShipComm {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum MasterShipAction {
-    RegisterShip,
+    /// New ship wants to connect
+    RegisterShip(ShipInfo),
+    RegisterShipResult(RegisterShipResult),
+    UserLogin(UserCreds),
+    UserRegister(UserCreds),
+    UserLoginVita(UserCreds),
+    UserRegisterVita(UserCreds),
+    UserLoginResult(UserLoginResult),
+    GetStorage(u32),
+    GetStorageResult(AccountStorages),
+    PutStorage {
+        id: u32,
+        storage: AccountStorages,
+    },
+    GetLogins(u32),
+    GetLoginsResult(Vec<LoginAttempt>),
+    GetSettings(u32),
+    GetSettingsResult(AsciiString),
+    PutSettings {
+        id: u32,
+        settings: AsciiString,
+    },
+    /// Delete ship from the list. Parameter is the id of the ship
+    UnregisterShip(u32),
+    Ok,
+    /// Error has occured
+    Error(String),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ShipInfo {
+    pub ip: Ipv4Addr,
+    pub port: u16,
+    pub id: u32,
+    pub max_players: u32,
+    pub name: String,
+    pub data_type: DataTypeDef,
+    pub status: ShipStatus,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum UserLoginResult {
+    Success { id: u32, nickname: String },
+    InvalidPassword(u32),
+    NotFound,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum RegisterShipResult {
+    Success,
+    AlreadyTaken,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UserCreds {
+    pub username: String,
+    pub password: String,
+    pub ip: Ipv4Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DataTypeDef {
+    Parsed,
+    Binary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AccountStorages {
+    pub storage_meseta: u64,
+    pub default: StorageInventory,
+    pub premium: StorageInventory,
+    pub extend1: StorageInventory,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StorageInventory {
+    pub total_space: u32,
+    pub storage_id: u8,
+    pub is_enabled: bool,
+    pub is_purchased: bool,
+    pub storage_type: u8,
+    pub items: Vec<Item>,
 }
 
 #[cfg(feature = "ship")]
@@ -168,13 +255,32 @@ impl ShipConnection {
     }
     async fn read_timeout(&mut self, buf: &mut [u8], time: Duration) -> Result<usize, Error> {
         match tokio::time::timeout(time, self.stream.read(buf)).await {
-            Ok(x) => Ok(x?),
+            Ok(x) => match x? {
+                0 => Err(std::io::Error::from(std::io::ErrorKind::ConnectionAborted).into()),
+                x => Ok(x),
+            },
             Err(_) => Err(Error::Timeout),
         }
     }
     pub async fn write(&mut self, data: MasterShipComm) -> Result<(), Error> {
         let data = self.encrypt(&rmp_serde::to_vec(&data)?)?;
         self.stream.write_all(&data).await?;
+        Ok(())
+    }
+    pub fn write_blocking(&mut self, data: MasterShipComm) -> Result<(), Error> {
+        let mut data = self.encrypt(&rmp_serde::to_vec(&data)?)?;
+        loop {
+            match self.stream.try_write(&data) {
+                Ok(n) => {
+                    data.drain(..n);
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+                Err(e) => return Err(e.into()),
+            }
+            if data.is_empty() {
+                break;
+            }
+        }
         Ok(())
     }
     fn extract_data(&mut self) -> Result<Option<MasterShipComm>, Error> {
@@ -284,5 +390,62 @@ impl MapData {
         let file = std::fs::File::create(path)?;
         serde_json::to_writer_pretty(file, self)?;
         Ok(())
+    }
+}
+
+impl StorageInventory {
+    pub fn generate_info(&self) -> StorageInfo {
+        StorageInfo {
+            total_space: self.total_space,
+            used_space: self.items.len() as u32,
+            storage_id: self.storage_id,
+            storage_type: self.storage_type,
+            is_locked: (!self.is_purchased) as u8,
+            is_enabled: self.is_enabled as u8,
+        }
+    }
+}
+
+impl Default for AccountStorages {
+    fn default() -> Self {
+        Self {
+            storage_meseta: 0,
+            default: StorageInventory {
+                total_space: 200,
+                storage_id: 0,
+                is_enabled: true,
+                is_purchased: true,
+                storage_type: 0,
+                items: vec![],
+            },
+            premium: StorageInventory {
+                total_space: 400,
+                storage_id: 1,
+                is_enabled: false,
+                is_purchased: false,
+                storage_type: 1,
+                items: vec![],
+            },
+            extend1: StorageInventory {
+                total_space: 500,
+                storage_id: 2,
+                is_enabled: false,
+                is_purchased: false,
+                storage_type: 2,
+                items: vec![],
+            },
+        }
+    }
+}
+impl Default for StorageInventory {
+    fn default() -> Self {
+        Self {
+            total_space: 300,
+            storage_id: 14,
+            is_enabled: true,
+            is_purchased: true,
+            storage_type: 4,
+            items: vec![],
+        }
     }
 }

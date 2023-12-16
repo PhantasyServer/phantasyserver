@@ -16,38 +16,28 @@ pub fn encryption_request(user: &mut User, _: login::EncryptionRequestPacket) ->
 }
 
 pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
-    let sql_provider = user.sql.clone();
     let (mut id, mut status, mut error) = Default::default();
-    let mut sql = sql_provider.write();
+    let ip = user.get_ip()?;
     match packet {
         Packet::SegaIDLogin(packet) => {
             user.packet_type = PacketType::JP;
             user.connection.change_packet_type(PacketType::JP);
-            let sega_user = {
-                // SAFETY: 'sql' won't outlive the closure because we immediately await it.
-                let sql: &mut crate::sql::Sql = &mut *sql;
-                let sql: &'static mut crate::sql::Sql = unsafe { std::mem::transmute(sql) };
-
-                tokio::task::spawn_blocking(move || {
-                    sql.get_sega_user(&packet.username, &packet.password)
-                })
-                .await
-                .unwrap()
-            };
+            let sega_user = user
+                .sql
+                .get_sega_user(&packet.username, &packet.password, ip)
+                .await;
             match sega_user {
                 Ok(x) => {
                     id = x.id;
                     user.nickname = x.nickname;
                     user.text_lang = packet.text_lang;
-                    sql.put_login(id, user.get_ip()?, login::LoginResult::Successful)?;
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                         data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
                     }))?;
                 }
-                Err(Error::InvalidPassword(id)) => {
+                Err(Error::InvalidPassword(_)) => {
                     status = login::LoginStatus::Failure;
                     error = "Invalid username or password".to_string();
-                    sql.put_login(id, user.get_ip()?, login::LoginResult::LoginError)?;
                 }
                 Err(Error::InvalidInput) => {
                     status = login::LoginStatus::Failure;
@@ -59,10 +49,9 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
         Packet::VitaLogin(packet) => {
             user.packet_type = PacketType::Vita;
             user.connection.change_packet_type(PacketType::Vita);
-            let user_psn = sql.get_psn_user(&packet.username)?;
+            let user_psn = user.sql.get_psn_user(&packet.username, ip).await?;
             user.nickname = user_psn.nickname;
             id = user_psn.id;
-            sql.put_login(id, user.get_ip()?, login::LoginResult::Successful)?;
         }
         _ => unreachable!(),
     }
@@ -115,11 +104,9 @@ pub fn client_ping(user: &mut User, packet: login::ClientPingPacket) -> HResult 
     Ok(Action::Nothing)
 }
 
-pub fn character_list(user: &mut User) -> HResult {
-    let sql_provider = user.sql.clone();
-    let sql = sql_provider.read();
+pub async fn character_list(user: &mut User) -> HResult {
     user.send_packet(&Packet::CharacterListResponse(login::CharacterListPacket {
-        characters: sql.get_characters(user.player_id)?,
+        characters: user.sql.get_characters(user.player_id).await?,
         // deletion_flags: [(1, 0); 30],
         ..Default::default()
     }))?;
@@ -175,12 +162,16 @@ pub fn rename_request(user: &mut User, _: login::CharacterRenameRequestPacket) -
     Ok(Action::Nothing)
 }
 
-pub fn newname_request(user: &mut User, packet: login::CharacterNewNameRequestPacket) -> HResult {
-    let sql_provider = user.sql.clone();
-    let mut sql = sql_provider.write();
-    let mut char = sql.get_character(user.player_id, packet.char_id)?;
+pub async fn newname_request(
+    user: &mut User,
+    packet: login::CharacterNewNameRequestPacket,
+) -> HResult {
+    let mut char = user
+        .sql
+        .get_character(user.player_id, packet.char_id)
+        .await?;
     char.name = packet.name.clone();
-    sql.update_character(&char)?;
+    user.sql.update_character(&char).await?;
     let packet_out = login::CharacterNewNamePacket {
         status: login::NewNameStatus::Success,
         char_id: packet.char_id,
@@ -190,35 +181,32 @@ pub fn newname_request(user: &mut User, packet: login::CharacterNewNameRequestPa
     Ok(Action::Nothing)
 }
 
-pub fn new_character(user: &mut User, packet: login::CharacterCreatePacket) -> HResult {
-    let sql_provider = user.sql.clone();
-    let mut sql = sql_provider.write();
-    user.char_id = sql.put_character(user.player_id, &packet.character)?;
+pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket) -> HResult {
+    user.char_id = user
+        .sql
+        .put_character(user.player_id, &packet.character)
+        .await?;
     let mut character = packet.character;
     character.character_id = user.char_id;
     character.player_id = user.player_id;
     user.character = Some(character);
-    user.inventory = sql.get_inventory(user.char_id, user.player_id)?;
-    user.palette = sql.get_palette(user.char_id)?;
+    user.inventory = user.sql.get_inventory(user.char_id, user.player_id).await?;
+    user.palette = user.sql.get_palette(user.char_id).await?;
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }
 
-pub fn start_game(user: &mut User, packet: login::StartGamePacket) -> HResult {
-    let sql_provider = user.sql.clone();
+pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HResult {
     user.char_id = packet.char_id;
-    let sql = sql_provider.read();
-    user.character = Some(sql.get_character(user.player_id, user.char_id)?);
-    user.inventory = sql.get_inventory(user.char_id, user.player_id)?;
-    user.palette = sql.get_palette(user.char_id)?;
+    user.character = Some(user.sql.get_character(user.player_id, user.char_id).await?);
+    user.inventory = user.sql.get_inventory(user.char_id, user.player_id).await?;
+    user.palette = user.sql.get_palette(user.char_id).await?;
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }
 
-pub fn login_history(user: &mut User) -> HResult {
-    let sql_provider = user.sql.clone();
-    let sql = sql_provider.read();
-    let attempts = sql.get_logins(user.player_id)?;
+pub async fn login_history(user: &mut User) -> HResult {
+    let attempts = user.sql.get_logins(user.player_id).await?;
     user.send_packet(&Packet::LoginHistoryResponse(login::LoginHistoryPacket {
         attempts,
     }))?;
