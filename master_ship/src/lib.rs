@@ -1,3 +1,4 @@
+#![deny(clippy::undocumented_unsafe_blocks)]
 pub mod sql;
 use data_structs::{
     MasterShipAction, MasterShipComm, RegisterShipResult, ShipInfo, UserLoginResult,
@@ -5,12 +6,13 @@ use data_structs::{
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
     protocol::{login, Packet, PacketType},
-    Connection,
+    Connection, PrivateKey, PublicKey,
 };
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{
-    io,
+    io::{self, Write},
+    net::Ipv4Addr,
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
@@ -25,11 +27,21 @@ pub struct Settings {
     pub db_name: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Keys {
+    pub ip: Ipv4Addr,
+    pub key: Vec<u8>,
+}
+
 impl Settings {
     pub async fn load(path: &str) -> Result<Settings, Error> {
         let string = match tokio::fs::read_to_string(path).await {
             Ok(s) => s,
-            Err(_) => return Ok(Default::default()),
+            Err(_) => {
+                let settings = Settings::default();
+                tokio::fs::write(path, toml::to_string_pretty(&settings)?).await?;
+                return Ok(settings);
+            }
         };
         Ok(toml::from_str(&string)?)
     }
@@ -62,7 +74,11 @@ pub enum Error {
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
     #[error(transparent)]
-    TomlError(#[from] toml::de::Error),
+    TomlSerError(#[from] toml::ser::Error),
+    #[error(transparent)]
+    TomlDeError(#[from] toml::de::Error),
+    #[error(transparent)]
+    RMPEncodeError(#[from] rmp_serde::encode::Error),
     #[error(transparent)]
     UTF8Error(#[from] std::str::Utf8Error),
 }
@@ -71,7 +87,7 @@ static IS_RUNNING: AtomicBool = AtomicBool::new(true);
 
 pub async fn ctrl_c_handler() {
     tokio::signal::ctrl_c().await.expect("failed to listen");
-    println!("");
+    println!();
     println!("Shutting down...");
     IS_RUNNING.swap(false, std::sync::atomic::Ordering::Relaxed);
 }
@@ -114,6 +130,8 @@ pub async fn ship_receiver(servers: Ships, sql: ASql) -> Result<(), Error> {
                                 },
                                 Err(e) => eprintln!("Action error: {e}"),
                             },
+                            Err(data_structs::Error::IOError(e))
+                                if e.kind() == io::ErrorKind::ConnectionAborted => {}
                             Err(data_structs::Error::Timeout) => {}
                             Err(e) => {
                                 eprintln!("Read error: {e}");
@@ -153,12 +171,8 @@ pub async fn run_action(
         MasterShipAction::RegisterShipResult(_) => {}
         MasterShipAction::UnregisterShip(id) => {
             let mut lock = async_write(ships).await;
-            let pos = lock.iter().enumerate().find(|x| x.1.id == id).map(|x| x.0);
-            match pos {
-                Some(pos) => {
-                    lock.swap_remove(pos);
-                }
-                None => {}
+            if let Some(pos) = lock.iter().enumerate().find(|x| x.1.id == id).map(|x| x.0) {
+                lock.swap_remove(pos);
             }
         }
         MasterShipAction::Ok => {}
@@ -248,8 +262,52 @@ pub async fn run_action(
                 Err(e) => response.action = MasterShipAction::Error(e.to_string()),
             }
         }
+        MasterShipAction::NewBlockChallenge(id) => match sql.new_challenge(id).await {
+            Ok(challenge) => response.action = MasterShipAction::BlockChallengeResult(challenge),
+            Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+        },
+        MasterShipAction::BlockChallengeResult(_) => {}
+        MasterShipAction::ChallengeLogin {
+            challenge,
+            player_id,
+        } => match sql.login_challenge(player_id, challenge).await {
+            Ok(d) => {
+                response.action = MasterShipAction::UserLoginResult(UserLoginResult::Success {
+                    id: d.id,
+                    nickname: d.nickname,
+                })
+            }
+            Err(ref e) if matches!(e, Error::NoUser) => {
+                response.action = MasterShipAction::UserLoginResult(UserLoginResult::NotFound)
+            }
+            Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+        },
+        MasterShipAction::GetUserInfo(id) => match sql.get_user_info(id).await {
+            Ok(d) => response.action = MasterShipAction::UserInfo(d),
+            Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+        },
+        MasterShipAction::UserInfo(_) => {}
+        MasterShipAction::PutUserInfo { id, info } => match sql.put_user_info(id, info).await {
+            Ok(_) => response.action = MasterShipAction::Ok,
+            Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+        },
     }
     Ok(response)
+}
+
+pub async fn make_keys(servers: Ships) -> io::Result<()> {
+    let listener = TcpListener::bind(("0.0.0.0", 11000)).await?;
+    loop {
+        match listener.accept().await {
+            Ok((s, _)) => {
+                let _ = send_keys(s, servers.clone());
+            }
+            Err(e) => {
+                eprintln!("Failed to accept connection: {}", e);
+                return Err(e);
+            }
+        }
+    }
 }
 
 pub async fn make_query(servers: Ships) -> io::Result<()> {
@@ -281,16 +339,21 @@ pub async fn make_query(servers: Ships) -> io::Result<()> {
 
 fn send_querry(stream: TcpStream, servers: Ships) -> io::Result<()> {
     stream.set_nodelay(true)?;
-    let mut con = Connection::new(stream.into_std()?, PacketType::Classic, None, None);
+    let mut con = Connection::new(
+        stream.into_std()?,
+        PacketType::Classic,
+        PrivateKey::None,
+        PublicKey::None,
+    );
     let mut ships = vec![];
     for server in servers.read().iter() {
-        let mut ship = login::ShipEntry::default();
-        ship.id = server.id * 1000;
-        ship.status = server.status;
-        ship.order = server.id as u16;
-        ship.ip = server.ip;
-        ship.name = format!("Ship{:02}", server.id);
-        ships.push(ship);
+        ships.push(login::ShipEntry {
+            id: server.id * 1000,
+            name: format!("Ship{:02}", server.id),
+            ip: server.ip,
+            status: server.status,
+            order: server.id as u16,
+        })
     }
     con.write_packet(&Packet::ShipList(login::ShipListPacket {
         ships,
@@ -300,7 +363,6 @@ fn send_querry(stream: TcpStream, servers: Ships) -> io::Result<()> {
 }
 
 pub async fn make_block_balance(server_statuses: Ships) -> io::Result<()> {
-    // TODO: add ship id config
     let mut listeners = vec![];
     for i in 0..10 {
         //pc balance
@@ -331,13 +393,23 @@ pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
     stream.set_nodelay(true)?;
     let port = stream.local_addr()?.port();
     let id = if port % 3 == 0 {
-        (port - 12193) / 100
+        (port - 12093) / 100
     } else {
         (port - 12000) / 100
     } as u32;
-    let mut con = Connection::new(stream.into_std()?, PacketType::Classic, None, None);
+    let mut con = Connection::new(
+        stream.into_std()?,
+        PacketType::Classic,
+        PrivateKey::None,
+        PublicKey::None,
+    );
     let servers = servers.read();
     let Some(server) = servers.iter().find(|x| x.id == id) else {
+        con.write_packet(&Packet::LoginResponse(login::LoginResponsePacket {
+            status: login::LoginStatus::Failure,
+            error: "Server is offline".to_string(),
+            ..Default::default()
+        }))?;
         return Ok(());
     };
 
@@ -348,6 +420,29 @@ pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
         ..Default::default()
     };
     con.write_packet(&Packet::BlockBalance(packet))?;
+    Ok(())
+}
+
+pub fn send_keys(stream: TcpStream, servers: Ships) -> Result<(), Error> {
+    let mut stream = stream.into_std()?;
+    stream.set_nodelay(true)?;
+    let lock = servers.read();
+    let mut data = vec![];
+    for ship in lock.iter() {
+        let mut key = vec![0x06, 0x02, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00];
+        key.append(&mut b"RSA1".to_vec());
+        key.append(&mut (ship.key.n.len() as u32 * 8).to_le_bytes().to_vec());
+        let mut e = ship.key.e.to_vec();
+        e.resize(4, 0);
+        key.append(&mut e);
+        key.append(&mut ship.key.n.to_vec());
+        data.push(Keys { ip: ship.ip, key })
+    }
+    let mut data = rmp_serde::to_vec(&data)?;
+    let mut out_data = Vec::with_capacity(data.len());
+    out_data.append(&mut (data.len() as u32).to_le_bytes().to_vec());
+    out_data.append(&mut data);
+    stream.write_all(&out_data)?;
     Ok(())
 }
 

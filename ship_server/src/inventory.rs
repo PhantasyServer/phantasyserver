@@ -64,14 +64,13 @@ impl Inventory {
         let mut packets = vec![];
 
         // load inventory
-        match load_items_inner(
+        if let Some(x) = load_items_inner(
             &mut self.loaded_items,
             &self.inventory.items,
             item_names,
             lang,
         ) {
-            Some(x) => packets.push(Packet::LoadItem(x)),
-            None => {}
+            packets.push(Packet::LoadItem(x));
         }
         packets.push(Packet::LoadPlayerInventory(LoadPlayerInventoryPacket {
             object: ObjectHeader {
@@ -91,53 +90,49 @@ impl Inventory {
         let mut storage_items = vec![];
         let mut infos = vec![];
         // character storage
-        match load_items_inner(
+        if let Some(x) = load_items_inner(
             &mut self.loaded_items,
             &self.character.items,
             item_names,
             lang,
         ) {
-            Some(x) => packets.push(Packet::LoadItem(x)),
-            None => {}
+            packets.push(Packet::LoadItem(x));
         }
         storage_items.extend_from_slice(&self.character.items);
         infos.push(self.character.generate_info());
 
         // default storage
-        match load_items_inner(
+        if let Some(x) = load_items_inner(
             &mut self.loaded_items,
             &self.storages.default.items,
             item_names,
             lang,
         ) {
-            Some(x) => packets.push(Packet::LoadItem(x)),
-            None => {}
+            packets.push(Packet::LoadItem(x));
         }
         storage_items.extend_from_slice(&self.storages.default.items);
         infos.push(self.storages.default.generate_info());
 
         // premium storage
-        match load_items_inner(
+        if let Some(x) = load_items_inner(
             &mut self.loaded_items,
             &self.storages.premium.items,
             item_names,
             lang,
         ) {
-            Some(x) => packets.push(Packet::LoadItem(x)),
-            None => {}
+            packets.push(Packet::LoadItem(x));
         }
         storage_items.extend_from_slice(&self.storages.premium.items);
         infos.push(self.storages.premium.generate_info());
 
         // extend1 storage
-        match load_items_inner(
+        if let Some(x) = load_items_inner(
             &mut self.loaded_items,
             &self.storages.extend1.items,
             item_names,
             lang,
         ) {
-            Some(x) => packets.push(Packet::LoadItem(x)),
-            None => {}
+            packets.push(Packet::LoadItem(x));
         }
         storage_items.extend_from_slice(&self.storages.extend1.items);
         infos.push(self.storages.extend1.generate_info());
@@ -293,7 +288,7 @@ impl Inventory {
                         .updated
                         .push(pso2packetlib::protocol::items::UpdatedStorageItem {
                             uuid,
-                            new_amount: new_amount as u16,
+                            new_amount,
                             storage_id: storage.storage_id as u32,
                             moved,
                         });
@@ -350,7 +345,7 @@ impl Inventory {
                 14 => &mut self.character,
                 _ => return Err(Error::InvalidInput),
             };
-            let result = decrease_item(&mut storage_src.items, info.uuid, info.amount as u16)?;
+            let result = decrease_item(&mut storage_src.items, info.uuid, info.amount)?;
             let (item, amount) = match result {
                 ChangeItemResult::Changed {
                     uuid,
@@ -361,7 +356,7 @@ impl Inventory {
                     packet_out.updated_old.push(
                         pso2packetlib::protocol::items::UpdatedStorageItem {
                             uuid,
-                            new_amount: new_amount as u16,
+                            new_amount,
                             storage_id: storage_src.storage_id as u32,
                             moved,
                         },
@@ -418,8 +413,10 @@ impl Inventory {
         Ok(Packet::MoveStorages(packet_out))
     }
     pub fn discard_inventory(&mut self, packet: DiscardItemRequestPacket) -> Result<Packet, Error> {
-        let mut packet_out = UpdateInventoryPacket::default();
-        packet_out.unk2 = 1;
+        let mut packet_out = UpdateInventoryPacket {
+            unk2: 1,
+            ..Default::default()
+        };
         for info in packet.items {
             match decrease_item(&mut self.inventory.items, info.uuid, info.amount)? {
                 ChangeItemResult::Changed {
@@ -451,8 +448,10 @@ impl Inventory {
         &mut self,
         packet: DiscardStorageItemRequestPacket,
     ) -> Result<Packet, Error> {
-        let mut packet_out = UpdateStoragePacket::default();
-        packet_out.unk2 = 1;
+        let mut packet_out = UpdateStoragePacket {
+            unk2: 1,
+            ..Default::default()
+        };
         for info in packet.items {
             let storage = match info.storage_id {
                 0 => &mut self.storages.default,

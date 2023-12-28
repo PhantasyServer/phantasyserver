@@ -11,19 +11,22 @@ pub fn send_full_palette(user: &mut User) -> HResult {
     user.send_packet(&user.palette.send_full_palette())?;
     Ok(Action::Nothing)
 }
-pub fn set_palette(mut user: MutexGuard<User>, packet: SetPalettePacket) -> HResult {
+pub async fn set_palette(mut user: MutexGuard<'_, User>, packet: SetPalettePacket) -> HResult {
     user.palette.set_palette(packet)?;
-    send_palette_update(user)?;
+    send_palette_update(user).await?;
     Ok(Action::Nothing)
 }
 
-pub fn update_palette(mut user: MutexGuard<User>, packet: UpdatePalettePacket) -> HResult {
+pub async fn update_palette(
+    mut user: MutexGuard<'_, User>,
+    packet: UpdatePalettePacket,
+) -> HResult {
     {
         let user: &mut User = &mut user;
         let out_packet = user.palette.update_palette(&mut user.inventory, packet)?;
         user.send_packet(&out_packet)?;
     }
-    send_palette_update(user)?;
+    send_palette_update(user).await?;
     Ok(Action::Nothing)
 }
 
@@ -44,13 +47,14 @@ pub fn set_default_pa(user: &mut User, packet: SetDefaultPAsPacket) -> HResult {
     Ok(Action::Nothing)
 }
 
-fn send_palette_update(user: MutexGuard<User>) -> Result<(), crate::Error> {
+async fn send_palette_update(user: MutexGuard<'_, User>) -> Result<(), crate::Error> {
     let id = user.player_id;
     let map = user.map.clone();
     drop(user);
     if let Some(map) = map {
-        map.lock().send_palette_change(id)
-    } else {
-        Ok(())
+        tokio::task::spawn_blocking(move || map.lock().send_palette_change(id))
+            .await
+            .unwrap()?;
     }
+    Ok(())
 }

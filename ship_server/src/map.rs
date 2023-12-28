@@ -4,6 +4,7 @@ use mlua::{Lua, LuaSerdeExt, StdLib};
 use parking_lot::{Mutex, MutexGuard};
 use pso2packetlib::protocol::{
     self,
+    objects::RemoveObjectPacket,
     playerstatus::SetPlayerIDPacket,
     spawn::{CharacterSpawnPacket, CharacterSpawnType},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
@@ -19,7 +20,7 @@ pub struct Map {
     load_path: std::path::PathBuf,
 }
 impl Map {
-    pub fn new<T: AsRef<std::path::Path>>(path: T, mapid: &mut u32) -> Result<Self, Error> {
+    pub fn new<T: AsRef<std::path::Path>>(path: T, mapid: u32) -> Result<Self, Error> {
         // will be increased as needed
         let lua_libs = StdLib::NONE;
         let mut map = Self {
@@ -29,11 +30,10 @@ impl Map {
             load_path: path.as_ref().to_owned(),
         };
         map.data.map_data.map_object = ObjectHeader {
-            id: *mapid,
+            id: mapid,
             entity_type: EntityType::Map,
             ..Default::default()
         };
-        *mapid += 1;
         map.init_lua()?;
         Ok(map)
     }
@@ -49,7 +49,16 @@ impl Map {
             }
             self.data.luas.insert(
                 name.to_owned(),
-                "print(packet[\"object1\"][\"id\"], packet[\"action\"])".into(),
+                "if call_type == \"interaction\" then
+                    print(packet[\"object1\"][\"id\"], packet[\"action\"])
+                elseif call_type == \"to_vita\" then
+	                for i=1,size,2 do
+		                if data[i] > 50 and data[i] < 80 then
+			                data[i] = data[i] - 1
+		                end
+	                end
+                end"
+                .into(),
             );
         }
         // default npc handler
@@ -60,20 +69,22 @@ impl Map {
             }
             self.data.luas.insert(
                 name.to_owned(),
-                "if packet[\"action\"] == \"READY\" then
-                    local ready_data = {}; 
-                    local packet_data = {};
-                    packet_data[\"attribute\"] = \"FavsNeutral\";
-                    packet_data[\"object1\"] = packet[\"object3\"];
-                    packet_data[\"object2\"] = packet[\"object1\"];
-                    packet_data[\"object3\"] = packet[\"object1\"];
-                    ready_data[\"SetTag\"] = packet_data; 
-                    send(sender, ready_data);
-                    ready_data[\"SetTag\"][\"attribute\"] = \"AP\";
-                    send(sender, ready_data);
+                "if call_type == \"interaction\" then
+                    if packet[\"action\"] == \"READY\" then
+                        local ready_data = {}; 
+                        local packet_data = {};
+                        packet_data[\"attribute\"] = \"FavsNeutral\";
+                        packet_data[\"object1\"] = packet[\"object3\"];
+                        packet_data[\"object2\"] = packet[\"object1\"];
+                        packet_data[\"object3\"] = packet[\"object1\"];
+                        ready_data[\"SetTag\"] = packet_data; 
+                        send(sender, ready_data);
+                        ready_data[\"SetTag\"][\"attribute\"] = \"AP\";
+                        send(sender, ready_data);
                     else
-                    print(packet[\"object1\"][\"id\"], packet[\"action\"]);
-                    end"
+                        print(packet[\"object1\"][\"id\"], packet[\"action\"]);
+                    end
+                end"
                 .into(),
             );
         }
@@ -84,6 +95,27 @@ impl Map {
         self.data.luas = map.luas;
         self.data.object_data = map.object_data;
         self.init_lua()?;
+        Ok(())
+    }
+    pub fn reload_objs(&mut self) -> Result<(), Error> {
+        let map = MapData::load_from_mp_file(&self.load_path)?;
+        exec_users(&self.players, |_, mut player| {
+            for obj in self.data.objects.iter() {
+                let packet = Packet::RemoveObject(RemoveObjectPacket {
+                    receiver: ObjectHeader {
+                        id: player.player_id,
+                        entity_type: EntityType::Player,
+                        ..Default::default()
+                    },
+                    removed_object: obj.object,
+                });
+                let _ = player.send_packet(&packet);
+            }
+        });
+        self.data.objects = map.objects;
+        exec_users(&self.players, |_, mut player| {
+            let _ = Self::load_objects(&self.lua, &self.data, &mut player);
+        });
         Ok(())
     }
     pub fn lua_gc_collect(&self) -> Result<(), Error> {
@@ -136,13 +168,7 @@ impl Map {
             },
             ..Default::default()
         })?;
-        for object in &self.data.objects {
-            let mut obj = object.clone();
-            if np_lock.packet_type == PacketType::Vita {
-                obj.data.remove(7);
-            }
-            np_lock.send_packet(&Packet::ObjectSpawn(obj))?;
-        }
+        Self::load_objects(&self.lua, &self.data, &mut np_lock)?;
         for npc in &self.data.npcs {
             np_lock.send_packet(&Packet::NPCSpawn(npc.clone()))?;
         }
@@ -199,12 +225,12 @@ impl Map {
             .iter()
             .find(|p| p.0 == sender_id)
             .and_then(|p| p.1.upgrade())
-            .and_then(|p| {
+            .map(|p| {
                 let p = p.lock();
-                Some((
+                (
                     p.palette.send_change_palette(sender_id),
                     p.palette.send_cur_weapon(sender_id, &p.inventory),
-                ))
+                )
             })
             .ok_or(Error::InvalidInput)?;
         exec_users(&self.players, |_, mut player| {
@@ -342,6 +368,27 @@ impl Map {
             }
         });
     }
+    fn load_objects(lua: &Lua, map_data: &MapData, user: &mut User) -> Result<(), Error> {
+        for mut obj in map_data.objects.iter().cloned() {
+            if user.packet_type == PacketType::Vita {
+                if let Some(lua_code) = map_data.luas.get(&obj.name.to_string()) {
+                    let globals = lua.globals();
+                    globals.set("data", lua.to_value(&obj.data)?)?;
+                    globals.set("call_type", "to_vita")?;
+                    globals.set("size", obj.data.len())?;
+                    let chunk = lua.load(lua_code);
+                    chunk.exec()?;
+                    obj.data = lua.from_value(globals.get("data")?)?;
+                    globals.raw_remove("data")?;
+                    globals.raw_remove("call_type")?;
+                    globals.raw_remove("size")?;
+                }
+            }
+            user.send_packet(&Packet::ObjectSpawn(obj))?;
+        }
+
+        Ok(())
+    }
     // called by block
     pub fn interaction(
         &self,
@@ -365,6 +412,7 @@ impl Map {
         globals.set("packet", self.lua.to_value(&packet)?)?;
         globals.set("sender", sender_id)?;
         globals.set("players", player_ids)?;
+        globals.set("call_type", "interaction")?;
         self.lua.scope(|scope| {
             /* LUA FUNCTIONS */
 
@@ -433,6 +481,7 @@ impl Map {
         globals.raw_remove("packet")?;
         globals.raw_remove("sender")?;
         globals.raw_remove("players")?;
+        globals.raw_remove("call_type")?;
         Ok(())
     }
 }

@@ -2,7 +2,11 @@ use crate::{inventory::Inventory, master_conn::MasterConnection, palette::Palett
 use data_structs::{AccountStorages, MasterShipAction, UserCreds};
 use parking_lot::Mutex;
 use pso2packetlib::{
-    protocol::{login::LoginAttempt, models::character::Character},
+    protocol::{
+        login::{Language, LoginAttempt, UserInfoPacket},
+        models::character::Character,
+        PacketType,
+    },
     AsciiString,
 };
 use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
@@ -13,9 +17,12 @@ pub struct Sql {
     master_ship: Mutex<MasterConnection>,
 }
 
+#[derive(Default)]
 pub struct User {
     pub id: u32,
     pub nickname: String,
+    pub lang: Language,
+    pub packet_type: PacketType,
 }
 
 impl Sql {
@@ -25,6 +32,7 @@ impl Sql {
             return Self::create_db(path, master_ship).await;
         }
         let conn = sqlx::AnyPool::connect(path).await?;
+        sqlx::query("delete from Challenges").execute(&conn).await?;
         Ok(Self {
             connection: conn,
             master_ship,
@@ -86,6 +94,16 @@ impl Sql {
         ",
         )
         .await?;
+        conn.execute(
+            "
+            create table if not exists Challenges (
+                Challenge integer default 0,
+                Lang blob default NULL,
+                PacketType blob default NULL
+            );
+        ",
+        )
+        .await?;
         sqlx::query("insert into ServerStats (Tag, Value) values (?, ?)")
             .bind("UUID".as_bytes())
             .bind("1".as_bytes())
@@ -129,7 +147,11 @@ impl Sql {
                             .execute(&self.connection)
                             .await?;
                     }
-                    Ok(User { id, nickname })
+                    Ok(User {
+                        id,
+                        nickname,
+                        ..Default::default()
+                    })
                 }
                 data_structs::UserLoginResult::InvalidPassword(id) => {
                     Err(Error::InvalidPassword(id))
@@ -165,7 +187,11 @@ impl Sql {
                             .execute(&self.connection)
                             .await?;
                     }
-                    Ok(User { id, nickname })
+                    Ok(User {
+                        id,
+                        nickname,
+                        ..Default::default()
+                    })
                 }
                 data_structs::UserLoginResult::InvalidPassword(id) => {
                     Err(Error::InvalidPassword(id))
@@ -186,9 +212,11 @@ impl Sql {
             .await?;
         let user = match result {
             MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => {
-                    Ok(User { id, nickname })
-                }
+                data_structs::UserLoginResult::Success { id, nickname } => Ok(User {
+                    id,
+                    nickname,
+                    ..Default::default()
+                }),
                 _ => unimplemented!(),
             },
             MasterShipAction::Error(e) => Err(Error::Generic(e)),
@@ -210,9 +238,11 @@ impl Sql {
             .await?;
         let user = match result {
             MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => {
-                    Ok(User { id, nickname })
-                }
+                data_structs::UserLoginResult::Success { id, nickname } => Ok(User {
+                    id,
+                    nickname,
+                    ..Default::default()
+                }),
                 _ => unimplemented!(),
             },
             MasterShipAction::Error(e) => Err(Error::Generic(e)),
@@ -224,6 +254,79 @@ impl Sql {
             .await?;
 
         Ok(user)
+    }
+    pub async fn get_user_info(&self, user_id: u32) -> Result<UserInfoPacket, Error> {
+        let result = self
+            .run_action(MasterShipAction::GetUserInfo(user_id))
+            .await?;
+        match result {
+            MasterShipAction::UserInfo(info) => Ok(info),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    pub async fn put_user_info(&self, user_id: u32, info: UserInfoPacket) -> Result<(), Error> {
+        let result = self
+            .run_action(MasterShipAction::PutUserInfo { id: user_id, info })
+            .await?;
+        match result {
+            MasterShipAction::Ok => Ok(()),
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    pub async fn new_challenge(
+        &self,
+        user_id: u32,
+        lang: Language,
+        packet: PacketType,
+    ) -> Result<u32, Error> {
+        let result = self
+            .run_action(MasterShipAction::NewBlockChallenge(user_id))
+            .await?;
+        match result {
+            MasterShipAction::BlockChallengeResult(challenge) => {
+                sqlx::query("insert into Challenges (Challenge, Lang, PacketType) values (?,?,?)")
+                    .bind(challenge as i64)
+                    .bind(serde_json::to_vec(&lang)?)
+                    .bind(serde_json::to_vec(&packet)?)
+                    .execute(&self.connection)
+                    .await?;
+                Ok(challenge)
+            }
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
+    }
+    pub async fn login_challenge(&self, user_id: u32, challenge: u32) -> Result<User, Error> {
+        let result = self
+            .run_action(MasterShipAction::ChallengeLogin {
+                challenge,
+                player_id: user_id,
+            })
+            .await?;
+        match result {
+            MasterShipAction::UserLoginResult(d) => match d {
+                data_structs::UserLoginResult::Success { id, nickname } => {
+                    let row = sqlx::query("select * from Challenges where Challenge = ?")
+                        .bind(challenge as i64)
+                        .fetch_one(&self.connection)
+                        .await?;
+                    let lang = serde_json::from_slice(row.try_get("Lang")?)?;
+                    let packet_type = serde_json::from_slice(row.try_get("PacketType")?)?;
+                    Ok(User {
+                        id,
+                        nickname,
+                        lang,
+                        packet_type,
+                    })
+                }
+                data_structs::UserLoginResult::InvalidPassword(_) => unimplemented!(),
+                data_structs::UserLoginResult::NotFound => Err(Error::NoUser),
+            },
+            MasterShipAction::Error(e) => Err(Error::Generic(e)),
+            _ => unimplemented!(),
+        }
     }
     pub async fn get_logins(&self, id: u32) -> Result<Vec<LoginAttempt>, Error> {
         let result = self.run_action(MasterShipAction::GetLogins(id)).await?;
@@ -267,15 +370,11 @@ impl Sql {
                 .bind(char_id)
                 .fetch_optional(&self.connection)
                 .await?;
-            match row {
-                Some(data) => {
-                    let mut char: Character =
-                        serde_json::from_str(from_utf8(data.try_get("Data")?)?)?;
-                    char.player_id = id;
-                    char.character_id = char_id as u32;
-                    chars.push(char);
-                }
-                None => {}
+            if let Some(data) = row {
+                let mut char: Character = serde_json::from_str(from_utf8(data.try_get("Data")?)?)?;
+                char.player_id = id;
+                char.character_id = char_id as u32;
+                chars.push(char);
             }
         }
         Ok(chars)
@@ -287,7 +386,7 @@ impl Sql {
             .await?;
         let mut char: Character = serde_json::from_str(from_utf8(row.try_get("Data")?)?)?;
         char.player_id = id;
-        char.character_id = char_id as u32;
+        char.character_id = char_id;
         Ok(char)
     }
     pub async fn update_character(&self, char: &Character) -> Result<(), Error> {

@@ -5,40 +5,51 @@ use pso2packetlib::protocol::party::{
     BusyState, ChatStatusPacket, NewPartySettingsPacket, TransferLeaderPacket,
 };
 
-pub fn transfer_leader(user: MutexGuard<User>, data: TransferLeaderPacket) -> HResult {
+pub async fn transfer_leader(user: MutexGuard<'_, User>, data: TransferLeaderPacket) -> HResult {
     let party = user.get_current_party();
     drop(user);
     if let Some(party) = party {
-        party.write().change_leader(data.target)?;
+        tokio::task::spawn_blocking(move || party.write().change_leader(data.target))
+            .await
+            .unwrap()?;
     }
     Ok(Action::Nothing)
 }
 
-pub fn set_party_settings(user: MutexGuard<User>, data: NewPartySettingsPacket) -> HResult {
+pub async fn set_party_settings(
+    user: MutexGuard<'_, User>,
+    data: NewPartySettingsPacket,
+) -> HResult {
     let party = user.get_current_party();
     drop(user);
     if let Some(party) = party {
-        party.write().set_settings(data)?;
+        tokio::task::spawn_blocking(move || party.write().set_settings(data))
+            .await
+            .unwrap()?;
     }
     Ok(Action::Nothing)
 }
 
-pub fn set_busy_state(user: MutexGuard<User>, data: BusyState) -> HResult {
+pub async fn set_busy_state(user: MutexGuard<'_, User>, data: BusyState) -> HResult {
     let party = user.get_current_party();
     let id = user.get_user_id();
     drop(user);
     if let Some(party) = party {
-        party.write().set_busy_state(data, id);
+        tokio::task::spawn_blocking(move || party.write().set_busy_state(data, id))
+            .await
+            .unwrap();
     }
     Ok(Action::Nothing)
 }
 
-pub fn set_chat_state(user: MutexGuard<User>, data: ChatStatusPacket) -> HResult {
+pub async fn set_chat_state(user: MutexGuard<'_, User>, data: ChatStatusPacket) -> HResult {
     let party = user.get_current_party();
     let id = user.get_user_id();
     drop(user);
     if let Some(party) = party {
-        party.write().set_chat_status(data, id);
+        tokio::task::spawn_blocking(move || party.write().set_chat_status(data, id))
+            .await
+            .unwrap();
     }
     Ok(Action::Nothing)
 }

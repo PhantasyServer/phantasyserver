@@ -1,14 +1,15 @@
 use crate::Error;
-use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher};
+use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use data_structs::AccountStorages;
 use pso2packetlib::{
-    protocol::login::{LoginAttempt, LoginResult},
+    protocol::login::{LoginAttempt, LoginResult, UserInfoPacket},
     AsciiString,
 };
-use rand_core::OsRng;
+use rand_core::{OsRng, RngCore};
 use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
 use std::{
     net::Ipv4Addr,
+    ops::Add,
     str::from_utf8,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -48,7 +49,8 @@ impl Sql {
                 Password blob default NULL,
                 PSNNickname blob default NULL,
                 Settings blob default NULL,
-                Storage blob default NULL
+                Storage blob default NULL,
+                Info blob default NULL
             );
         ",
                 auto_inc
@@ -72,6 +74,16 @@ impl Sql {
             .as_str(),
         )
         .await?;
+        conn.execute(
+            "
+            create table if not exists Challenges (
+                UserId integer default 0,
+                Challenge integer default 0,
+                Until integer default 0
+            );
+        ",
+        )
+        .await?;
         Ok(Self { connection: conn })
     }
     pub async fn get_sega_user(
@@ -92,19 +104,20 @@ impl Sql {
                 let stored_password = from_utf8(data.try_get("Password")?)?;
                 let id = data.try_get::<i64, _>("Id")? as u32;
                 let nickname = from_utf8(data.try_get("Nickname").unwrap_or_default())?;
-                // SAFETY: references do not outlive the scope because the thread is immediately
+                // SAFETY: reference doesn't outlive the scope because the thread is immediately
                 // joined
                 let stored_password: &'static str = unsafe { std::mem::transmute(stored_password) };
-                let password: &'static str = unsafe { std::mem::transmute(password) };
+                // SAFETY: same as above
+                let password: &'static [u8] = unsafe { std::mem::transmute(password.as_bytes()) };
 
                 match tokio::task::spawn_blocking(move || -> Result<(), Error> {
                     let hash = match PasswordHash::new(stored_password) {
                         Ok(x) => x,
                         Err(_) => return Err(Error::InvalidPassword(id)),
                     };
-                    match hash.verify_password(&[&Argon2::default()], password) {
+                    match Argon2::default().verify_password(password, &hash) {
                         Ok(_) => Ok(()),
-                        Err(_) => return Err(Error::InvalidPassword(id)),
+                        Err(_) => Err(Error::InvalidPassword(id)),
                     }
                 })
                 .await
@@ -124,6 +137,88 @@ impl Sql {
             }
             None => Err(Error::NoUser),
         }
+    }
+    pub async fn get_user_info(&self, user_id: u32) -> Result<UserInfoPacket, Error> {
+        let row = sqlx::query("select * from Users where Id = ?")
+            .bind(user_id as i64)
+            .fetch_optional(&self.connection)
+            .await?;
+        if row.is_none() {
+            return Err(Error::NoUser);
+        }
+        Ok(
+            serde_json::from_slice(row.unwrap().try_get("Info").unwrap_or_default())
+                .unwrap_or_default(),
+        )
+    }
+    pub async fn put_user_info(&self, user_id: u32, info: UserInfoPacket) -> Result<(), Error> {
+        sqlx::query("update Users set Info = ? where Id = ?")
+            .bind(serde_json::to_vec(&info)?)
+            .bind(user_id as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+    pub async fn new_challenge(&self, user_id: u32) -> Result<u32, Error> {
+        let row = sqlx::query("select * from Users where Id = ?")
+            .bind(user_id as i64)
+            .fetch_optional(&self.connection)
+            .await?;
+        if row.is_none() {
+            return Err(Error::NoUser);
+        }
+        let challenge = OsRng.next_u32();
+        let until = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .add(Duration::from_secs(60))
+            .as_secs();
+        sqlx::query("insert into Challenges (UserId, Challenge, Until) values (?, ?, ?)")
+            .bind(user_id as i64)
+            .bind(challenge as i64)
+            .bind(until as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(challenge)
+    }
+    pub async fn drop_challenges(&self) -> Result<(), Error> {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        sqlx::query("delete from Challenges where Until < ?")
+            .bind(now as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+    pub async fn login_challenge(&self, user_id: u32, challenge: u32) -> Result<User, Error> {
+        self.drop_challenges().await?;
+        let rows = sqlx::query("select * from Challenges where (UserId = ? and Challenge = ?)")
+            .bind(user_id as i64)
+            .bind(challenge as i64)
+            .fetch_all(&self.connection)
+            .await?;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        for row in rows {
+            let until = row.try_get::<i64, _>("Until")? as u64;
+            if until < now {
+                continue;
+            }
+            let row = sqlx::query("select * from Users where Id = ?")
+                .bind(user_id as i64)
+                .fetch_one(&self.connection)
+                .await?;
+            let nickname = from_utf8(row.try_get("Nickname").unwrap_or_default())?;
+            return Ok(User {
+                id: user_id,
+                nickname: nickname.to_string(),
+            });
+        }
+        Err(Error::NoUser)
     }
     pub async fn get_psn_user(&self, username: &str, ip: Ipv4Addr) -> Result<User, Error> {
         if username.is_empty() {
@@ -200,11 +295,12 @@ impl Sql {
                 .fetch_all(&self.connection)
                 .await?;
         for row in rows {
-            let mut attempt = LoginAttempt::default();
-            attempt.status = serde_json::from_str(from_utf8(row.try_get("Status")?)?)?;
-            attempt.ip = serde_json::from_str(from_utf8(row.try_get("IpAddress")?)?)?;
-            attempt.timestamp = Duration::from_secs(row.try_get::<i64, _>("Timestamp")? as u64);
-            attempts.push(attempt);
+            attempts.push(LoginAttempt {
+                ip: serde_json::from_str(from_utf8(row.try_get("IpAddress")?)?)?,
+                status: serde_json::from_str(from_utf8(row.try_get("Status")?)?)?,
+                timestamp: Duration::from_secs(row.try_get::<i64, _>("Timestamp")? as u64),
+                ..Default::default()
+            })
         }
         Ok(attempts)
     }

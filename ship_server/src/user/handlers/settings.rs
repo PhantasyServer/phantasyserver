@@ -6,13 +6,14 @@ use pso2packetlib::protocol::{
 };
 
 pub async fn settings_request(user: &mut User) -> HResult {
-    let settings = user.sql.get_settings(user.player_id).await?;
+    let settings = user.blockdata.sql.get_settings(user.player_id).await?;
     user.send_packet(&Packet::LoadSettings(LoadSettingsPacket { settings }))?;
     Ok(Action::Nothing)
 }
 
 pub async fn save_settings(user: &mut User, packet: SaveSettingsPacket) -> HResult {
-    user.sql
+    user.blockdata
+        .sql
         .save_settings(user.player_id, &packet.settings)
         .await?;
     Ok(Action::Nothing)

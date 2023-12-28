@@ -8,7 +8,7 @@ pub fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     let packets = user.inventory.send(
         user.player_id,
         user.character.as_ref().unwrap().name.clone(),
-        &user.item_attrs.read(),
+        &user.blockdata.item_attrs.read(),
         user.text_lang,
     );
     packets.into_iter().map(|x| user.send_packet(&x)).count();

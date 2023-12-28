@@ -13,7 +13,11 @@ use pso2packetlib::protocol::{
 };
 
 pub async fn list_sa(user: &mut User) -> HResult {
-    let uuids = user.sql.get_symbol_art_list(user.player_id).await?;
+    let uuids = user
+        .blockdata
+        .sql
+        .get_symbol_art_list(user.player_id)
+        .await?;
     user.send_packet(&Packet::SymbolArtList(SymbolArtListPacket {
         object: ObjectHeader {
             id: user.player_id,
@@ -27,7 +31,11 @@ pub async fn list_sa(user: &mut User) -> HResult {
 }
 
 pub async fn change_sa(user: &mut User, packet: ChangeSymbolArtPacket) -> HResult {
-    let mut uuids = user.sql.get_symbol_art_list(user.player_id).await?;
+    let mut uuids = user
+        .blockdata
+        .sql
+        .get_symbol_art_list(user.player_id)
+        .await?;
     for uuid in packet.uuids {
         let slot = uuid.slot;
         let uuid = uuid.uuid;
@@ -37,26 +45,30 @@ pub async fn change_sa(user: &mut User, packet: ChangeSymbolArtPacket) -> HResul
         if uuid == 0 {
             continue;
         }
-        if user.sql.get_symbol_art(uuid).await?.is_none() {
+        if user.blockdata.sql.get_symbol_art(uuid).await?.is_none() {
             user.send_packet(&Packet::SymbolArtDataRequest(SymbolArtDataRequestPacket {
                 uuid,
             }))?;
         }
     }
-    user.sql.set_symbol_art_list(uuids, user.player_id).await?;
+    user.blockdata
+        .sql
+        .set_symbol_art_list(uuids, user.player_id)
+        .await?;
     user.send_packet(&Packet::SymbolArtResult(Default::default()))?;
     Ok(Action::Nothing)
 }
 
 pub async fn add_sa(user: &mut User, packet: SymbolArtDataPacket) -> HResult {
-    user.sql
+    user.blockdata
+        .sql
         .add_symbol_art(packet.uuid, &packet.data, &packet.name)
         .await?;
     Ok(Action::Nothing)
 }
 
 pub async fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPacket) -> HResult {
-    if let Some(sa) = user.sql.get_symbol_art(packet.uuid).await? {
+    if let Some(sa) = user.blockdata.sql.get_symbol_art(packet.uuid).await? {
         user.send_packet(&Packet::SymbolArtClientData(SymbolArtClientDataPacket {
             uuid: packet.uuid,
             data: sa,
@@ -65,13 +77,15 @@ pub async fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPac
     Ok(Action::Nothing)
 }
 
-pub fn send_sa(user: MutexGuard<User>, packet: SendSymbolArtPacket) -> HResult {
+pub async fn send_sa(user: MutexGuard<'_, User>, packet: SendSymbolArtPacket) -> HResult {
     if let ChatArea::Map = packet.area {
         let id = user.player_id;
         let map = user.map.clone();
         drop(user);
         if let Some(map) = map {
-            map.lock().send_sa(packet, id)
+            tokio::task::spawn_blocking(move || map.lock().send_sa(packet, id))
+                .await
+                .unwrap();
         }
     }
     Ok(Action::Nothing)

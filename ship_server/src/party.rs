@@ -42,9 +42,8 @@ impl Party {
     pub fn init_player(new_user: Arc<Mutex<User>>, partyid: &mut u32) -> Result<(), Error> {
         let old_party = new_user.lock().party.take();
         let player_id = new_user.lock().player_id;
-        match old_party {
-            Some(party) => party.write().remove_player(player_id)?,
-            None => {}
+        if let Some(party) = old_party {
+            party.write().remove_player(player_id)?;
         }
         let mut party = Self::new(partyid);
         party.add_player(new_user.clone())?;
@@ -224,11 +223,11 @@ impl Party {
         self.players.swap_remove(pos);
         if let Some(player) = removed_player.upgrade() {
             let mut rem_player_lock = player.lock();
-            exec_users(&self.players, |id, _| {
+            for (id, _) in self.players.iter() {
                 let _ = rem_player_lock.send_packet(&Packet::SetPartyColor(
                     party::SetPartyColorPacket {
                         target: ObjectHeader {
-                            id,
+                            id: *id,
                             entity_type: EntityType::Player,
                             ..Default::default()
                         },
@@ -236,7 +235,7 @@ impl Party {
                         ..Default::default()
                     },
                 ));
-            });
+            }
         }
         let removed_obj = ObjectHeader {
             id,
@@ -454,19 +453,16 @@ impl Party {
         Ok(())
     }
     // called by block
-    pub fn disband_party(leader: Arc<Mutex<User>>, partyid: &mut u32) -> Result<(), Error> {
-        let party = leader.lock().party.take();
-        let Some(party) = party else {
-            return Self::init_player(leader, partyid);
-        };
-        exec_users_unlock(&party.read().players, |_, player| {
+    pub fn disband_party(&mut self, partyid: &mut u32) -> Result<(), Error> {
+        let players = self.players.clone();
+        exec_users_unlock(&players, |id, player| {
+            let _ = self.remove_player(id);
             let mut p_lock = player.lock();
             p_lock.party = None;
             let _ = p_lock.send_packet(&Packet::PartyDisbandedMarker);
             drop(p_lock);
             let _ = Self::init_player(player.clone(), partyid);
         });
-
         Ok(())
     }
     // called by block

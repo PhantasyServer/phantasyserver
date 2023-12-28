@@ -5,10 +5,8 @@ use crate::{
     map::Map,
     palette::Palette,
     party::{self, Party},
-    sql::Sql,
-    Action, Error,
+    Action, BlockData, Error,
 };
-use data_structs::ItemParameters;
 use parking_lot::{Mutex, MutexGuard, RwLock};
 use pso2packetlib::{
     protocol::{
@@ -19,13 +17,13 @@ use pso2packetlib::{
         spawn::CharacterSpawnPacket,
         Packet, PacketType,
     },
-    Connection,
+    Connection, PublicKey,
 };
 use std::{io, net::Ipv4Addr, sync::Arc, time::Instant};
 
 pub struct User {
     pub(crate) connection: Connection,
-    pub(crate) sql: Arc<Sql>,
+    pub(crate) blockdata: Arc<BlockData>,
     pub(crate) player_id: u32,
     pub(crate) char_id: u32,
     pub(crate) position: Position,
@@ -37,34 +35,29 @@ pub struct User {
     pub(crate) failed_pings: u32,
     pub(crate) packet_type: PacketType,
     pub(crate) ready_to_shutdown: bool,
-    pub(crate) blockname: String,
     pub(crate) nickname: String,
     pub(crate) party_invites: Vec<PartyInvite>,
     pub(crate) party_ignore: Pr::party::RejectStatus,
     pub(crate) inventory: Inventory,
     pub(crate) palette: Palette,
-    pub(crate) item_attrs: Arc<RwLock<ItemParameters>>,
 }
 
 impl User {
-    pub fn new(
+    pub(crate) fn new(
         stream: std::net::TcpStream,
-        sql: Arc<Sql>,
-        blockname: String,
-        blockid: u16,
-        item_attrs: Arc<RwLock<ItemParameters>>,
+        blockdata: Arc<BlockData>,
     ) -> Result<User, Error> {
         stream.set_nonblocking(true)?;
         stream.set_nodelay(true)?;
         let mut con = Connection::new(
             stream,
             PacketType::Classic,
-            Some("keypair.pem".into()),
-            None,
+            blockdata.key.clone(),
+            PublicKey::None,
         );
         match con.write_packet(&Packet::ServerHello(Pr::server::ServerHelloPacket {
             unk1: 3,
-            blockid,
+            blockid: blockdata.block_id as u16,
             unk2: 68833280,
         })) {
             Ok(_) => {}
@@ -73,7 +66,7 @@ impl User {
         }
         Ok(User {
             connection: con,
-            sql,
+            blockdata,
             player_id: 0,
             char_id: 0,
             character: None,
@@ -85,13 +78,11 @@ impl User {
             failed_pings: 0,
             packet_type: PacketType::Classic,
             ready_to_shutdown: false,
-            blockname,
             nickname: String::new(),
             party_invites: vec![],
             party_ignore: Default::default(),
             inventory: Default::default(),
             palette: Default::default(),
-            item_attrs,
         })
     }
     // I hope async guard won't cause me troubles in the future
@@ -146,7 +137,7 @@ impl User {
         self.player_id
     }
     pub fn send_item_attrs(&mut self) -> Result<(), Error> {
-        let item_attrs = self.item_attrs.read();
+        let item_attrs = self.blockdata.item_attrs.read();
         let data = match self.packet_type {
             PacketType::Vita => &item_attrs.vita_attrs,
             _ => &item_attrs.pc_attrs,
@@ -183,12 +174,17 @@ impl User {
         }))?;
         Ok(())
     }
-    pub fn send_position(user: MutexGuard<User>, packet: Packet) -> Result<Action, Error> {
+    pub async fn send_position(
+        user: MutexGuard<'_, User>,
+        packet: Packet,
+    ) -> Result<Action, Error> {
         let id = user.get_user_id();
         let map = user.get_current_map();
         drop(user);
         if let Some(map) = map {
-            map.lock().send_movement(packet, id);
+            tokio::task::spawn_blocking(move || map.lock().send_movement(packet, id))
+                .await
+                .unwrap();
         }
         Ok(Action::Nothing)
     }
@@ -228,7 +224,7 @@ async fn packet_handler(
         Packet::CharacterNewNameRequest(data) => H::login::newname_request(user, data).await,
         Packet::StartGame(data) => H::login::start_game(user, data).await,
         Packet::LoginHistoryRequest => H::login::login_history(user).await,
-        Packet::BlockListRequest => H::login::block_list(user),
+        Packet::BlockListRequest => H::login::block_list(user).await,
         Packet::ChallengeResponse(..) => {
             user.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);
@@ -236,20 +232,20 @@ async fn packet_handler(
         }
         Packet::SystemInformation(..) => Ok(Action::Nothing),
         Packet::InitialLoad => Ok(Action::InitialLoad),
-        Packet::Movement(data) => H::object::movement(user_guard, data),
+        Packet::Movement(data) => H::object::movement(user_guard, data).await,
         Packet::MovementEnd(ref data) => {
             user.position = data.cur_pos;
-            User::send_position(user_guard, packet)
+            User::send_position(user_guard, packet).await
         }
-        Packet::MovementAction(..) => User::send_position(user_guard, packet),
-        Packet::ActionUpdate(..) => User::send_position(user_guard, packet),
-        Packet::Interact(data) => H::object::action(user_guard, data),
-        Packet::ChatMessage(..) => H::chat::send_chat(user_guard, packet),
+        Packet::MovementAction(..) => User::send_position(user_guard, packet).await,
+        Packet::ActionUpdate(..) => User::send_position(user_guard, packet).await,
+        Packet::Interact(data) => H::object::action(user_guard, data).await,
+        Packet::ChatMessage(..) => H::chat::send_chat(user_guard, packet).await,
         Packet::SymbolArtListRequest => H::symbolart::list_sa(user).await,
         Packet::ChangeSymbolArt(data) => H::symbolart::change_sa(user, data).await,
         Packet::SymbolArtData(data) => H::symbolart::add_sa(user, data).await,
         Packet::SymbolArtClientDataRequest(data) => H::symbolart::data_request(user, data).await,
-        Packet::SendSymbolArt(data) => H::symbolart::send_sa(user_guard, data),
+        Packet::SendSymbolArt(data) => H::symbolart::send_sa(user_guard, data).await,
         Packet::MapLoaded(data) => H::server::map_loaded(user, data),
         Packet::QuestCounterRequest => H::quest::counter_request(user),
         Packet::AvailableQuestsRequest(data) => H::quest::avaliable_quests(user, data),
@@ -263,15 +259,19 @@ async fn packet_handler(
             Ok(Action::Nothing)
         }
         Packet::GetPartyDetails(data) => {
-            party::Party::get_details(user_guard, data)?;
+            //SAFETY: this lock will live as long as the closure because we await it
+            let lock: MutexGuard<'static, User> = unsafe { std::mem::transmute(user_guard) };
+            tokio::task::spawn_blocking(move || party::Party::get_details(lock, data))
+                .await
+                .unwrap()?;
             Ok(Action::Nothing)
         }
         Packet::AcceptInvite(Pr::party::AcceptInvitePacket { party_object, .. }) => {
             Ok(Action::AcceptPartyInvite(party_object.id))
         }
-        Packet::NewPartySettings(data) => H::party::set_party_settings(user_guard, data),
+        Packet::NewPartySettings(data) => H::party::set_party_settings(user_guard, data).await,
         Packet::LeaveParty => Ok(Action::LeaveParty),
-        Packet::TransferLeader(data) => H::party::transfer_leader(user_guard, data),
+        Packet::TransferLeader(data) => H::party::transfer_leader(user_guard, data).await,
         Packet::DisbandParty(..) => Ok(Action::DisbandParty),
         Packet::KickMember(data) => Ok(Action::KickPartyMember(data.member)),
         Packet::SetInviteDecline(Pr::party::InviteDeclinePacket { decline_status }) => {
@@ -285,15 +285,17 @@ async fn packet_handler(
         Packet::DiscardItemRequest(data) => H::item::discard_inventory(user, data),
         Packet::DiscardStorageItemRequest(data) => H::item::discard_storage(user, data),
         Packet::GetItemDescription(data) => H::item::get_description(user, data),
-        Packet::SetBusy => H::party::set_busy_state(user_guard, BusyState::Busy),
-        Packet::SetNotBusy => H::party::set_busy_state(user_guard, BusyState::NotBusy),
-        Packet::ChatStatus(data) => H::party::set_chat_state(user_guard, data),
+        Packet::SetBusy => H::party::set_busy_state(user_guard, BusyState::Busy).await,
+        Packet::SetNotBusy => H::party::set_busy_state(user_guard, BusyState::NotBusy).await,
+        Packet::ChatStatus(data) => H::party::set_chat_state(user_guard, data).await,
         Packet::FullPaletteInfoRequest => H::palette::send_full_palette(user),
-        Packet::SetPalette(data) => H::palette::set_palette(user_guard, data),
+        Packet::SetPalette(data) => H::palette::set_palette(user_guard, data).await,
         Packet::SetSubPalette(data) => H::palette::set_subpalette(user, data),
-        Packet::UpdatePalette(data) => H::palette::update_palette(user_guard, data),
+        Packet::UpdatePalette(data) => H::palette::update_palette(user_guard, data).await,
         Packet::UpdateSubPalette(data) => H::palette::update_subpalette(user, data),
         Packet::SetDefaultPAs(data) => H::palette::set_default_pa(user, data),
+        Packet::BlockSwitchRequest(data) => H::login::switch_block(user, data).await,
+        Packet::BlockLogin(data) => H::login::challenge_login(user, data).await,
         data => {
             println!("Client {}: {data:?}", user.player_id);
             Ok(Action::Nothing)
@@ -327,7 +329,7 @@ async fn packet_handler(
 impl Drop for User {
     fn drop(&mut self) {
         if self.character.is_some() {
-            let sql = self.sql.clone();
+            let sql = self.blockdata.sql.clone();
             let inventory = std::mem::take(&mut self.inventory);
             let palette = std::mem::take(&mut self.palette);
             let char_id = self.char_id;

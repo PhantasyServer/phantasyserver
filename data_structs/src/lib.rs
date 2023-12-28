@@ -8,7 +8,7 @@ use p256::{ecdh::EphemeralSecret, PublicKey};
 use pso2packetlib::{
     protocol::{
         items::{Item, ItemId, StorageInfo},
-        login::{LoginAttempt, ShipStatus},
+        login::{LoginAttempt, ShipStatus, UserInfoPacket},
         models::Position,
         server::LoadLevelPacket,
         spawn::{NPCSpawnPacket, ObjectSpawnPacket},
@@ -109,6 +109,21 @@ pub enum MasterShipAction {
     UserLoginVita(UserCreds),
     UserRegisterVita(UserCreds),
     UserLoginResult(UserLoginResult),
+    GetUserInfo(u32),
+    UserInfo(UserInfoPacket),
+    PutUserInfo {
+        id: u32,
+        info: UserInfoPacket,
+    },
+    /// Create a new block login challenge. Parameter is the player id
+    NewBlockChallenge(u32),
+    /// Result of a new block login challenge request.
+    /// Parameter is the challenge
+    BlockChallengeResult(u32),
+    ChallengeLogin {
+        challenge: u32,
+        player_id: u32,
+    },
     GetStorage(u32),
     GetStorageResult(AccountStorages),
     PutStorage {
@@ -139,6 +154,15 @@ pub struct ShipInfo {
     pub name: String,
     pub data_type: DataTypeDef,
     pub status: ShipStatus,
+    pub key: KeyInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct KeyInfo {
+    /// Modulus 'n' in little endian form
+    pub n: Vec<u8>,
+    /// Public exponent 'e' in little endian form
+    pub e: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -202,7 +226,7 @@ impl ShipConnection {
         hostkey: &[u8; 32],
     ) -> Result<Self, Error> {
         //send hostkey
-        stream.write(hostkey).await?;
+        stream.write_all(hostkey).await?;
         let key = ShipConnection::key_exchange(&mut stream).await?;
         Ok(Self {
             stream,
@@ -213,7 +237,7 @@ impl ShipConnection {
     }
     pub async fn new_client<F>(mut stream: tokio::net::TcpStream, check: F) -> Result<Self, Error>
     where
-        F: FnOnce(Ipv4Addr, &[u8; 32]) -> bool,
+        F: FnOnce(Ipv4Addr, &[u8; 32]) -> bool + Send,
     {
         //send hostkey
         let mut hostkey = [0; 32];
@@ -236,7 +260,7 @@ impl ShipConnection {
         })
     }
     pub async fn read(&mut self) -> Result<MasterShipComm, Error> {
-        self.read_for(Duration::from_secs(1 * 24 * 3600)).await
+        self.read_for(Duration::from_secs(24 * 3600)).await
     }
     pub async fn read_for(&mut self, time: Duration) -> Result<MasterShipComm, Error> {
         let mut buf = [0; 4096];

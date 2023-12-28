@@ -33,12 +33,8 @@ impl MasterConnection {
             rmp_serde::from_slice(&tokio::fs::read("hostkeys.mp").await.unwrap_or(vec![]))
                 .unwrap_or(Default::default());
         let conn = ShipConnection::new_client(socket, |ip, key| {
-            for entry in hostkeys.iter().filter(|d| d.ip == ip) {
-                if &entry.key == key {
-                    return true;
-                } else {
-                    return false;
-                }
+            if let Some(host) = hostkeys.iter().find(|d| d.ip == ip) {
+                return &host.key == key;
             }
             let key = key.to_owned();
             hostkeys.push(HostKey { ip, key });
@@ -72,12 +68,9 @@ impl MasterConnection {
             {
                 return Ok(lock.actions.swap_remove(pos).1);
             }
-            match tokio::time::timeout(Duration::from_millis(10), lock.conn.read()).await {
-                Ok(r) => {
-                    let r = r?;
-                    lock.actions.push((r.id, r.action));
-                }
-                Err(_) => {}
+            if let Ok(r) = tokio::time::timeout(Duration::from_millis(10), lock.conn.read()).await {
+                let r = r?;
+                lock.actions.push((r.id, r.action));
             }
 
             drop(lock);

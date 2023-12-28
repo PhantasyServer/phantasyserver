@@ -12,9 +12,9 @@ use pso2packetlib::protocol::{
 
 pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
     let packet = {
-        let mut uuid = user.sql.get_uuid().await?;
+        let mut uuid = user.blockdata.sql.get_uuid().await?;
         let packet = user.inventory.move_to_storage(packet, &mut uuid)?;
-        user.sql.set_uuid(uuid).await?;
+        user.blockdata.sql.set_uuid(uuid).await?;
         packet
     };
     user.send_packet(&packet)?;
@@ -23,9 +23,9 @@ pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket
 
 pub async fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPacket) -> HResult {
     let packet = {
-        let mut uuid = user.sql.get_uuid().await?;
+        let mut uuid = user.blockdata.sql.get_uuid().await?;
         let packet = user.inventory.move_to_inventory(packet, &mut uuid)?;
-        user.sql.set_uuid(uuid).await?;
+        user.blockdata.sql.set_uuid(uuid).await?;
         packet
     };
     user.send_packet(&packet)?;
@@ -52,9 +52,9 @@ pub fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestPacket)
 
 pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
     let packet = {
-        let mut uuid = user.sql.get_uuid().await?;
+        let mut uuid = user.blockdata.sql.get_uuid().await?;
         let packet = user.inventory.move_storages(packet, &mut uuid)?;
-        user.sql.set_uuid(uuid).await?;
+        user.blockdata.sql.set_uuid(uuid).await?;
         packet
     };
     user.send_packet(&packet)?;
@@ -62,7 +62,7 @@ pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -
 }
 
 pub fn get_description(user: &mut User, packet: GetItemDescriptionPacket) -> HResult {
-    let names_ref = user.item_attrs.clone();
+    let names_ref = user.blockdata.item_attrs.clone();
     match names_ref.read().names.iter().find(|x| x.id == packet.item) {
         Some(name) => {
             let packet = LoadItemDescriptionPacket {

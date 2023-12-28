@@ -285,10 +285,10 @@ impl<W: Write> IceWriter<W> {
         std::io::copy(&mut total_group, &mut self.writer)?;
         Ok(())
     }
-    pub fn into_inner(mut self) -> Result<W, (W, std::io::Error)> {
+    pub fn into_inner(mut self) -> Result<W, std::io::Error> {
         match self.finalize() {
             Ok(_) => Ok(self.writer),
-            Err(e) => Err((self.writer, e.into())),
+            Err(e) => Err(e),
         }
     }
 }

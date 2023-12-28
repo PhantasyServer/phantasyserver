@@ -12,7 +12,8 @@ ship = ["dep:tokio", "dep:p256", "dep:rand_core", "dep:sha2", "dep:aes-gcm", "rm
 
 [dependencies]
 serde = { version = "1.0.193", features = ["derive"] }
-pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "0710c93", default-features = false, features = ["serde", "item_attrs"] }
+# pso2packetlib = { path = "../../pso2packetlib", default-features = false, features = ["serde", "item_attrs"] }
+pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "fcdd019", default-features = false, features = ["serde", "item_attrs"] }
 rmp-serde = { version = "1.1.2", optional = true }
 serde_json = { version = "1.0.99", optional = true }
 thiserror = "1.0.40"
