@@ -10,8 +10,8 @@ default-run = "pso2ship_server"
 byteorder = "1.4.3"
 rand = "0.8.5"
 rsa = "0.9.2"
-# pso2packetlib = { path = "../../pso2packetlib", default-features = false, features = ["serde", "connection", "vita_enc", "base_enc", "ppac", "item_attrs"] }
-pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "fcdd019", default-features = false, features = ["serde", "connection", "vita_enc", "base_enc", "ppac", "item_attrs"] }
+pso2packetlib = { path = "../../pso2packetlib", default-features = false, features = ["serde", "connection", "vita_enc", "base_enc", "ppac", "item_attrs"] }
+# pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "fcdd019", default-features = false, features = ["serde", "connection", "vita_enc", "base_enc", "ppac", "item_attrs"] }
 sqlx = { version = "0.7.3", default-features = false, features = ["any", "runtime-tokio", "sqlite", "mysql", "migrate"] }
 thiserror = "1.0.40"
 serde_json = "1.0.99"

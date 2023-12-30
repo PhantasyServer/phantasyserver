@@ -431,15 +431,14 @@ impl Party {
         let Some(party) = party.upgrade() else {
             return Ok(());
         };
-        if let Some(party) = target_player.party.take() {
-            let p_id = target_player.player_id;
-            parking_lot::MutexGuard::unlocked(&mut target_player, || {
-                party.write().remove_player(p_id)
-            })?;
-        }
+        let orig_party = target_player.party.take();
+        let p_id = target_player.player_id;
         target_player.party_invites.swap_remove(i);
         target_player.party = Some(party.clone());
         drop(target_player);
+        if let Some(party) = orig_party {
+            let _ = party.write().remove_player(p_id);
+        }
         party.write().add_player(player)?;
 
         Ok(())
@@ -455,14 +454,17 @@ impl Party {
     // called by block
     pub fn disband_party(&mut self, partyid: &mut u32) -> Result<(), Error> {
         let players = self.players.clone();
-        exec_users_unlock(&players, |id, player| {
+        exec_users(&players, |id, mut player| {
+            player.party = None;
+            let _ = player.send_packet(&Packet::PartyDisbandedMarker);
+            drop(player);
             let _ = self.remove_player(id);
-            let mut p_lock = player.lock();
-            p_lock.party = None;
-            let _ = p_lock.send_packet(&Packet::PartyDisbandedMarker);
-            drop(p_lock);
-            let _ = Self::init_player(player.clone(), partyid);
         });
+        for player in players {
+            if let Some(player) = player.1.upgrade() {
+                let _ = Self::init_player(player.clone(), partyid);
+            }
+        }
         Ok(())
     }
     // called by block
@@ -522,18 +524,10 @@ fn exec_users<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
 where
     F: FnMut(u32, MutexGuard<User>),
 {
-    users
+    for (id, user) in users
         .iter()
         .filter_map(|(i, p)| p.upgrade().map(|p| (*i, p)))
-        .for_each(|(i, p)| f(i, p.lock()));
-}
-
-fn exec_users_unlock<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
-where
-    F: FnMut(u32, Arc<Mutex<User>>),
-{
-    users
-        .iter()
-        .filter_map(|(i, p)| p.upgrade().map(|p| (*i, p)))
-        .for_each(|(i, p)| f(i, p));
+    {
+        f(id, user.lock())
+    }
 }

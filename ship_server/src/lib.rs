@@ -1,9 +1,11 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
+#![allow(clippy::await_holding_lock)]
 pub mod ice;
 pub mod inventory;
 pub mod invites;
 pub mod map;
 pub mod master_conn;
+pub mod mutex;
 pub mod palette;
 pub mod party;
 pub mod sql;
@@ -311,7 +313,7 @@ async fn run_action(
                         return Some(client.clone());
                     }
                 }
-                return None;
+                None
             }
             .await;
             if let Some(invitee) = invitee {

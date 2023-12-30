@@ -38,27 +38,98 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
             "!reload_map" => {
                 if let Some(ref map) = user.map {
                     let map = map.clone();
-                    //SAFETY: this ref will live as long as the closure because we await it
-                    let lock: &'static mut MutexGuard<User> =
-                        unsafe { std::mem::transmute(&mut user) };
-                    tokio::task::spawn_blocking(move || {
-                        MutexGuard::unlocked(lock, || map.lock().reload_objs())
-                    })
-                    .await
-                    .unwrap()?
+                    drop(user);
+                    tokio::task::spawn_blocking(move || map.lock().reload_objs())
+                        .await
+                        .unwrap()?
+                }
+            }
+            "!start_con" => {
+                let name = args.next();
+                if name.is_none() {
+                    user.send_system_msg("No concert name provided")?;
+                    return Ok(Action::Nothing);
+                }
+                let name = name.unwrap();
+                let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
+                    object1: pso2packetlib::protocol::ObjectHeader {
+                        id: user.player_id,
+                        entity_type: pso2packetlib::protocol::EntityType::Player,
+                        ..Default::default()
+                    },
+                    object2: pso2packetlib::protocol::ObjectHeader {
+                        id: 1,
+                        entity_type: pso2packetlib::protocol::EntityType::Object,
+                        ..Default::default()
+                    },
+                    object3: pso2packetlib::protocol::ObjectHeader {
+                        id: 1,
+                        entity_type: pso2packetlib::protocol::EntityType::Object,
+                        ..Default::default()
+                    },
+                    attribute: format!("Start({name})").into(),
+                    ..Default::default()
+                });
+                user.send_packet(&packet)?;
+            }
+            "!send_con" => {
+                let name = args.next();
+                if name.is_none() {
+                    user.send_system_msg("No action provided")?;
+                    return Ok(Action::Nothing);
+                }
+                let name = name.unwrap();
+                let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
+                    object1: pso2packetlib::protocol::ObjectHeader {
+                        id: user.player_id,
+                        entity_type: pso2packetlib::protocol::EntityType::Player,
+                        ..Default::default()
+                    },
+                    object2: pso2packetlib::protocol::ObjectHeader {
+                        id: 1,
+                        entity_type: pso2packetlib::protocol::EntityType::Object,
+                        ..Default::default()
+                    },
+                    object3: pso2packetlib::protocol::ObjectHeader {
+                        id: user.player_id,
+                        entity_type: pso2packetlib::protocol::EntityType::Player,
+                        ..Default::default()
+                    },
+                    attribute: name.into(),
+                    ..Default::default()
+                });
+                user.send_packet(&packet)?;
+            }
+            "!get_pos" => {
+                let pos = user.position;
+                let pos: pso2packetlib::protocol::models::EulerPosition = pos.into();
+                user.send_system_msg(&format!("{pos:?}"))?;
+            }
+            "!get_close_obj" => {
+                let dist = args.next().unwrap_or("1.0").parse().unwrap_or(1.0);
+                let map = user.get_current_map();
+                if map.is_none() {
+                    return Ok(Action::Nothing);
+                }
+                let map = map.unwrap();
+                let lock = async_lock(&map).await;
+                let objs = lock.get_close_objects(&user, dist);
+                let user_pos = user.position;
+                for obj in objs {
+                    user.send_system_msg(&format!(
+                        "Id: {}, Name: {}, Dist: {}",
+                        obj.object.id,
+                        obj.name,
+                        user_pos.dist(&obj.position)
+                    ))?;
                 }
             }
             "!reload_items" => {
                 let mul_progress = indicatif::MultiProgress::new();
                 let (pc, vita) = {
-                    //SAFETY: this ref will live as long as the closure because we await it
-                    let lock: &'static mut MutexGuard<User> =
-                        unsafe { std::mem::transmute(&mut user) };
-                    tokio::task::spawn_blocking(move || {
-                        MutexGuard::unlocked(lock, || create_attr_files(&mul_progress))
-                    })
-                    .await
-                    .unwrap()?
+                    tokio::task::spawn_blocking(move || create_attr_files(&mul_progress))
+                        .await
+                        .unwrap()?
                 };
                 let mut attrs = async_write(&user.blockdata.item_attrs).await;
                 attrs.pc_attrs = pc;

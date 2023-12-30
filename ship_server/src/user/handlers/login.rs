@@ -7,10 +7,7 @@ use pso2packetlib::{
         ObjectHeader, Packet, PacketType,
     },
 };
-use std::{
-    net::Ipv4Addr,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::HResult;
 
@@ -103,7 +100,7 @@ pub async fn block_list(user: &mut User) -> HResult {
         blocks.blocks.push(login::BlockInfo {
             block_id: block.id as u16,
             blockname: block.name.to_string(),
-            ip: Ipv4Addr::from(block.ip),
+            ip: block.ip,
             port: block.port,
             cur_capacity: block.players as f32 / block.max_players as f32,
             unk4: 26,
@@ -186,7 +183,7 @@ pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPack
             unk2: packet.unk2,
             unk3: packet.unk3,
             block_id: packet.block_id,
-            ip: Ipv4Addr::from(block.ip),
+            ip: block.ip,
             port: block.port,
             unk4: 1,
             challenge,

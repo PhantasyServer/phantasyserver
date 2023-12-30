@@ -6,7 +6,7 @@ use pso2packetlib::protocol::{
     self,
     objects::RemoveObjectPacket,
     playerstatus::SetPlayerIDPacket,
-    spawn::{CharacterSpawnPacket, CharacterSpawnType},
+    spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
     EntityType, ObjectHeader, Packet, PacketType,
 };
@@ -483,6 +483,16 @@ impl Map {
         globals.raw_remove("players")?;
         globals.raw_remove("call_type")?;
         Ok(())
+    }
+    pub fn get_close_objects(&self, user: &User, dist: f64) -> Vec<ObjectSpawnPacket> {
+        let mut obj = vec![];
+        for self_obj in &self.data.objects {
+            if user.position.dist(&self_obj.position) < dist {
+                obj.push(self_obj.clone());
+            }
+        }
+
+        obj
     }
 }
 

@@ -6,7 +6,7 @@ use pso2packetlib::PrivateKey;
 use pso2ship_server::{init_block, master_conn::MasterConnection, sql, BlockInfo};
 use rsa::{
     pkcs8::{DecodePrivateKey, EncodePrivateKey},
-    traits::{PrivateKeyParts, PublicKeyParts},
+    traits::PublicKeyParts,
     RsaPrivateKey,
 };
 use std::{error, io, net::Ipv4Addr, sync::Arc};
@@ -16,17 +16,8 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
     let mul_progress = MultiProgress::new();
     let startup_progress = mul_progress.add(ProgressBar::new_spinner());
     startup_progress.set_message("Starting server...");
-    let (n, e, d, p, q) = match std::fs::metadata("keypair.pem") {
-        Ok(..) => {
-            let key = RsaPrivateKey::read_pkcs8_pem_file("keypair.pem")?;
-            (
-                key.n().to_bytes_le(),
-                key.e().to_bytes_le(),
-                key.d().to_bytes_le(),
-                key.primes()[0].to_bytes_le(),
-                key.primes()[1].to_bytes_le(),
-            )
-        }
+    let key = match std::fs::metadata("keypair.pem") {
+        Ok(..) => RsaPrivateKey::read_pkcs8_pem_file("keypair.pem")?,
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             let key_progress = mul_progress.add(ProgressBar::new_spinner());
             key_progress.set_message(style("No keyfile found, creating...").yellow().to_string());
@@ -34,13 +25,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
             let key = RsaPrivateKey::new(&mut rand_gen, 1024)?;
             key.write_pkcs8_pem_file("keypair.pem", rsa::pkcs8::LineEnding::default())?;
             key_progress.finish_with_message("Keyfile created.");
-            (
-                key.n().to_bytes_le(),
-                key.e().to_bytes_le(),
-                key.d().to_bytes_le(),
-                key.primes()[0].to_bytes_le(),
-                key.primes()[1].to_bytes_le(),
-            )
+            key
         }
         Err(e) => {
             return Err(e.into());
@@ -72,8 +57,8 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
                 data_type: data_structs::DataTypeDef::Parsed,
                 status: pso2packetlib::protocol::login::ShipStatus::Online,
                 key: data_structs::KeyInfo {
-                    n: n.clone(),
-                    e: e.clone(),
+                    n: key.n().to_bytes_le(),
+                    e: key.e().to_bytes_le(),
                 },
             },
         )
@@ -111,13 +96,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         let server_statuses = server_statuses.clone();
         let sql = sql.clone();
         let item_data = item_data.clone();
-        let key = PrivateKey::Params {
-            n: n.clone(),
-            e: e.clone(),
-            d: d.clone(),
-            p: p.clone(),
-            q: q.clone(),
-        };
+        let key = PrivateKey::Key(key.clone());
         blocks.push(tokio::spawn(async move {
             match init_block(server_statuses, new_block, sql, item_data, key).await {
                 Ok(_) => {}
@@ -138,7 +117,6 @@ async fn make_block_balance(
     port: u16,
 ) -> io::Result<()> {
     use tokio::net::TcpListener;
-    // TODO: add ship id config
     let listener = TcpListener::bind(("0.0.0.0", port)).await?;
     tokio::spawn(async move {
         loop {
