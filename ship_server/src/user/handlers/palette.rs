@@ -1,11 +1,9 @@
-use parking_lot::MutexGuard;
+use super::HResult;
+use crate::{mutex::MutexGuard, Action, User};
 use pso2packetlib::protocol::palette::{
     SetDefaultPAsPacket, SetPalettePacket, SetSubPalettePacket, UpdatePalettePacket,
     UpdateSubPalettePacket,
 };
-
-use super::HResult;
-use crate::{Action, User};
 
 pub fn send_full_palette(user: &mut User) -> HResult {
     user.send_packet(&user.palette.send_full_palette())?;
@@ -52,9 +50,7 @@ async fn send_palette_update(user: MutexGuard<'_, User>) -> Result<(), crate::Er
     let map = user.map.clone();
     drop(user);
     if let Some(map) = map {
-        tokio::task::spawn_blocking(move || map.lock().send_palette_change(id))
-            .await
-            .unwrap()?;
+        map.lock().await.send_palette_change(id).await?;
     }
     Ok(())
 }

@@ -1,6 +1,5 @@
 use super::HResult;
-use crate::{Action, User};
-use parking_lot::MutexGuard;
+use crate::{mutex::MutexGuard, Action, User};
 use pso2packetlib::protocol::{objects, Packet};
 
 pub async fn movement(mut user: MutexGuard<'_, User>, packet: objects::MovementPacket) -> HResult {
@@ -33,9 +32,7 @@ pub async fn action(user: MutexGuard<'_, User>, packet: objects::InteractPacket)
     let map = user.get_current_map();
     drop(user);
     if let Some(map) = map {
-        tokio::task::spawn_blocking(move || map.lock().interaction(packet, id))
-            .await
-            .unwrap()?;
+        map.lock().await.interaction(packet, id).await?;
     }
     Ok(Action::Nothing)
 }

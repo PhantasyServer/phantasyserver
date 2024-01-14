@@ -88,8 +88,8 @@ impl MasterConnection {
         }
         match Self::run_action(this, MAS::RegisterShip(info)).await? {
             MAS::RegisterShipResult(x) => Ok(x),
-            MAS::Error(e) => Err(Error::Generic(e)),
-            _ => Err(Error::InvalidInput),
+            MAS::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::InvalidInput("register_ship")),
         }
     }
 }

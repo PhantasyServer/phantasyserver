@@ -1,5 +1,4 @@
-use crate::party::Party;
-use parking_lot::RwLock;
+use crate::{mutex::RwLock, party::Party};
 use std::sync::Weak;
 
 pub struct PartyInvite {

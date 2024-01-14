@@ -1,0 +1,91 @@
+name: Test and build
+on: push
+env: 
+  RUSTFLAGS: "-Dwarnings"
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Pull repo
+      uses: actions/checkout@v2
+    # TODO: some sort of testing would probably go a long way
+    - name: Check
+      if: ${{ success() }}
+      run: cargo check --all-targets --all-features
+    - name: Run clippy
+      if: ${{ success() }}
+      run: cargo clippy --all-targets --all-features
+  build-linux:
+    runs-on: ubuntu-22.04
+    needs: test
+    steps:
+    - name: Pull repo
+      uses: actions/checkout@v2
+    - name: Build
+      if: ${{ success() }}
+      run: cargo build --release
+    - name: Move build artifacts
+      if: ${{ success() }}
+      run: mv target/release/{pso2ship_server,master_ship,data_compiler} .
+    - name: Pack build artifacts and extra data
+      if: ${{ success() }}
+      run: tar --zstd -cf pso2server.tar.zst pso2ship_server master_ship data_compiler friends.json item_attrs.json lobby.mp names.mp quests
+    - name: Upload artifact
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v1
+      with:
+        name: x86_64-linux-pso2server.tar.zst
+        path: ./pso2server.tar.zst
+  crossbuild-windows:
+    runs-on: ubuntu-22.04
+    needs: test
+    steps:
+    - name: Pull repo
+      uses: actions/checkout@v2
+    - name: Install MinGw
+      if: ${{ success() }}
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        cc: 0
+    - name: Install windows target
+      if: ${{ success() }}
+      run: rustup target add x86_64-pc-windows-gnu
+    - name: Build
+      if: ${{ success() }}
+      run: cargo build --target x86_64-pc-windows-gnu --release
+    - name: Move build artifacts
+      if: ${{ success() }}
+      run: mv target/x86_64-pc-windows-gnu/release/{pso2ship_server.exe,master_ship.exe,data_compiler.exe} .
+    - name: Pack build artifacts and extra data
+      if: ${{ success() }}
+      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friends.json item_attrs.json lobby.mp names.mp quests
+    - name: Upload artifact
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v1
+      with:
+        name: x86_64-mingw-pso2server.7z
+        path: ./pso2server.7z
+  build-windows:
+    runs-on: windows-2022
+    needs: test
+    steps:
+    - name: Pull repo
+      uses: actions/checkout@v2
+    - name: Build
+      if: ${{ success() }}
+      run: cargo build --release
+    - name: Move build artifacts
+      if: ${{ success() }}
+      run: |
+        move target/release/pso2ship_server.exe .
+        move target/release/master_ship.exe .
+        move target/release/data_compiler.exe .
+    - name: Pack build artifacts and extra data
+      if: ${{ success() }}
+      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friends.json item_attrs.json lobby.mp names.mp quests
+    - name: Upload artifact
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v1
+      with:
+        name: x86_64-windows-pso2server.7z
+        path: ./pso2server.7z

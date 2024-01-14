@@ -171,7 +171,7 @@ impl Inventory {
             .items
             .iter()
             .find(|x| x.uuid == uuid)
-            .ok_or(Error::InvalidInput)?;
+            .ok_or(Error::InvalidInput("equip_item"))?;
         self.inventory.equiped.push(uuid);
         Ok(())
     }
@@ -182,7 +182,7 @@ impl Inventory {
             .iter()
             .enumerate()
             .find(|(_, &x)| x == uuid)
-            .ok_or(Error::InvalidInput)?;
+            .ok_or(Error::InvalidInput("unequip_item"))?;
         self.inventory.equiped.remove(pos);
         Ok(())
     }
@@ -191,7 +191,7 @@ impl Inventory {
             .items
             .iter()
             .find(|x| x.uuid == uuid)
-            .ok_or(Error::InvalidInput)
+            .ok_or(Error::InvalidInput("get_inv_item"))
             .cloned()
     }
     pub fn move_to_storage(
@@ -206,7 +206,7 @@ impl Inventory {
                 1 => &mut self.storages.premium,
                 2 => &mut self.storages.extend1,
                 14 => &mut self.character,
-                _ => return Err(Error::InvalidInput),
+                _ => return Err(Error::InvalidInput("move_to_storage")),
             };
             let result = decrease_item(&mut self.inventory.items, info.uuid, info.amount as u16)?;
             let (item, amount) = match result {
@@ -274,7 +274,7 @@ impl Inventory {
                 1 => &mut self.storages.premium,
                 2 => &mut self.storages.extend1,
                 14 => &mut self.character,
-                _ => return Err(Error::InvalidInput),
+                _ => return Err(Error::InvalidInput("move_to_inventory")),
             };
             let result = decrease_item(&mut storage.items, info.uuid, info.amount as u16)?;
             let (item, amount) = match result {
@@ -343,7 +343,7 @@ impl Inventory {
                 1 => &mut self.storages.premium,
                 2 => &mut self.storages.extend1,
                 14 => &mut self.character,
-                _ => return Err(Error::InvalidInput),
+                _ => return Err(Error::InvalidInput("move_storages")),
             };
             let result = decrease_item(&mut storage_src.items, info.uuid, info.amount)?;
             let (item, amount) = match result {
@@ -383,7 +383,7 @@ impl Inventory {
                 1 => &mut self.storages.premium,
                 2 => &mut self.storages.extend1,
                 14 => &mut self.character,
-                _ => return Err(Error::InvalidInput),
+                _ => return Err(Error::InvalidInput("move_storages")),
             };
             match increase_item(&mut storage_dst.items, item, amount)? {
                 ChangeItemResult::Changed {
@@ -458,7 +458,7 @@ impl Inventory {
                 1 => &mut self.storages.premium,
                 2 => &mut self.storages.extend1,
                 14 => &mut self.character,
-                _ => return Err(Error::InvalidInput),
+                _ => return Err(Error::InvalidInput("discard_storage")),
             };
             match decrease_item(&mut storage.items, info.uuid, info.amount as u16)? {
                 ChangeItemResult::Changed {
@@ -547,7 +547,7 @@ fn decrease_item(items: &mut Vec<Item>, uuid: u64, amount: u16) -> Result<Change
         .iter_mut()
         .enumerate()
         .find(|(_, x)| x.uuid == uuid)
-        .ok_or(Error::InvalidInput)?;
+        .ok_or(Error::InvalidInput("decrease_item"))?;
     if let ItemType::Consumable(data) = &mut item.data {
         let taken = u16::min(amount, data.amount);
         let new_amount = data.amount.saturating_sub(taken);
@@ -574,7 +574,7 @@ fn decrease_item(items: &mut Vec<Item>, uuid: u64, amount: u16) -> Result<Change
         }
     } else {
         if amount > 1 {
-            return Err(Error::InvalidInput);
+            return Err(Error::InvalidInput("decrease_item"));
         }
         Ok(ChangeItemResult::Removed {
             item: items.swap_remove(pos),
@@ -600,7 +600,7 @@ fn increase_item(
                     item: i_item.clone(),
                 })
             } else {
-                Err(Error::InvalidInput)
+                Err(Error::InvalidInput("increase_item"))
             }
         }
         None => {

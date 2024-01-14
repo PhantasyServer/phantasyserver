@@ -1,56 +1,67 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![allow(clippy::await_holding_lock)]
-pub mod ice;
-pub mod inventory;
-pub mod invites;
-pub mod map;
-pub mod master_conn;
-pub mod mutex;
-pub mod palette;
-pub mod party;
-pub mod sql;
-pub mod user;
+#![allow(dead_code)]
+mod block;
+mod ice;
+mod inventory;
+mod invites;
+mod map;
+mod master_conn;
+mod mutex;
+mod palette;
+mod party;
+mod quests;
+mod sql;
+mod user;
+
 use console::style;
-use data_structs::ItemParameters;
+use data_structs::{ItemParameters, SerDeFile as _, ShipInfo};
 use ice::{IceFileInfo, IceWriter};
 use indicatif::{MultiProgress, ProgressBar};
-use parking_lot::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use master_conn::MasterConnection;
+use mutex::{Mutex, RwLock};
 use pso2packetlib::{
-    protocol::{self, login, models::item_attrs, Packet, PacketType},
+    protocol::{login, models::item_attrs, Packet, PacketType},
     Connection, PrivateKey, PublicKey,
 };
+use quests::Quests;
 use rand::Rng;
+use rsa::{
+    pkcs8::{DecodePrivateKey as _, EncodePrivateKey as _},
+    traits::PublicKeyParts as _,
+    RsaPrivateKey,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     io::{self, Cursor},
-    net::{Ipv4Addr, TcpListener},
-    sync::{mpsc, Arc},
-    time::Duration,
+    net::Ipv4Addr,
+    sync::{atomic::AtomicU32, Arc},
 };
 use thiserror::Error;
-pub use user::*;
+use user::*;
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
-pub struct Settings {
-    pub db_name: String,
-    pub blocks: Vec<BlockSettings>,
-    pub balance_port: u16,
-    pub master_ship: String,
+struct Settings {
+    db_name: String,
+    blocks: Vec<BlockSettings>,
+    balance_port: u16,
+    master_ship: String,
+    quest_dir: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
-pub struct BlockSettings {
-    pub port: Option<u16>,
-    pub name: String,
-    pub max_players: u32,
-    pub maps: HashMap<String, String>,
+struct BlockSettings {
+    port: Option<u16>,
+    name: String,
+    max_players: u32,
+    maps: HashMap<String, String>,
 }
 
 impl Settings {
-    pub async fn load(path: &str) -> Result<Settings, Error> {
+    async fn load(path: &str) -> Result<Settings, Error> {
         let string = match tokio::fs::read_to_string(path).await {
             Ok(s) => s,
             Err(_) => {
@@ -75,6 +86,7 @@ impl Default for Settings {
             balance_port: 12000,
             blocks: vec![BlockSettings::default()],
             master_ship: "localhost:15000".into(),
+            quest_dir: "quests".to_string(),
         }
     }
 }
@@ -91,10 +103,10 @@ impl Default for BlockSettings {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Invalid input")]
-    InvalidInput,
+    #[error("Invalid input in fn {0}")]
+    InvalidInput(&'static str),
     #[error("Invalid password")]
-    InvalidPassword(u32),
+    InvalidPassword,
     #[error("No user found")]
     NoUser,
     #[error("Unable to hash the password")]
@@ -105,6 +117,12 @@ pub enum Error {
     NoCharacter,
     #[error("No lobby map")]
     NoLobby,
+    #[error("Master ship returned error: {0}")]
+    MSError(String),
+    #[error("Master ship sent unexpected data")]
+    MSUnexpected,
+
+    // passthrough errors
     #[error(transparent)]
     SqlError(#[from] sqlx::Error),
     #[error(transparent)]
@@ -118,24 +136,29 @@ pub enum Error {
     #[error(transparent)]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
     #[error(transparent)]
+    RMPDecodeError(#[from] rmp_serde::decode::Error),
+    #[error(transparent)]
     UTF8Error(#[from] std::str::Utf8Error),
     #[error(transparent)]
     TomlSerError(#[from] toml::ser::Error),
     #[error(transparent)]
     TomlDeError(#[from] toml::de::Error),
-    #[error("{0}")]
-    Generic(String),
+    #[error(transparent)]
+    RSAError(#[from] rsa::Error),
+    #[error(transparent)]
+    PKCS8Error(#[from] rsa::pkcs8::Error),
 }
 
 #[derive(Clone)]
-pub struct BlockInfo {
-    pub id: u32,
-    pub name: String,
-    pub ip: Ipv4Addr,
-    pub port: u16,
-    pub max_players: u32,
-    pub players: u32,
-    pub maps: HashMap<String, String>,
+struct BlockInfo {
+    id: u32,
+    name: String,
+    ip: Ipv4Addr,
+    port: u16,
+    max_players: u32,
+    players: u32,
+    maps: HashMap<String, String>,
+    quests: Arc<Quests>,
 }
 
 struct BlockData {
@@ -143,222 +166,152 @@ struct BlockData {
     block_id: u32,
     block_name: String,
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
+    //TODO: remove rwlock after testing is done (waaay is the future)
     item_attrs: Arc<RwLock<ItemParameters>>,
     lobby: Arc<Mutex<map::Map>>,
     key: PrivateKey,
+    latest_mapid: AtomicU32,
+    latest_partyid: AtomicU32,
+    quests: Arc<Quests>,
 }
 
 #[derive(Default, Clone)]
-pub enum Action {
+enum Action {
     #[default]
     Nothing,
     Disconnect,
     InitialLoad,
+
     // party related
     SendPartyInvite(u32),
-    AcceptPartyInvite(u32),
-    KickPartyMember(protocol::ObjectHeader),
-    DisbandParty,
-    LeaveParty,
-    // map related
-    LoadLobby,
 }
 
-pub async fn init_block(
-    blocks: Arc<RwLock<Vec<BlockInfo>>>,
-    this_block: BlockInfo,
-    sql: Arc<sql::Sql>,
-    item_attrs: Arc<RwLock<ItemParameters>>,
-    key: PrivateKey,
-) -> Result<(), Error> {
-    let listener = TcpListener::bind(("0.0.0.0", this_block.port))?;
-    listener.set_nonblocking(true)?;
-
-    let mut latest_mapid = 0;
-    let mut latest_partyid = 0;
-
-    let mut maps = HashMap::new();
-
-    for (map_name, map_path) in this_block.maps {
-        match map::Map::new(map_path, latest_mapid) {
-            Ok(x) => {
-                maps.insert(map_name, Arc::new(Mutex::new(x)));
-            }
-            Err(e) => {
-                eprintln!(
-                    "{}",
-                    style(format!("Failed to load map {}: {}", map_name, e)).red()
-                );
+pub async fn run() -> Result<(), Error> {
+    let mul_progress = MultiProgress::new();
+    let startup_progress = mul_progress.add(ProgressBar::new_spinner());
+    startup_progress.set_message("Starting server...");
+    let key = match std::fs::metadata("keypair.pem") {
+        Ok(..) => RsaPrivateKey::read_pkcs8_pem_file("keypair.pem")?,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            let key_progress = mul_progress.add(ProgressBar::new_spinner());
+            key_progress.set_message(style("No keyfile found, creating...").yellow().to_string());
+            let mut rand_gen = rand::thread_rng();
+            let key = RsaPrivateKey::new(&mut rand_gen, 1024)?;
+            key.write_pkcs8_pem_file("keypair.pem", rsa::pkcs8::LineEnding::default())?;
+            key_progress.finish_with_message("Keyfile created.");
+            key
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
+    let settings = Settings::load("ship.toml").await?;
+    let (data_pc, data_vita) = create_attr_files(&mul_progress)?;
+    let quests = Arc::new(Quests::load(&settings.quest_dir));
+    let mut item_data = ItemParameters::load_from_mp_file("names.mp")?;
+    item_data.pc_attrs = data_pc;
+    item_data.vita_attrs = data_vita;
+    let item_data = Arc::new(RwLock::new(item_data));
+    let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
+    let master_conn = MasterConnection::new(
+        tokio::net::lookup_host(settings.master_ship)
+            .await?
+            .next()
+            .expect("No ips found for master ship"),
+    )
+    .await?;
+    for id in 2..10 {
+        let resp = MasterConnection::register_ship(
+            &master_conn,
+            ShipInfo {
+                ip: Ipv4Addr::UNSPECIFIED,
+                id,
+                port: settings.balance_port,
+                max_players: 32,
+                name: "Test".into(),
+                data_type: data_structs::DataTypeDef::Parsed,
+                status: pso2packetlib::protocol::login::ShipStatus::Online,
+                key: data_structs::KeyInfo {
+                    n: key.n().to_bytes_le(),
+                    e: key.e().to_bytes_le(),
+                },
+            },
+        )
+        .await?;
+        match resp {
+            data_structs::RegisterShipResult::Success => break,
+            data_structs::RegisterShipResult::AlreadyTaken => {
+                if id != 9 {
+                    continue;
+                }
+                eprintln!("No stots left");
+                return Ok(());
             }
         }
-        latest_mapid += 1;
     }
 
-    let lobby = match maps.get("lobby") {
-        Some(x) => x.clone(),
-        None => return Err(Error::NoLobby),
-    };
-
-    let block_data = Arc::new(BlockData {
-        sql,
-        blocks,
-        item_attrs,
-        block_id: this_block.id,
-        block_name: this_block.name,
-        lobby,
-        key,
-    });
-
-    let mut clients = vec![];
-    let mut conn_id = 0usize;
-    let (send, recv) = mpsc::channel();
-
-    loop {
-        for stream in listener.incoming() {
-            match stream {
-                Ok(s) => {
-                    println!("{}", style("Client connected").cyan());
-                    let mut lock = async_write(&block_data.blocks).await;
-                    if let Some(block) = lock.iter_mut().find(|x| x.id == this_block.id) {
-                        if block.players >= block.max_players {
-                            continue;
-                        }
-                        block.players += 1;
-                    }
-                    drop(lock);
-                    let client = Arc::new(Mutex::new(User::new(s, block_data.clone())?));
-                    clients.push((conn_id, client.clone()));
-                    let send = send.clone();
-                    tokio::spawn(async move {
-                        loop {
-                            match User::tick(async_lock(&client).await).await {
-                                Ok(Action::Nothing) => {}
-                                Ok(a) => {
-                                    send.send((conn_id, a)).unwrap();
-                                }
-                                Err(Error::IOError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
-                                }
-                                Err(Error::IOError(e))
-                                    if e.kind() == io::ErrorKind::ConnectionAborted =>
-                                {
-                                    send.send((conn_id, Action::Disconnect)).unwrap();
-                                    return;
-                                }
-                                Err(e) => {
-                                    let error_msg = format!("Client error: {e}");
-                                    let _ = async_lock(&client).await.send_error(&error_msg);
-                                    eprintln!("{}", style(error_msg).red());
-                                }
-                            }
-                            tokio::time::sleep(Duration::from_millis(1)).await;
-                        }
-                    });
-
-                    conn_id += 1;
-                }
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
-                Err(e) => {
-                    return Err(e.into());
-                }
-            }
-        }
-        while let Ok((id, action)) = recv.try_recv() {
-            match run_action(&mut clients, id, action, &block_data, &mut latest_partyid).await {
+    let sql = Arc::new(sql::Sql::new(&settings.db_name, master_conn).await?);
+    make_block_balance(server_statuses.clone(), settings.balance_port).await?;
+    let mut blocks = vec![];
+    let mut ports = 13001;
+    let mut blockstatus_lock = server_statuses.write().await;
+    for (i, block) in settings.blocks.into_iter().enumerate() {
+        let port = block.port.unwrap_or(ports);
+        ports += 1;
+        let new_block = BlockInfo {
+            id: i as u32 + 1,
+            name: block.name.clone(),
+            ip: Ipv4Addr::UNSPECIFIED,
+            port,
+            max_players: block.max_players,
+            players: 0,
+            maps: block.maps,
+            quests: quests.clone(),
+        };
+        blockstatus_lock.push(new_block.clone());
+        let server_statuses = server_statuses.clone();
+        let sql = sql.clone();
+        let item_data = item_data.clone();
+        let key = PrivateKey::Key(key.clone());
+        blocks.push(tokio::spawn(async move {
+            match block::init_block(server_statuses, new_block, sql, item_data, key).await {
                 Ok(_) => {}
-                Err(e) => eprintln!("{}", style(format!("Client error: {e}")).red()),
-            };
-        }
-        tokio::time::sleep(Duration::from_millis(1)).await;
+                Err(e) => eprintln!("Block \"{}\" failed: {e}", block.name),
+            }
+        }))
     }
-}
+    drop(blockstatus_lock);
 
-async fn run_action(
-    clients: &mut Vec<(usize, Arc<Mutex<User>>)>,
-    conn_id: usize,
-    action: Action,
-    block_data: &Arc<BlockData>,
-    latest_partyid: &mut u32,
-) -> Result<(), Error> {
-    let Some((pos, _)) = clients
-        .iter()
-        .enumerate()
-        .find(|(_, (c_conn_id, _))| *c_conn_id == conn_id)
-    else {
-        return Ok(());
-    };
-    match action {
-        Action::Nothing => {}
-        Action::Disconnect => {
-            println!("{}", style("Client disconnected").cyan());
-            let mut lock = async_write(&block_data.blocks).await;
-            if let Some(block) = lock.iter_mut().find(|x| x.id == block_data.block_id) {
-                block.players -= 1;
-            }
-            drop(lock);
-            clients.remove(pos);
-        }
-        Action::InitialLoad => {
-            let (_, user) = &clients[pos];
-            let mut user_lock = async_lock(user).await;
-            user_lock.set_map(block_data.lobby.clone());
-            drop(user_lock);
-            party::Party::init_player(user.clone(), latest_partyid)?;
-            block_data.lobby.lock().add_player(user.clone())?;
-        }
-        Action::SendPartyInvite(invitee) => {
-            let (_, inviter) = &clients[pos];
-            let invitee = async {
-                for client in clients.iter().map(|(_, p)| p) {
-                    if async_lock(client).await.player_id == invitee {
-                        return Some(client.clone());
-                    }
-                }
-                None
-            }
-            .await;
-            if let Some(invitee) = invitee {
-                party::Party::send_invite(inviter.clone(), invitee)?;
-            }
-        }
-        Action::LoadLobby => {
-            let (_, user) = &clients[pos];
-            async_lock(user).await.set_map(block_data.lobby.clone());
-            async_lock(&block_data.lobby)
-                .await
-                .add_player(user.clone())?;
-        }
-        Action::AcceptPartyInvite(party_id) => {
-            let (_, user) = &clients[pos];
-            party::Party::accept_invite(user.clone(), party_id)?;
-        }
-        Action::LeaveParty => {
-            let (_, user) = &clients[pos];
-            async_lock(user)
-                .await
-                .send_packet(&pso2packetlib::protocol::Packet::RemovedFromParty)?;
-            party::Party::init_player(user.clone(), latest_partyid)?;
-        }
-        Action::DisbandParty => {
-            let (_, user) = &clients[pos];
-            let party = async_lock(user).await.get_current_party();
-            if let Some(party) = party {
-                async_write(&party).await.disband_party(latest_partyid)?;
-            }
-        }
-        Action::KickPartyMember(data) => {
-            let (_, user) = &clients[pos];
-            let party = async_lock(user).await.get_current_party();
-            if let Some(party) = party {
-                async_write(&party)
-                    .await
-                    .kick_player(data.id, latest_partyid)?;
-            }
-        }
-    }
+    startup_progress.finish_with_message("Server started.");
+    tokio::signal::ctrl_c().await?;
+
     Ok(())
 }
 
-pub fn send_block_balance(
+async fn make_block_balance(
+    server_statuses: Arc<RwLock<Vec<BlockInfo>>>,
+    port: u16,
+) -> io::Result<()> {
+    use tokio::net::TcpListener;
+    let listener = TcpListener::bind(("0.0.0.0", port)).await?;
+    tokio::spawn(async move {
+        loop {
+            match listener.accept().await {
+                Ok((s, _)) => {
+                    let _ =
+                        send_block_balance(s.into_std().unwrap(), server_statuses.clone()).await;
+                }
+                Err(e) => {
+                    eprintln!("Failed to accept connection: {}", e);
+                    return;
+                }
+            }
+        }
+    });
+    Ok(())
+}
+
+async fn send_block_balance(
     stream: std::net::TcpStream,
     servers: Arc<RwLock<Vec<BlockInfo>>>,
 ) -> io::Result<()> {
@@ -371,7 +324,7 @@ pub fn send_block_balance(
         PrivateKey::None,
         PublicKey::None,
     );
-    let mut servers = servers.write();
+    let mut servers = servers.write().await;
     let server_count = servers.len() as u32;
     for block in servers.iter_mut() {
         if block.ip == Ipv4Addr::UNSPECIFIED {
@@ -393,12 +346,13 @@ pub fn send_block_balance(
     Ok(())
 }
 
-pub fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u8>), Error> {
+fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u8>), Error> {
     let progress = mul_progress.add(ProgressBar::new_spinner());
     progress.set_message("Loading item attributes...");
     let attrs_str = std::fs::read_to_string("item_attrs.json")?;
     progress.set_message("Parsing item attributes...");
     let attrs: item_attrs::ItemAttributes = serde_json::from_str(&attrs_str)?;
+
     // PC attributes
     progress.set_message("Creating PC item attributes...");
     let outdata_pc = Cursor::new(vec![]);
@@ -435,31 +389,4 @@ pub fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u
 
     progress.finish_with_message("Created item attributes");
     Ok((outdata_pc, outdata_vita))
-}
-
-async fn async_lock<T>(mutex: &Mutex<T>) -> MutexGuard<T> {
-    loop {
-        match mutex.try_lock() {
-            Some(lock) => return lock,
-            None => tokio::time::sleep(Duration::from_millis(1)).await,
-        }
-    }
-}
-
-async fn async_read<T>(lock: &RwLock<T>) -> RwLockReadGuard<T> {
-    loop {
-        match lock.try_read() {
-            Some(lock) => return lock,
-            None => tokio::time::sleep(Duration::from_millis(1)).await,
-        }
-    }
-}
-
-async fn async_write<T>(lock: &RwLock<T>) -> RwLockWriteGuard<T> {
-    loop {
-        match lock.try_write() {
-            Some(lock) => return lock,
-            None => tokio::time::sleep(Duration::from_millis(1)).await,
-        }
-    }
 }

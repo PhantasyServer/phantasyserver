@@ -61,9 +61,15 @@ pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -
     Ok(Action::Nothing)
 }
 
-pub fn get_description(user: &mut User, packet: GetItemDescriptionPacket) -> HResult {
+pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) -> HResult {
     let names_ref = user.blockdata.item_attrs.clone();
-    match names_ref.read().names.iter().find(|x| x.id == packet.item) {
+    match names_ref
+        .read()
+        .await
+        .names
+        .iter()
+        .find(|x| x.id == packet.item)
+    {
         Some(name) => {
             let packet = LoadItemDescriptionPacket {
                 unk1: 1,

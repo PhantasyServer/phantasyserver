@@ -1,6 +1,6 @@
 use crate::Error;
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use data_structs::AccountStorages;
+use data_structs::{flags::Flags, AccountStorages};
 use pso2packetlib::{
     protocol::login::{LoginAttempt, LoginResult, UserInfoPacket},
     AsciiString,
@@ -21,6 +21,8 @@ pub struct Sql {
 pub struct User {
     pub id: u32,
     pub nickname: String,
+    pub account_flags: Flags,
+    pub isgm: bool,
 }
 
 impl Sql {
@@ -50,7 +52,9 @@ impl Sql {
                 PSNNickname blob default NULL,
                 Settings blob default NULL,
                 Storage blob default NULL,
-                Info blob default NULL
+                Info blob default NULL,
+                AccountFlags blob default NULL,
+                IsGM integer default 0,
             );
         ",
                 auto_inc
@@ -104,6 +108,11 @@ impl Sql {
                 let stored_password = from_utf8(data.try_get("Password")?)?;
                 let id = data.try_get::<i64, _>("Id")? as u32;
                 let nickname = from_utf8(data.try_get("Nickname").unwrap_or_default())?;
+                let account_flags = match data.try_get("AccountFlags") {
+                    Ok(d) => rmp_serde::from_slice(d)?,
+                    Err(_) => Default::default(),
+                };
+                let isgm = data.try_get::<i64, _>("IsGM").unwrap_or_default() == 1;
                 // SAFETY: reference doesn't outlive the scope because the thread is immediately
                 // joined
                 let stored_password: &'static str = unsafe { std::mem::transmute(stored_password) };
@@ -133,6 +142,8 @@ impl Sql {
                 Ok(User {
                     id,
                     nickname: nickname.to_string(),
+                    account_flags,
+                    isgm,
                 })
             }
             None => Err(Error::NoUser),
@@ -146,14 +157,22 @@ impl Sql {
         if row.is_none() {
             return Err(Error::NoUser);
         }
-        Ok(
-            serde_json::from_slice(row.unwrap().try_get("Info").unwrap_or_default())
-                .unwrap_or_default(),
-        )
+        Ok(match row.unwrap().try_get("Info") {
+            Ok(d) => serde_json::from_slice(d)?,
+            Err(_) => Default::default(),
+        })
     }
     pub async fn put_user_info(&self, user_id: u32, info: UserInfoPacket) -> Result<(), Error> {
         sqlx::query("update Users set Info = ? where Id = ?")
             .bind(serde_json::to_vec(&info)?)
+            .bind(user_id as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+    pub async fn put_account_flags(&self, user_id: u32, flags: Flags) -> Result<(), Error> {
+        sqlx::query("update Users set AccountFlags = ? where Id = ?")
+            .bind(rmp_serde::to_vec(&flags)?)
             .bind(user_id as i64)
             .execute(&self.connection)
             .await?;
@@ -213,9 +232,16 @@ impl Sql {
                 .fetch_one(&self.connection)
                 .await?;
             let nickname = from_utf8(row.try_get("Nickname").unwrap_or_default())?;
+            let account_flags = match row.try_get("AccountFlags") {
+                Ok(d) => rmp_serde::from_slice(d)?,
+                Err(_) => Default::default(),
+            };
+            let isgm = row.try_get::<i64, _>("IsGM").unwrap_or_default() == 1;
             return Ok(User {
                 id: user_id,
                 nickname: nickname.to_string(),
+                account_flags,
+                isgm,
             });
         }
         Err(Error::NoUser)
@@ -232,10 +258,17 @@ impl Sql {
             Some(data) => {
                 let id = data.try_get::<i64, _>("Id")? as u32;
                 let nickname = from_utf8(data.try_get("Nickname").unwrap_or_default())?;
+                let account_flags = match data.try_get("AccountFlags") {
+                    Ok(d) => rmp_serde::from_slice(d)?,
+                    Err(_) => Default::default(),
+                };
+                let isgm = data.try_get::<i64, _>("IsGM").unwrap_or_default() == 1;
                 self.put_login(id, ip, LoginResult::Successful).await?;
                 Ok(User {
                     id,
                     nickname: nickname.to_string(),
+                    account_flags,
+                    isgm,
                 })
             }
             None => Err(Error::NoUser),
@@ -247,14 +280,17 @@ impl Sql {
             .bind("".as_bytes())
             .execute(&self.connection)
             .await?;
-        let id = sqlx::query("select Id from Users where PSNNickname = ?")
+        let row = sqlx::query("select Id from Users where PSNNickname = ?")
             .bind(username.as_bytes())
             .fetch_one(&self.connection)
-            .await?
-            .try_get::<i64, _>("Id")? as u32;
+            .await?;
+        let id = row.try_get::<i64, _>("Id")? as u32;
+
         Ok(User {
             id,
             nickname: String::new(),
+            account_flags: Flags::new(),
+            isgm: false,
         })
     }
     pub async fn create_sega_user(&self, username: &str, password: &str) -> Result<User, Error> {
@@ -285,6 +321,8 @@ impl Sql {
         Ok(User {
             id,
             nickname: String::new(),
+            account_flags: Flags::new(),
+            isgm: false,
         })
     }
     pub async fn get_logins(&self, id: u32) -> Result<Vec<LoginAttempt>, Error> {
@@ -296,8 +334,8 @@ impl Sql {
                 .await?;
         for row in rows {
             attempts.push(LoginAttempt {
-                ip: serde_json::from_str(from_utf8(row.try_get("IpAddress")?)?)?,
-                status: serde_json::from_str(from_utf8(row.try_get("Status")?)?)?,
+                ip: serde_json::from_slice(row.try_get("IpAddress")?)?,
+                status: serde_json::from_slice(row.try_get("Status")?)?,
                 timestamp: Duration::from_secs(row.try_get::<i64, _>("Timestamp")? as u64),
                 ..Default::default()
             })
@@ -326,7 +364,7 @@ impl Sql {
             .fetch_one(&self.connection)
             .await?;
         match row.try_get("Storage") {
-            Ok(d) => Ok(serde_json::from_str(from_utf8(d)?)?),
+            Ok(d) => Ok(serde_json::from_slice(d)?),
             Err(_) => Ok(Default::default()),
         }
     }

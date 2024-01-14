@@ -1,4 +1,8 @@
 [workspace]
 
-members = ["ship_server", "data_compiler", "data_structs", "master_ship"]
+members = ["ship_server", "data_compiler", "data_structs", "master_ship", "ppac_reader"]
 resolver = "2"
+
+[workspace.dependencies]
+# pso2packetlib = { path = "../pso2packetlib", default-features = false }
+pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "4c20b36", default-features = false }

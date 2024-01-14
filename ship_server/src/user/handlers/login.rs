@@ -1,4 +1,4 @@
-use crate::{async_read, Action, Error, User};
+use crate::{Action, Error, User};
 use pso2packetlib::{
     ppac::Direction,
     protocol::{
@@ -39,12 +39,14 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                         data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
                     }))?;
+                    user.accountflags = x.accountflags;
+                    user.isgm = x.isgm;
                 }
-                Err(Error::InvalidPassword(_)) => {
+                Err(Error::InvalidPassword) => {
                     status = login::LoginStatus::Failure;
                     error = "Invalid username or password".to_string();
                 }
-                Err(Error::InvalidInput) => {
+                Err(Error::InvalidInput(_)) => {
                     status = login::LoginStatus::Failure;
                     error = "Empty username or password".to_string();
                 }
@@ -61,6 +63,8 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                 .await?;
             user.nickname = user_psn.nickname;
             id = user_psn.id;
+            user.accountflags = user_psn.accountflags;
+            user.isgm = user_psn.isgm;
         }
         _ => unreachable!(),
     }
@@ -83,7 +87,7 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
     user.connection
         .create_ppac(format!("{}.pac", id), Direction::ToClient)
         .unwrap();
-    user.send_item_attrs()?;
+    user.send_item_attrs().await?;
     let info = user.blockdata.sql.get_user_info(id).await?;
     user.send_packet(&Packet::UserInfo(info))?;
 
@@ -95,7 +99,7 @@ pub async fn block_list(user: &mut User) -> HResult {
         blocks: vec![],
         unk: 0,
     };
-    let lock = async_read(&user.blockdata.blocks).await;
+    let lock = user.blockdata.blocks.read().await;
     for block in lock.iter() {
         blocks.blocks.push(login::BlockInfo {
             block_id: block.id as u16,
@@ -141,6 +145,8 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
             user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                 data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
             }))?;
+            user.accountflags = x.accountflags;
+            user.isgm = x.isgm;
         }
         Err(Error::NoUser) => {
             status = login::LoginStatus::Failure;
@@ -164,14 +170,14 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
     if let login::LoginStatus::Failure = status {
         return Ok(Action::Nothing);
     }
-    user.send_item_attrs()?;
+    user.send_item_attrs().await?;
     let info = user.blockdata.sql.get_user_info(id).await?;
     user.send_packet(&Packet::UserInfo(info))?;
 
     Ok(Action::Nothing)
 }
 pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPacket) -> HResult {
-    let lock = async_read(&user.blockdata.blocks).await;
+    let lock = user.blockdata.blocks.read().await;
     if let Some(block) = lock.iter().find(|b| b.id == packet.block_id as u32) {
         let challenge = user
             .blockdata
@@ -267,11 +273,12 @@ pub async fn newname_request(
     user: &mut User,
     packet: login::CharacterNewNameRequestPacket,
 ) -> HResult {
-    let mut char = user
+    let char = user
         .blockdata
         .sql
         .get_character(user.player_id, packet.char_id)
         .await?;
+    let mut char = char.character;
     char.name = packet.name.clone();
     user.blockdata.sql.update_character(&char).await?;
     let packet_out = login::CharacterNewNamePacket {
@@ -305,12 +312,13 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
 
 pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HResult {
     user.char_id = packet.char_id;
-    user.character = Some(
-        user.blockdata
-            .sql
-            .get_character(user.player_id, user.char_id)
-            .await?,
-    );
+    let char = user
+        .blockdata
+        .sql
+        .get_character(user.player_id, user.char_id)
+        .await?;
+    user.character = Some(char.character);
+    user.charflags = char.flags;
     user.inventory = user
         .blockdata
         .sql

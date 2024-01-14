@@ -1,9 +1,8 @@
 use super::HResult;
-use crate::{async_lock, async_write, create_attr_files, user::User, Action};
+use crate::{create_attr_files, mutex::MutexGuard, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
-use parking_lot::MutexGuard;
-use pso2packetlib::protocol::{chat::ChatArea, Packet};
+use pso2packetlib::protocol::{chat::ChatArea, flag::FlagType, Packet};
 
 pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResult {
     let Packet::ChatMessage(ref data) = packet else {
@@ -25,23 +24,11 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 };
                 user.send_system_msg(&mem_data_msg)?;
             }
-            "!reload_map_lua" => {
-                if let Some(ref map) = user.map {
-                    async_lock(map).await.reload_lua()?;
-                }
-            }
-            "!map_gc" => {
-                if let Some(ref map) = user.map {
-                    async_lock(map).await.lua_gc_collect()?;
-                }
-            }
             "!reload_map" => {
                 if let Some(ref map) = user.map {
                     let map = map.clone();
                     drop(user);
-                    tokio::task::spawn_blocking(move || map.lock().reload_objs())
-                        .await
-                        .unwrap()?
+                    map.lock().await.reload_objs().await?;
                 }
             }
             "!start_con" => {
@@ -52,12 +39,12 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 }
                 let name = name.unwrap();
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
-                    object1: pso2packetlib::protocol::ObjectHeader {
+                    receiver: pso2packetlib::protocol::ObjectHeader {
                         id: user.player_id,
                         entity_type: pso2packetlib::protocol::EntityType::Player,
                         ..Default::default()
                     },
-                    object2: pso2packetlib::protocol::ObjectHeader {
+                    target: pso2packetlib::protocol::ObjectHeader {
                         id: 1,
                         entity_type: pso2packetlib::protocol::EntityType::Object,
                         ..Default::default()
@@ -80,12 +67,12 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 }
                 let name = name.unwrap();
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
-                    object1: pso2packetlib::protocol::ObjectHeader {
+                    receiver: pso2packetlib::protocol::ObjectHeader {
                         id: user.player_id,
                         entity_type: pso2packetlib::protocol::EntityType::Player,
                         ..Default::default()
                     },
-                    object2: pso2packetlib::protocol::ObjectHeader {
+                    target: pso2packetlib::protocol::ObjectHeader {
                         id: 1,
                         entity_type: pso2packetlib::protocol::EntityType::Object,
                         ..Default::default()
@@ -106,21 +93,22 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 user.send_system_msg(&format!("{pos:?}"))?;
             }
             "!get_close_obj" => {
-                let dist = args.next().unwrap_or("1.0").parse().unwrap_or(1.0);
+                let dist = args.next().and_then(|n| n.parse().ok()).unwrap_or(1.0);
                 let map = user.get_current_map();
                 if map.is_none() {
                     return Ok(Action::Nothing);
                 }
+                let mapid = user.mapid;
                 let map = map.unwrap();
-                let lock = async_lock(&map).await;
-                let objs = lock.get_close_objects(&user, dist);
+                let lock = map.lock().await;
+                let objs = lock.get_close_objects(mapid, |p| user.position.dist_2d(p) < dist);
                 let user_pos = user.position;
                 for obj in objs {
                     user.send_system_msg(&format!(
                         "Id: {}, Name: {}, Dist: {}",
                         obj.object.id,
                         obj.name,
-                        user_pos.dist(&obj.position)
+                        user_pos.dist_2d(&obj.position)
                     ))?;
                 }
             }
@@ -131,13 +119,15 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                         .await
                         .unwrap()?
                 };
-                let mut attrs = async_write(&user.blockdata.item_attrs).await;
+                let mut attrs = user.blockdata.item_attrs.write().await;
                 attrs.pc_attrs = pc;
                 attrs.vita_attrs = vita;
                 drop(attrs);
-                user.send_item_attrs()?;
+                user.send_item_attrs().await?;
                 user.send_system_msg("Done!")?;
             }
+            "!set_acc_flag" => set_flag(&mut user, FlagType::Account, &mut args)?,
+            "!set_char_flag" => set_flag(&mut user, FlagType::Character, &mut args)?,
             _ => user.send_system_msg("Unknown command")?,
         }
         return Ok(Action::Nothing);
@@ -147,10 +137,73 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
         let map = user.map.clone();
         drop(user);
         if let Some(map) = map {
-            tokio::task::spawn_blocking(move || map.lock().send_message(packet, id))
-                .await
-                .unwrap();
+            map.lock().await.send_message(packet, id).await;
         }
     }
     Ok(Action::Nothing)
+}
+
+fn set_flag<'a>(
+    user: &mut User,
+    ftype: FlagType,
+    args: &mut impl Iterator<Item = &'a str>,
+) -> Result<(), crate::Error> {
+    let range = match args.next() {
+        Some(r) => r,
+        None => {
+            user.send_system_msg("No range provided")?;
+            return Ok(());
+        }
+    };
+    let val = args.next().and_then(|a| a.parse().ok()).unwrap_or(0);
+    if range.contains('-') {
+        let mut split = range.split('-');
+        let lower = split.next().and_then(|r| r.parse().ok());
+        let upper = split.next().and_then(|r| r.parse().ok());
+        if lower.is_none() || upper.is_none() {
+            user.send_system_msg("Invalid range")?;
+            return Ok(());
+        }
+        let lower = lower.unwrap();
+        let upper = upper.unwrap();
+        if lower > upper {
+            user.send_system_msg("Invalid range")?;
+            return Ok(());
+        }
+        for i in lower..=upper {
+            match ftype {
+                FlagType::Account => user.accountflags.set(i, val),
+                FlagType::Character => user.charflags.set(i, val),
+            };
+            user.send_packet(&Packet::ServerSetFlag(
+                pso2packetlib::protocol::flag::ServerSetFlagPacket {
+                    flag_type: ftype,
+                    id: i as u32,
+                    value: val as u32,
+                    ..Default::default()
+                },
+            ))?;
+        }
+    } else {
+        let id = match range.parse() {
+            Ok(i) => i,
+            Err(_) => {
+                user.send_system_msg("Invalid id")?;
+                return Ok(());
+            }
+        };
+        match ftype {
+            FlagType::Account => user.accountflags.set(id, val),
+            FlagType::Character => user.charflags.set(id, val),
+        };
+        user.send_packet(&Packet::ServerSetFlag(
+            pso2packetlib::protocol::flag::ServerSetFlagPacket {
+                flag_type: ftype,
+                id: id as u32,
+                value: val as u32,
+                ..Default::default()
+            },
+        ))?;
+    }
+    Ok(())
 }

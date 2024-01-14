@@ -43,7 +43,7 @@ impl Palette {
     }
     pub fn set_palette(&mut self, packet: SetPalettePacket) -> Result<(), Error> {
         if packet.palette > 5 {
-            return Err(Error::InvalidInput);
+            return Err(Error::InvalidInput("set_palette"));
         }
         self.cur_palette = packet.palette;
         Ok(())
@@ -76,7 +76,7 @@ impl Palette {
         packet: UpdatePalettePacket,
     ) -> Result<Packet, Error> {
         if packet.cur_palette > 5 {
-            return Err(Error::InvalidInput);
+            return Err(Error::InvalidInput("update_palette"));
         }
         let old = &self.palettes;
         let item = old[self.cur_palette as usize].uuid;
@@ -92,14 +92,14 @@ impl Palette {
     }
     pub fn update_subpalette(&mut self, packet: UpdateSubPalettePacket) -> Result<Packet, Error> {
         if packet.cur_subpalette > 5 || packet.cur_book > 1 {
-            return Err(Error::InvalidInput);
+            return Err(Error::InvalidInput("update_subpalette"));
         }
         self.subpalettes = packet.subpalettes;
         Ok(self.send_palette())
     }
     pub fn set_subpalette(&mut self, packet: SetSubPalettePacket) -> Result<(), Error> {
         if packet.subpalette > 5 {
-            return Err(Error::InvalidInput);
+            return Err(Error::InvalidInput("set_subpalette"));
         }
         self.cur_subpalette = packet.subpalette;
         Ok(())

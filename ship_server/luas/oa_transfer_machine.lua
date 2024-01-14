@@ -2,7 +2,7 @@ if call_type == "interaction" then
 	if packet.action == "Transfer" then
 		-- get extra data for initial teleporter
 		local result_err = {pcall(get_extra_data, packet.object1.id)}
-		if result_err[1] == false then
+		if result_err[1] == false or result_err[2] == nil then
 			-- fallback if we couldn't find extra data
 			result_err[2] = {}
 			result_err[2].TransferTo = packet.object1.id
@@ -29,9 +29,9 @@ if call_type == "interaction" then
 		local receiver = {}
 		receiver.id = 0
 		receiver.entity_type = "Player"
-		set_tag_data.object1 = receiver
+		set_tag_data.receiver = receiver
 		-- source tele
-		set_tag_data.object2 = packet.object1
+		set_tag_data.target = packet.object1
 		-- target?
 		set_tag_data.object3 = packet.object3
 		set_tag_data.attribute = "Forwarded"
@@ -39,8 +39,8 @@ if call_type == "interaction" then
 		set_tag_fwd.SetTag = set_tag_data
 		
 		-- send to players transfer info
-		for i, user in ipairs(players) do
-			set_tag_fwd.SetTag.object1.id = user
+		for _, user in ipairs(players) do
+			set_tag_fwd.SetTag.receiver.id = user
 			send(user, set_tag_fwd)
 		end
 		
@@ -48,9 +48,9 @@ if call_type == "interaction" then
 		local set_tag = set_tag_fwd
 		packet.object1.id = transfer_target
 		-- receiver
-		set_tag.SetTag.object1 = packet.object3
+		set_tag.SetTag.receiver = packet.object3
 		-- actor?
-		set_tag.SetTag.object2 = packet.object3
+		set_tag.SetTag.target = packet.object3
 		-- target?
 		set_tag.SetTag.object3 = packet.object1
 		set_tag.SetTag.attribute = "ObjectTransfer"

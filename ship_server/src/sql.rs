@@ -1,5 +1,5 @@
 use crate::{inventory::Inventory, master_conn::MasterConnection, palette::Palette, Error};
-use data_structs::{AccountStorages, MasterShipAction, UserCreds};
+use data_structs::{flags::Flags, AccountStorages, MasterShipAction, UserCreds};
 use parking_lot::Mutex;
 use pso2packetlib::{
     protocol::{
@@ -10,7 +10,7 @@ use pso2packetlib::{
     AsciiString,
 };
 use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
-use std::{net::Ipv4Addr, str::from_utf8};
+use std::net::Ipv4Addr;
 
 pub struct Sql {
     connection: sqlx::AnyPool,
@@ -23,6 +23,13 @@ pub struct User {
     pub nickname: String,
     pub lang: Language,
     pub packet_type: PacketType,
+    pub accountflags: Flags,
+    pub isgm: bool,
+}
+
+pub struct CharData {
+    pub character: Character,
+    pub flags: Flags,
 }
 
 impl Sql {
@@ -67,7 +74,8 @@ impl Sql {
                 Id integer primary key {},
                 Data blob default NULL,
                 Inventory blob default NULL,
-                Palette blob default NULL
+                Palette blob default NULL,
+                Flags blob default NULL
             );
         ",
                 auto_inc
@@ -79,8 +87,8 @@ impl Sql {
             "
             create table if not exists SymbolArts (
                 UUID blob default NULL,
-                name blob default NULL,
-                data blob default NULL
+                Name blob default NULL,
+                Data blob default NULL
             );
         ",
         )
@@ -134,7 +142,12 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => {
+                data_structs::UserLoginResult::Success {
+                    id,
+                    nickname,
+                    accountflags,
+                    isgm,
+                } => {
                     if sqlx::query("select count(*) from Users where Id = ?")
                         .bind(id as i64)
                         .fetch_one(&self.connection)
@@ -150,18 +163,18 @@ impl Sql {
                     Ok(User {
                         id,
                         nickname,
+                        accountflags,
+                        isgm,
                         ..Default::default()
                     })
                 }
-                data_structs::UserLoginResult::InvalidPassword(id) => {
-                    Err(Error::InvalidPassword(id))
-                }
+                data_structs::UserLoginResult::InvalidPassword(_) => Err(Error::InvalidPassword),
                 data_structs::UserLoginResult::NotFound => {
                     self.create_sega_user(username, password).await
                 }
             },
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn get_psn_user(&self, username: &str, ip: Ipv4Addr) -> Result<User, Error> {
@@ -174,7 +187,12 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => {
+                data_structs::UserLoginResult::Success {
+                    id,
+                    nickname,
+                    accountflags,
+                    isgm,
+                } => {
                     if sqlx::query("select count(*) from Users where Id = ?")
                         .bind(id as i64)
                         .fetch_one(&self.connection)
@@ -190,16 +208,16 @@ impl Sql {
                     Ok(User {
                         id,
                         nickname,
+                        accountflags,
+                        isgm,
                         ..Default::default()
                     })
                 }
-                data_structs::UserLoginResult::InvalidPassword(id) => {
-                    Err(Error::InvalidPassword(id))
-                }
+                data_structs::UserLoginResult::InvalidPassword(_) => Err(Error::InvalidPassword),
                 data_structs::UserLoginResult::NotFound => self.create_psn_user(username).await,
             },
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     async fn create_psn_user(&self, username: &str) -> Result<User, Error> {
@@ -211,16 +229,20 @@ impl Sql {
             }))
             .await?;
         let user = match result {
-            MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => Ok(User {
-                    id,
-                    nickname,
-                    ..Default::default()
-                }),
-                _ => unimplemented!(),
-            },
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::UserLoginResult(data_structs::UserLoginResult::Success {
+                id,
+                nickname,
+                accountflags,
+                isgm,
+            }) => Ok(User {
+                id,
+                nickname,
+                accountflags,
+                isgm,
+                ..Default::default()
+            }),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }?;
         sqlx::query("insert into Users (Id) values (?)")
             .bind(user.id as i64)
@@ -237,16 +259,20 @@ impl Sql {
             }))
             .await?;
         let user = match result {
-            MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => Ok(User {
-                    id,
-                    nickname,
-                    ..Default::default()
-                }),
-                _ => unimplemented!(),
-            },
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::UserLoginResult(data_structs::UserLoginResult::Success {
+                id,
+                nickname,
+                accountflags,
+                isgm,
+            }) => Ok(User {
+                id,
+                nickname,
+                accountflags,
+                isgm,
+                ..Default::default()
+            }),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }?;
         sqlx::query("insert into Users (Id) values (?)")
             .bind(user.id as i64)
@@ -261,8 +287,8 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::UserInfo(info) => Ok(info),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn put_user_info(&self, user_id: u32, info: UserInfoPacket) -> Result<(), Error> {
@@ -271,8 +297,18 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::Ok => Ok(()),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
+        }
+    }
+    pub async fn put_account_flags(&self, user_id: u32, flags: Flags) -> Result<(), Error> {
+        let result = self
+            .run_action(MasterShipAction::PutAccountFlags { id: user_id, flags })
+            .await?;
+        match result {
+            MasterShipAction::Ok => Ok(()),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn new_challenge(
@@ -294,8 +330,8 @@ impl Sql {
                     .await?;
                 Ok(challenge)
             }
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn login_challenge(&self, user_id: u32, challenge: u32) -> Result<User, Error> {
@@ -307,7 +343,12 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::UserLoginResult(d) => match d {
-                data_structs::UserLoginResult::Success { id, nickname } => {
+                data_structs::UserLoginResult::Success {
+                    id,
+                    nickname,
+                    accountflags,
+                    isgm,
+                } => {
                     let row = sqlx::query("select * from Challenges where Challenge = ?")
                         .bind(challenge as i64)
                         .fetch_one(&self.connection)
@@ -319,29 +360,31 @@ impl Sql {
                         nickname,
                         lang,
                         packet_type,
+                        accountflags,
+                        isgm,
                     })
                 }
-                data_structs::UserLoginResult::InvalidPassword(_) => unimplemented!(),
+                data_structs::UserLoginResult::InvalidPassword(_) => Err(Error::MSUnexpected),
                 data_structs::UserLoginResult::NotFound => Err(Error::NoUser),
             },
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn get_logins(&self, id: u32) -> Result<Vec<LoginAttempt>, Error> {
         let result = self.run_action(MasterShipAction::GetLogins(id)).await?;
         match result {
             MasterShipAction::GetLoginsResult(d) => Ok(d),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn get_settings(&self, id: u32) -> Result<AsciiString, Error> {
         let result = self.run_action(MasterShipAction::GetSettings(id)).await?;
         match result {
             MasterShipAction::GetSettingsResult(d) => Ok(d),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn save_settings(&self, id: u32, settings: &str) -> Result<(), Error> {
@@ -353,8 +396,8 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::Ok => Ok(()),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn get_characters(&self, id: u32) -> Result<Vec<Character>, Error> {
@@ -363,15 +406,17 @@ impl Sql {
             .bind(id as i64)
             .fetch_one(&self.connection)
             .await?;
-        let data = from_utf8(row.try_get("CharacterIds").unwrap_or_default())?;
-        let ids = serde_json::from_str::<Vec<i64>>(data).unwrap_or_default();
+        let ids = match row.try_get("CharacterIds") {
+            Ok(d) => serde_json::from_slice::<Vec<i64>>(d)?,
+            Err(_) => Default::default(),
+        };
         for char_id in ids {
             let row = sqlx::query("select Data from Characters where Id = ?")
                 .bind(char_id)
                 .fetch_optional(&self.connection)
                 .await?;
             if let Some(data) = row {
-                let mut char: Character = serde_json::from_str(from_utf8(data.try_get("Data")?)?)?;
+                let mut char: Character = serde_json::from_slice(data.try_get("Data")?)?;
                 char.player_id = id;
                 char.character_id = char_id as u32;
                 chars.push(char);
@@ -379,15 +424,22 @@ impl Sql {
         }
         Ok(chars)
     }
-    pub async fn get_character(&self, id: u32, char_id: u32) -> Result<Character, Error> {
-        let row = sqlx::query("select Data from Characters where Id = ?")
+    pub async fn get_character(&self, id: u32, char_id: u32) -> Result<CharData, Error> {
+        let row = sqlx::query("select * from Characters where Id = ?")
             .bind(char_id as i64)
             .fetch_one(&self.connection)
             .await?;
-        let mut char: Character = serde_json::from_str(from_utf8(row.try_get("Data")?)?)?;
+        let mut char: Character = serde_json::from_slice(row.try_get("Data")?)?;
         char.player_id = id;
         char.character_id = char_id;
-        Ok(char)
+        let flags: Flags = match row.try_get("Flags") {
+            Ok(d) => rmp_serde::from_slice(d)?,
+            Err(_) => Default::default(),
+        };
+        Ok(CharData {
+            character: char,
+            flags,
+        })
     }
     pub async fn update_character(&self, char: &Character) -> Result<(), Error> {
         sqlx::query("update Characters set Data = ? where Id = ?")
@@ -397,14 +449,23 @@ impl Sql {
             .await?;
         Ok(())
     }
+    pub async fn update_char_flags(&self, char_id: u32, flags: Flags) -> Result<(), Error> {
+        sqlx::query("update Characters set Flags = ? where Id = ?")
+            .bind(rmp_serde::to_vec(&flags)?)
+            .bind(char_id as i64)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
     pub async fn put_character(&self, id: u32, char: &Character) -> Result<u32, Error> {
         let row = sqlx::query("select CharacterIds from Users where Id = ?")
             .bind(id as i64)
             .fetch_one(&self.connection)
             .await?;
-        let mut ids: Vec<i64> =
-            serde_json::from_str(from_utf8(row.try_get("CharacterIds").unwrap_or_default())?)
-                .unwrap_or_default();
+        let mut ids = match row.try_get("CharacterIds") {
+            Ok(d) => serde_json::from_slice::<Vec<i64>>(d)?,
+            Err(_) => Default::default(),
+        };
         let data = serde_json::to_string(&char)?;
         sqlx::query("insert into Characters (Data) values (?)")
             .bind(data.as_bytes())
@@ -429,7 +490,7 @@ impl Sql {
             .fetch_one(&self.connection)
             .await?;
         match ids.try_get("SymbolArtIds") {
-            Ok(data) => Ok(serde_json::from_str(from_utf8(data)?)?),
+            Ok(data) => Ok(serde_json::from_slice(data)?),
             Err(_) => Ok(vec![0; 20]),
         }
     }
@@ -471,7 +532,7 @@ impl Sql {
             .fetch_one(&self.connection)
             .await?;
         match row.try_get("Inventory") {
-            Ok(d) => Ok(serde_json::from_str(from_utf8(d)?)?),
+            Ok(d) => Ok(serde_json::from_slice(d)?),
             Err(_) => Ok(Default::default()),
         }
     }
@@ -481,8 +542,8 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::GetStorageResult(storages) => Ok(storages),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn update_inventory(
@@ -504,8 +565,8 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::Ok => Ok(()),
-            MasterShipAction::Error(e) => Err(Error::Generic(e)),
-            _ => unimplemented!(),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
         }
     }
     pub async fn get_uuid(&self) -> Result<u64, Error> {
@@ -529,7 +590,7 @@ impl Sql {
             .fetch_one(&self.connection)
             .await?;
         match row.try_get("Palette") {
-            Ok(d) => Ok(serde_json::from_str(from_utf8(d)?)?),
+            Ok(d) => Ok(serde_json::from_slice(d)?),
             Err(_) => Ok(Default::default()),
         }
     }

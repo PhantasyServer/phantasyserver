@@ -961,6 +961,7 @@ checksum = "7c81f8ac20188feb5461a73eabb22a34dd09d6d58513535eb587e46bff6ba250"
 dependencies = [
  "bstr",
  "erased-serde",
+ "futures-util",
  "mlua-sys",
  "num-traits",
  "once_cell",
@@ -1112,7 +1113,7 @@ dependencies = [
 [[package]]
 name = "packetlib_impl"
 version = "0.1.0"
-source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=fcdd019#fcdd01962379548b02bb70fc52b34e0156a657ec"
+source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=4c20b36#4c20b369e2a8cc0a89172711745094bc49a583e0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1232,6 +1233,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7170ef9988bc169ba16dd36a7fa041e5c4cbeb6a35b76d4c03daded371eae7c0"
 
 [[package]]
+name = "ppak_reader"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "data_structs",
+ "pso2packetlib",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1258,7 +1270,7 @@ dependencies = [
 [[package]]
 name = "pso2packetlib"
 version = "0.1.0"
-source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=fcdd019#fcdd01962379548b02bb70fc52b34e0156a657ec"
+source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=4c20b36#4c20b369e2a8cc0a89172711745094bc49a583e0"
 dependencies = [
  "aes",
  "byteorder",

@@ -1,6 +1,5 @@
 use super::HResult;
-use crate::{Action, User};
-use parking_lot::MutexGuard;
+use crate::{mutex::MutexGuard, Action, User};
 use pso2packetlib::protocol::{
     self,
     chat::ChatArea,
@@ -83,9 +82,7 @@ pub async fn send_sa(user: MutexGuard<'_, User>, packet: SendSymbolArtPacket) ->
         let map = user.map.clone();
         drop(user);
         if let Some(map) = map {
-            tokio::task::spawn_blocking(move || map.lock().send_sa(packet, id))
-                .await
-                .unwrap();
+            map.lock().await.send_sa(packet, id).await;
         }
     }
     Ok(Action::Nothing)

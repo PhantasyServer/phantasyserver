@@ -1,7 +1,12 @@
-use crate::{invites::PartyInvite, Error, User};
-use parking_lot::{Mutex, MutexGuard, RwLock};
+use crate::{
+    invites::PartyInvite,
+    map::Map,
+    mutex::{Mutex, MutexGuard, RwLock},
+    quests::PartyQuest,
+    BlockData, Error, User,
+};
 use pso2packetlib::protocol::{
-    party::{self, BusyState, ChatStatusPacket, NewBusyStatePacket},
+    party::{self, BusyState, ChatStatusPacket, Color, NewBusyStatePacket},
     EntityType, ObjectHeader, Packet,
 };
 use std::{
@@ -14,8 +19,10 @@ pub struct Party {
     leader: ObjectHeader,
     // id, player
     players: Vec<(u32, Weak<Mutex<User>>)>,
+    colors: Vec<(u32, Color)>,
     settings: party::PartySettingsPacket,
     questname: String,
+    quest: Option<PartyQuest>,
 }
 
 impl Drop for Party {
@@ -24,40 +31,61 @@ impl Drop for Party {
     }
 }
 impl Party {
-    pub fn new(partyid: &mut u32) -> Self {
-        let party = Self {
+    pub fn new(partyid: u32) -> Self {
+        Self {
             id: ObjectHeader {
-                id: *partyid,
+                id: partyid,
                 entity_type: EntityType::Party,
                 ..Default::default()
             },
             leader: Default::default(),
             players: vec![],
+            colors: vec![],
             settings: Default::default(),
             questname: String::new(),
-        };
-        *partyid += 1;
-        party
+            quest: None,
+        }
     }
-    pub fn init_player(new_user: Arc<Mutex<User>>, partyid: &mut u32) -> Result<(), Error> {
-        let old_party = new_user.lock().party.take();
-        let player_id = new_user.lock().player_id;
+    fn add_color(&mut self, id: u32) -> Color {
+        let colors = [Color::Red, Color::Blue, Color::Green, Color::Yellow];
+        'outer: for color in colors {
+            for player in &self.colors {
+                if player.1 == color {
+                    continue 'outer;
+                }
+            }
+            self.colors.push((id, color));
+            return color;
+        }
+        Color::Red
+    }
+    fn get_color(&self, id: u32) -> Color {
+        self.colors
+            .iter()
+            .find(|(i, _)| *i == id)
+            .map(|(_, c)| *c)
+            .unwrap_or_default()
+    }
+    pub async fn init_player(new_user: Arc<Mutex<User>>, partyid: u32) -> Result<(), Error> {
+        let old_party = new_user.lock().await.party.take();
+        let player_id = new_user.lock().await.get_user_id();
         if let Some(party) = old_party {
-            party.write().remove_player(player_id)?;
+            party.write().await.remove_player(player_id).await?;
         }
         let mut party = Self::new(partyid);
-        party.add_player(new_user.clone())?;
-        new_user.lock().party = Some(Arc::new(RwLock::new(party)));
+        party.add_player(new_user.clone()).await?;
+        new_user.lock().await.party = Some(Arc::new(RwLock::new(party)));
         Ok(())
     }
     // called by block
-    pub fn add_player(&mut self, new_id: Arc<Mutex<User>>) -> Result<(), Error> {
+    pub async fn add_player(&mut self, new_id: Arc<Mutex<User>>) -> Result<(), Error> {
         if self.players.len() >= 4 {
             return Ok(());
         }
-        let mut np_lock = new_id.lock();
+        let mut np_lock = new_id.lock().await;
+        let color = self.add_color(np_lock.get_user_id());
         let new_player_obj = ObjectHeader {
-            id: np_lock.player_id,
+            id: np_lock.get_user_id(),
             entity_type: EntityType::Player,
             ..Default::default()
         };
@@ -79,11 +107,8 @@ impl Party {
             hp: [100, 100, 100],
             level: np_lock.character.as_ref().unwrap().get_level().level1 as u8,
             sublevel: np_lock.character.as_ref().unwrap().get_sublevel().level1 as u8,
-            map_id: np_lock
-                .map
-                .as_ref()
-                .map(|x| x.lock().get_mapid() as u16)
-                .unwrap_or(0),
+            map_id: np_lock.get_map_id() as u16,
+            color,
             ..Default::default()
         };
 
@@ -102,6 +127,7 @@ impl Party {
             nickname: party_init.entries[0].nickname.clone(),
             char_name: party_init.entries[0].char_name.clone(),
             map_id: party_init.entries[0].map_id,
+            color,
             ..Default::default()
         });
         let mut colors = if !self.players.is_empty() {
@@ -114,9 +140,9 @@ impl Party {
             vec![]
         };
         let mut i = 1;
-        exec_users(&self.players, |_, mut player| {
+        exec_users(&self.players, |id, mut player| {
             let other_player_obj = ObjectHeader {
-                id: player.player_id,
+                id,
                 entity_type: EntityType::Player,
                 ..Default::default()
             };
@@ -134,11 +160,8 @@ impl Party {
                 hp: [100, 100, 100],
                 level: player.character.as_ref().unwrap().get_level().level1 as u8,
                 sublevel: player.character.as_ref().unwrap().get_sublevel().level1 as u8,
-                map_id: player
-                    .map
-                    .as_ref()
-                    .map(|x| x.lock().get_mapid() as u16)
-                    .unwrap_or(0),
+                map_id: player.get_map_id() as u16,
+                color: self.get_color(id),
                 ..Default::default()
             };
             let _ = player.send_packet(&new_player_packet);
@@ -149,9 +172,10 @@ impl Party {
                 unk: 1,
             }));
             i += 1;
-        });
+        })
+        .await;
         self.players
-            .push((np_lock.player_id, Arc::downgrade(&new_id)));
+            .push((np_lock.get_user_id(), Arc::downgrade(&new_id)));
         np_lock.send_packet(&Packet::PartyInit(party_init))?;
         np_lock.send_packet(&Packet::PartySettings(self.settings.clone()))?;
         for packet in colors {
@@ -163,9 +187,12 @@ impl Party {
         Ok(())
     }
     // called by block
-    pub fn send_invite(inviter: Arc<Mutex<User>>, invitee: Arc<Mutex<User>>) -> Result<(), Error> {
+    pub async fn send_invite(
+        inviter: Arc<Mutex<User>>,
+        invitee: Arc<Mutex<User>>,
+    ) -> Result<(), Error> {
         let (target_party, inviter_name, inviter_id) = {
-            let mut lock = inviter.lock();
+            let mut lock = inviter.lock().await;
             if lock.party.is_none() || lock.character.is_none() {
                 return Err(Error::NoCharacter);
             }
@@ -173,22 +200,23 @@ impl Party {
             (
                 lock.party.clone().unwrap(),
                 lock.character.as_ref().unwrap().name.clone(),
-                lock.player_id,
+                lock.get_user_id(),
             )
         };
-        let mut invitee = invitee.lock();
+        let mut invitee = invitee.lock().await;
         if invitee.party_ignore == party::RejectStatus::Reject {
             return Ok(());
         }
-        if invitee
+        for invite_id in invitee
             .party_invites
             .iter()
             .map(|PartyInvite { id, .. }| id)
-            .any(|&x| x == target_party.read().id.id)
         {
-            return Ok(());
-        };
-        let party = target_party.read();
+            if *invite_id == target_party.read().await.id.id {
+                return Ok(());
+            }
+        }
+        let party = target_party.read().await;
         let new_invite = party::NewInvitePacket {
             party_object: party.id,
             inviter: ObjectHeader {
@@ -212,17 +240,20 @@ impl Party {
         Ok(())
     }
     // called by block
-    pub fn remove_player(&mut self, id: u32) -> Result<(), Error> {
+    pub async fn remove_player(&mut self, id: u32) -> Result<Option<Arc<Mutex<User>>>, Error> {
         let (pos, removed_player) = self
             .players
             .iter()
             .enumerate()
             .find(|(_, (pid, _))| *pid == id)
             .map(|(pos, (_, p))| (pos, p.clone()))
-            .ok_or(Error::InvalidInput)?;
+            .ok_or(Error::InvalidInput("remove_player"))?;
         self.players.swap_remove(pos);
+        if let Some((pos, _)) = self.colors.iter().enumerate().find(|(_, (i, _))| *i == id) {
+            self.colors.swap_remove(pos);
+        }
         if let Some(player) = removed_player.upgrade() {
-            let mut rem_player_lock = player.lock();
+            let mut rem_player_lock = player.lock().await;
             for (id, _) in self.players.iter() {
                 let _ = rem_player_lock.send_packet(&Packet::SetPartyColor(
                     party::SetPartyColorPacket {
@@ -252,7 +283,7 @@ impl Party {
         });
         exec_users(&self.players, |_, mut player| {
             if let Packet::RemoveMember(ref mut data) = remove_packet {
-                data.receiver.id = player.player_id;
+                data.receiver.id = player.get_user_id();
                 if self.leader.id == data.removed_member.id {
                     self.leader = data.receiver;
                 }
@@ -271,11 +302,15 @@ impl Party {
                 }
             }
             let _ = player.send_packet(&remove_packet);
-        });
+        })
+        .await;
 
-        Ok(())
+        Ok(removed_player.upgrade())
     }
-    pub fn set_settings(&mut self, settings: party::NewPartySettingsPacket) -> Result<(), Error> {
+    pub async fn set_settings(
+        &mut self,
+        settings: party::NewPartySettingsPacket,
+    ) -> Result<(), Error> {
         self.questname = settings.questname;
         self.settings = party::PartySettingsPacket {
             name: settings.name,
@@ -289,10 +324,11 @@ impl Party {
         };
         exec_users(&self.players, |_, mut user| {
             let _ = user.send_packet(&Packet::PartySettings(self.settings.clone()));
-        });
+        })
+        .await;
         Ok(())
     }
-    pub fn get_info(
+    pub async fn get_info(
         player: &mut crate::User,
         packet: party::GetPartyInfoPacket,
     ) -> Result<(), Error> {
@@ -328,7 +364,7 @@ impl Party {
             let Some(party) = party.upgrade() else {
                 continue;
             };
-            let party = party.read();
+            let party = party.read().await;
             packet.infos[packet.num_of_infos as usize] = party::PartyInfo {
                 invite_time: *time,
                 party_object: party.id,
@@ -347,8 +383,8 @@ impl Party {
 
         Ok(())
     }
-    pub fn get_details(
-        mut player: MutexGuard<User>,
+    pub async fn get_details(
+        mut player: MutexGuard<'_, User>,
         packet: party::GetPartyDetailsPacket,
     ) -> Result<(), Error> {
         let info_reqs: Vec<_> = packet
@@ -379,7 +415,7 @@ impl Party {
             let Some(party) = party.upgrade() else {
                 continue;
             };
-            let party = party.read();
+            let party = party.read().await;
             packet.details[i] = party::PartyDetails {
                 party_id: party.id,
                 party_desc: party.settings.comments.clone(),
@@ -395,7 +431,7 @@ impl Party {
                     char_name: player.character.as_ref().unwrap().name.clone(),
                     nickname: player.nickname.clone(),
                     id: ObjectHeader {
-                        id: player.player_id,
+                        id: player.get_user_id(),
                         entity_type: EntityType::Player,
                         ..Default::default()
                     },
@@ -406,7 +442,8 @@ impl Party {
                     ..Default::default()
                 };
                 player_i += 1;
-            });
+            })
+            .await;
             packet.num_of_details += 1;
         }
         if packet.num_of_details != 0 {
@@ -417,8 +454,8 @@ impl Party {
         Ok(())
     }
     // called by block
-    pub fn accept_invite(player: Arc<Mutex<User>>, partyid: u32) -> Result<(), Error> {
-        let mut target_player = player.lock();
+    pub async fn accept_invite(player: Arc<Mutex<User>>, partyid: u32) -> Result<(), Error> {
+        let mut target_player = player.lock().await;
         let user_invites = target_player
             .party_invites
             .iter()
@@ -432,49 +469,50 @@ impl Party {
             return Ok(());
         };
         let orig_party = target_player.party.take();
-        let p_id = target_player.player_id;
+        let p_id = target_player.get_user_id();
         target_player.party_invites.swap_remove(i);
         target_player.party = Some(party.clone());
         drop(target_player);
         if let Some(party) = orig_party {
-            let _ = party.write().remove_player(p_id);
+            let _ = party.write().await.remove_player(p_id).await;
         }
-        party.write().add_player(player)?;
+        party.write().await.add_player(player).await?;
 
         Ok(())
     }
-    pub fn change_leader(&mut self, leader: ObjectHeader) -> Result<(), Error> {
+    pub async fn change_leader(&mut self, leader: ObjectHeader) -> Result<(), Error> {
         self.leader = leader;
         let packet = Packet::NewLeader(party::NewLeaderPacket { leader });
         exec_users(&self.players, |_, mut player| {
             let _ = player.send_packet(&packet);
-        });
+        })
+        .await;
         Ok(())
     }
     // called by block
-    pub fn disband_party(&mut self, partyid: &mut u32) -> Result<(), Error> {
+    pub async fn disband_party(&mut self, partyid: u32) -> Result<(), Error> {
         let players = self.players.clone();
-        exec_users(&players, |id, mut player| {
+        exec_users(&players, |_, mut player| {
             player.party = None;
             let _ = player.send_packet(&Packet::PartyDisbandedMarker);
-            drop(player);
-            let _ = self.remove_player(id);
-        });
-        for player in players {
-            if let Some(player) = player.1.upgrade() {
-                let _ = Self::init_player(player.clone(), partyid);
+        })
+        .await;
+        for (id, player) in players {
+            if let Some(player) = player.upgrade() {
+                let _ = self.remove_player(id).await;
+                let _ = Self::init_player(player.clone(), partyid).await;
             }
         }
         Ok(())
     }
-    // called by block
-    pub fn kick_player(&mut self, kick_id: u32, partyid: &mut u32) -> Result<(), Error> {
+    // called by player
+    pub async fn kick_player(&mut self, kick_id: u32, block: &BlockData) -> Result<(), Error> {
         let kicked_player = self
             .players
             .iter()
             .find(|(id, _)| *id == kick_id)
             .map(|(_, p)| p.clone())
-            .ok_or(Error::InvalidInput)?;
+            .ok_or(Error::InvalidInput("kick_player"))?;
         exec_users(&self.players, |_, mut player| {
             let _ = player.send_packet(&Packet::KickedMember(party::KickedMemberPacket {
                 member: ObjectHeader {
@@ -483,16 +521,20 @@ impl Party {
                     ..Default::default()
                 },
             }));
-        });
-        self.remove_player(kick_id)?;
+        })
+        .await;
+        self.remove_player(kick_id).await?;
         if let Some(player) = kicked_player.upgrade() {
-            player.lock().party = None;
-            Self::init_player(player, partyid)?;
+            let party_id = block
+                .latest_partyid
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            player.lock().await.party = None;
+            Self::init_player(player, party_id).await?;
         }
         Ok(())
     }
     // called by block
-    pub fn set_busy_state(&self, state: BusyState, sender_id: u32) {
+    pub async fn set_busy_state(&self, state: BusyState, sender_id: u32) {
         exec_users(&self.players, |_, mut player| {
             let _ = player.send_packet(&Packet::NewBusyState(NewBusyStatePacket {
                 object: ObjectHeader {
@@ -502,10 +544,11 @@ impl Party {
                 },
                 state,
             }));
-        });
+        })
+        .await;
     }
     // called by block
-    pub fn set_chat_status(&self, packet: ChatStatusPacket, sender_id: u32) {
+    pub async fn set_chat_status(&self, packet: ChatStatusPacket, sender_id: u32) {
         let mut packet = Packet::ChatStatus(packet);
         exec_users(&self.players, |_, mut player| {
             if let Packet::ChatStatus(ref mut packet) = packet {
@@ -516,11 +559,29 @@ impl Party {
                 };
             }
             let _ = player.send_packet(&packet);
-        });
+        })
+        .await;
+    }
+    pub async fn set_quest(&mut self, quest: PartyQuest) {
+        let mut set_packet = quest.set_party_packet();
+        set_packet.player = self.leader;
+        let mut info_packet = quest.set_info_packet();
+        info_packet.player = self.leader;
+        let packet1 = Packet::SetPartyQuest(set_packet);
+        let packet2 = Packet::SetQuestInfo(info_packet);
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.send_packet(&packet2);
+            let _ = player.send_packet(&packet1);
+        })
+        .await;
+        self.quest = Some(quest)
+    }
+    pub fn get_quest_map(&self) -> Option<Arc<Mutex<Map>>> {
+        self.quest.as_ref().map(|q| q.get_map())
     }
 }
 
-fn exec_users<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
+async fn exec_users<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
 where
     F: FnMut(u32, MutexGuard<User>),
 {
@@ -528,6 +589,6 @@ where
         .iter()
         .filter_map(|(i, p)| p.upgrade().map(|p| (*i, p)))
     {
-        f(id, user.lock())
+        f(id, user.lock().await)
     }
 }

@@ -80,6 +80,8 @@ pub enum Error {
     #[error(transparent)]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
     #[error(transparent)]
+    RMPDecodeError(#[from] rmp_serde::decode::Error),
+    #[error(transparent)]
     UTF8Error(#[from] std::str::Utf8Error),
 }
 
@@ -131,7 +133,10 @@ pub async fn ship_receiver(servers: Ships, sql: ASql) -> Result<(), Error> {
                                 Err(e) => eprintln!("Action error: {e}"),
                             },
                             Err(data_structs::Error::IOError(e))
-                                if e.kind() == io::ErrorKind::ConnectionAborted => {}
+                                if e.kind() == io::ErrorKind::ConnectionAborted =>
+                            {
+                                return
+                            }
                             Err(data_structs::Error::Timeout) => {}
                             Err(e) => {
                                 eprintln!("Read error: {e}");
@@ -186,6 +191,8 @@ pub async fn run_action(
                     response.action = MasterShipAction::UserLoginResult(UserLoginResult::Success {
                         id: d.id,
                         nickname: d.nickname,
+                        accountflags: d.account_flags,
+                        isgm: d.isgm,
                     })
                 }
                 Err(ref e) if matches!(e, Error::NoUser) => {
@@ -204,6 +211,8 @@ pub async fn run_action(
                     response.action = MasterShipAction::UserLoginResult(UserLoginResult::Success {
                         id: d.id,
                         nickname: d.nickname,
+                        accountflags: d.account_flags,
+                        isgm: d.isgm,
                     })
                 }
                 Err(e) => response.action = MasterShipAction::Error(e.to_string()),
@@ -215,6 +224,8 @@ pub async fn run_action(
                     response.action = MasterShipAction::UserLoginResult(UserLoginResult::Success {
                         id: d.id,
                         nickname: d.nickname,
+                        accountflags: d.account_flags,
+                        isgm: d.isgm,
                     })
                 }
                 Err(ref e) if matches!(e, Error::NoUser) => {
@@ -229,6 +240,8 @@ pub async fn run_action(
                     response.action = MasterShipAction::UserLoginResult(UserLoginResult::Success {
                         id: d.id,
                         nickname: d.nickname,
+                        accountflags: d.account_flags,
+                        isgm: d.isgm,
                     })
                 }
                 Err(e) => response.action = MasterShipAction::Error(e.to_string()),
@@ -275,6 +288,8 @@ pub async fn run_action(
                 response.action = MasterShipAction::UserLoginResult(UserLoginResult::Success {
                     id: d.id,
                     nickname: d.nickname,
+                    accountflags: d.account_flags,
+                    isgm: d.isgm,
                 })
             }
             Err(ref e) if matches!(e, Error::NoUser) => {
@@ -291,6 +306,12 @@ pub async fn run_action(
             Ok(_) => response.action = MasterShipAction::Ok,
             Err(e) => response.action = MasterShipAction::Error(e.to_string()),
         },
+        MasterShipAction::PutAccountFlags { id, flags } => {
+            match sql.put_account_flags(id, flags).await {
+                Ok(_) => response.action = MasterShipAction::Ok,
+                Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+            }
+        }
     }
     Ok(response)
 }
