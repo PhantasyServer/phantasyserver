@@ -24,18 +24,24 @@ jobs:
     - name: Build
       if: ${{ success() }}
       run: cargo build --release
+    # TODO: Make some folder structure (e.g. bin/ data/)
     - name: Move build artifacts
       if: ${{ success() }}
-      run: mv target/release/{pso2ship_server,master_ship,data_compiler} .
+      run: |
+        mkdir output
+        mv target/release/{pso2ship_server,master_ship,data_compiler} output
+        mv friend.json item_attrs.json lobby.mp names.mp quests output
     - name: Pack build artifacts and extra data
       if: ${{ success() }}
-      run: tar --zstd -cf pso2server.tar.zst pso2ship_server master_ship data_compiler friends.json item_attrs.json lobby.mp names.mp quests
+      run: |
+        cd output
+        tar --zstd -cf pso2server.tar.zst pso2ship_server master_ship data_compiler friends.json item_attrs.json lobby.mp names.mp quests
     - name: Upload artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v1
       with:
         name: x86_64-linux-pso2server.tar.zst
-        path: ./pso2server.tar.zst
+        path: ./output/pso2server.tar.zst
   crossbuild-windows:
     runs-on: ubuntu-22.04
     needs: test
@@ -58,7 +64,7 @@ jobs:
       run: mv target/x86_64-pc-windows-gnu/release/{pso2ship_server.exe,master_ship.exe,data_compiler.exe} .
     - name: Pack build artifacts and extra data
       if: ${{ success() }}
-      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friends.json item_attrs.json lobby.mp names.mp quests
+      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friend.json item_attrs.json lobby.mp names.mp quests
     - name: Upload artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v1
@@ -82,7 +88,7 @@ jobs:
         move target/release/data_compiler.exe .
     - name: Pack build artifacts and extra data
       if: ${{ success() }}
-      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friends.json item_attrs.json lobby.mp names.mp quests
+      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friend.json item_attrs.json lobby.mp names.mp quests
     - name: Upload artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v1
