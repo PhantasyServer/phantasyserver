@@ -1,7 +1,8 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
+#![warn(clippy::future_not_send)]
 pub mod sql;
-use data_structs::{
-    MasterShipAction, MasterShipComm, RegisterShipResult, ShipInfo, UserLoginResult,
+use data_structs::master_ship::{
+    MasterShipAction, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo, UserLoginResult,
 };
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
@@ -65,23 +66,22 @@ pub enum Error {
     NoUser,
     #[error("Unable to hash the password")]
     HashError,
-    #[error(transparent)]
+
+    #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
-    #[error(transparent)]
+    #[error("SQL error: {0}")]
     SqlError(#[from] sqlx::Error),
     #[error(transparent)]
     DataError(#[from] data_structs::Error),
-    #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("TOML Serialization error: {0}")]
     TomlSerError(#[from] toml::ser::Error),
-    #[error(transparent)]
+    #[error("TOML Deserialization error: {0}")]
     TomlDeError(#[from] toml::de::Error),
-    #[error(transparent)]
+    #[error("MP Serialization error: {0}")]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
-    #[error(transparent)]
+    #[error("MP Deserialization error: {0}")]
     RMPDecodeError(#[from] rmp_serde::decode::Error),
-    #[error(transparent)]
+    #[error("UTF-8 error: {0}")]
     UTF8Error(#[from] std::str::Utf8Error),
 }
 
@@ -117,36 +117,38 @@ pub async fn ship_receiver(servers: Ships, sql: ASql) -> Result<(), Error> {
                 let servers = servers.clone();
                 let sql = sql.clone();
                 tokio::spawn(async move {
-                    let mut conn = data_structs::ShipConnection::new_server(s, &hostkey)
-                        .await
-                        .unwrap();
-                    loop {
-                        match conn.read_for(Duration::from_secs(1)).await {
-                            Ok(d) => match run_action(&servers, &sql, d).await {
-                                Ok(a) => match conn.write(a).await {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        eprintln!("Write error: {e}");
-                                        return;
-                                    }
-                                },
-                                Err(e) => eprintln!("Action error: {e}"),
-                            },
-                            Err(data_structs::Error::IOError(e))
-                                if e.kind() == io::ErrorKind::ConnectionAborted =>
-                            {
-                                return
-                            }
-                            Err(data_structs::Error::Timeout) => {}
-                            Err(e) => {
-                                eprintln!("Read error: {e}");
-                                return;
-                            }
-                        }
-                    }
+                    let conn = ShipConnection::new_server(s, &hostkey).await.unwrap();
+                    connection_handler(conn, servers, sql).await
                 });
             }
             Err(e) => Err(e)?,
+        }
+    }
+}
+
+async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: ASql) {
+    loop {
+        match conn.read_for(Duration::from_secs(1)).await {
+            Ok(d) => match run_action(&servers, &sql, d).await {
+                Ok(a) => match conn.write(a).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("Write error: {e}");
+                        return;
+                    }
+                },
+                Err(e) => eprintln!("Action error: {e}"),
+            },
+            Err(data_structs::Error::IOError(e))
+                if e.kind() == io::ErrorKind::ConnectionAborted =>
+            {
+                return
+            }
+            Err(data_structs::Error::Timeout) => {}
+            Err(e) => {
+                eprintln!("Read error: {e}");
+                return;
+            }
         }
     }
 }
@@ -193,6 +195,7 @@ pub async fn run_action(
                         nickname: d.nickname,
                         accountflags: d.account_flags,
                         isgm: d.isgm,
+                        last_uuid: d.last_uuid,
                     })
                 }
                 Err(ref e) if matches!(e, Error::NoUser) => {
@@ -213,6 +216,7 @@ pub async fn run_action(
                         nickname: d.nickname,
                         accountflags: d.account_flags,
                         isgm: d.isgm,
+                        last_uuid: d.last_uuid,
                     })
                 }
                 Err(e) => response.action = MasterShipAction::Error(e.to_string()),
@@ -226,6 +230,7 @@ pub async fn run_action(
                         nickname: d.nickname,
                         accountflags: d.account_flags,
                         isgm: d.isgm,
+                        last_uuid: d.last_uuid,
                     })
                 }
                 Err(ref e) if matches!(e, Error::NoUser) => {
@@ -242,6 +247,7 @@ pub async fn run_action(
                         nickname: d.nickname,
                         accountflags: d.account_flags,
                         isgm: d.isgm,
+                        last_uuid: d.last_uuid,
                     })
                 }
                 Err(e) => response.action = MasterShipAction::Error(e.to_string()),
@@ -290,6 +296,7 @@ pub async fn run_action(
                     nickname: d.nickname,
                     accountflags: d.account_flags,
                     isgm: d.isgm,
+                    last_uuid: d.last_uuid,
                 })
             }
             Err(ref e) if matches!(e, Error::NoUser) => {
@@ -312,6 +319,10 @@ pub async fn run_action(
                 Err(e) => response.action = MasterShipAction::Error(e.to_string()),
             }
         }
+        MasterShipAction::PutUUID { id, uuid } => match sql.put_uuid(id, uuid).await {
+            Ok(_) => response.action = MasterShipAction::Ok,
+            Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+        },
     }
     Ok(response)
 }
@@ -341,21 +352,23 @@ pub async fn make_query(servers: Ships) -> io::Result<()> {
     }
     for listener in info_listeners {
         let servers = servers.clone();
-        tokio::spawn(async move {
-            loop {
-                match listener.accept().await {
-                    Ok((s, _)) => {
-                        let _ = send_querry(s, servers.clone());
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to accept connection: {}", e);
-                        return;
-                    }
-                }
-            }
-        });
+        tokio::spawn(query_listener(listener, servers));
     }
     Ok(())
+}
+
+async fn query_listener(listener: TcpListener, servers: Ships) {
+    loop {
+        match listener.accept().await {
+            Ok((s, _)) => {
+                let _ = send_querry(s, servers.clone());
+            }
+            Err(e) => {
+                eprintln!("Failed to accept connection: {}", e);
+                return;
+            }
+        }
+    }
 }
 
 fn send_querry(stream: TcpStream, servers: Ships) -> io::Result<()> {
@@ -393,21 +406,23 @@ pub async fn make_block_balance(server_statuses: Ships) -> io::Result<()> {
     }
     for listener in listeners {
         let server_statuses = server_statuses.clone();
-        tokio::spawn(async move {
-            loop {
-                match listener.accept().await {
-                    Ok((s, _)) => {
-                        let _ = send_block_balance(s, server_statuses.clone());
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to accept connection: {}", e);
-                        return;
-                    }
-                }
-            }
-        });
+        tokio::spawn(block_listener(listener, server_statuses));
     }
     Ok(())
+}
+
+async fn block_listener(listener: TcpListener, server_statuses: Ships) {
+    loop {
+        match listener.accept().await {
+            Ok((s, _)) => {
+                let _ = send_block_balance(s, server_statuses.clone());
+            }
+            Err(e) => {
+                eprintln!("Failed to accept connection: {}", e);
+                return;
+            }
+        }
+    }
 }
 
 pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
@@ -467,7 +482,10 @@ pub fn send_keys(stream: TcpStream, servers: Ships) -> Result<(), Error> {
     Ok(())
 }
 
-async fn async_write<T>(mutex: &RwLock<T>) -> RwLockWriteGuard<T> {
+async fn async_write<T>(mutex: &RwLock<T>) -> RwLockWriteGuard<T>
+where
+    T: Send + Sync,
+{
     loop {
         match mutex.try_write() {
             Some(lock) => return lock,

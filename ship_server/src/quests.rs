@@ -2,6 +2,7 @@ use std::sync::{atomic::AtomicU32, Arc};
 
 use crate::{map::Map, mutex::Mutex, Error};
 use data_structs::quest::QuestData;
+use indicatif::{MultiProgress, ProgressBar};
 use pso2packetlib::protocol::{
     party::{SetPartyQuestPacket, SetQuestInfoPacket},
     questlist::{
@@ -21,8 +22,8 @@ pub struct Quests {
 }
 
 impl Quests {
-    pub fn load(dir: &str) -> Self {
-        let quests = load_quests(dir);
+    pub fn load(dir: &str, mul_progress: &MultiProgress) -> Self {
+        let quests = load_quests(dir, mul_progress);
         let mut amount = AvailableQuestsPacket::default();
         for quest in &quests {
             match quest.definition.quest_type {
@@ -371,43 +372,53 @@ impl PartyQuest {
     }
 }
 
-fn load_quests(dir: &str) -> Vec<QuestData> {
+fn load_quests(dir: &str, mul_progress: &MultiProgress) -> Vec<QuestData> {
     let mut quests = vec![];
-    load_quests_recursive(dir, &mut quests);
+    let progress = mul_progress.add(ProgressBar::new_spinner());
+    load_quests_recursive(dir, &mut quests, &progress);
+    progress.finish_with_message("Loaded quests");
     quests
 }
 
-fn load_quests_recursive<P: AsRef<std::path::Path>>(path: P, quests: &mut Vec<QuestData>) {
+fn load_quests_recursive<P: AsRef<std::path::Path>>(
+    path: P,
+    quests: &mut Vec<QuestData>,
+    progress: &ProgressBar,
+) {
     let dir = std::fs::read_dir(&path);
     if dir.is_err() {
-        eprintln!(
+        progress.println(format!(
             "Failed to read path {}: {}",
             path.as_ref().display(),
             dir.unwrap_err()
-        );
+        ));
         return;
     }
     let dir = dir.unwrap();
     for entry in dir {
         if entry.is_err() {
-            eprintln!("Failed to read entry: {}", entry.unwrap_err(),);
+            progress.println(format!("Failed to read entry: {}", entry.unwrap_err()));
             continue;
         }
         let entry = entry.unwrap().path();
         if entry.is_dir() {
-            load_quests_recursive(entry, quests);
+            load_quests_recursive(entry, quests, progress);
         } else if entry.is_file() {
+            progress.set_message(format!("Reading quest: {} ...", entry.display()));
             let file = match std::fs::read(&entry) {
                 Ok(f) => f,
                 Err(e) => {
-                    eprintln!("Failed to read file {}: {e}", entry.display());
+                    progress.println(format!("Failed to read file {}: {e}", entry.display()));
                     continue;
                 }
             };
             let quest = match rmp_serde::from_slice(&file) {
                 Ok(q) => q,
                 Err(e) => {
-                    eprintln!("Failed to deserialize quest {}: {e}", entry.display());
+                    progress.println(format!(
+                        "Failed to deserialize quest {}: {e}",
+                        entry.display()
+                    ));
                     continue;
                 }
             };

@@ -1,6 +1,8 @@
+// this is a nonessential bin anyway. maybe i'll change my mind later
+#![allow(clippy::excessive_nesting)]
 use data_structs::{
+    map::{self, MapData},
     quest::{EnemyData, QuestData},
-    NewMapData,
 };
 use pso2packetlib::{
     ppac::{OutputType, PPACReader, PacketData},
@@ -13,7 +15,7 @@ fn main() {
     args.next();
     let filename = args.next().unwrap();
 
-    let mut map_data: Option<NewMapData> = None;
+    let mut map_data: Option<MapData> = None;
     let mut quest_data: Vec<QuestData> = vec![];
     let mut mapid = 0;
     let mut user_id = 0;
@@ -88,7 +90,7 @@ fn main() {
                     populated.clear();
                 }
                 mapid = p.settings.map_id;
-                map_data = Some(NewMapData {
+                map_data = Some(MapData {
                     map_data: p,
                     objects: vec![],
                     npcs: vec![],
@@ -131,7 +133,7 @@ fn main() {
                     {
                         continue;
                     }
-                    data.objects.push(data_structs::ObjectData {
+                    data.objects.push(map::ObjectData {
                         mapid,
                         is_active: true,
                         data: p,
@@ -152,7 +154,7 @@ fn main() {
                     {
                         continue;
                     }
-                    data.npcs.push(data_structs::NPCData {
+                    data.npcs.push(map::NPCData {
                         mapid,
                         is_active: true,
                         data: p,
@@ -173,7 +175,7 @@ fn main() {
                     {
                         continue;
                     }
-                    data.events.push(data_structs::EventData {
+                    data.events.push(map::EventData {
                         mapid,
                         is_active: true,
                         data: p,
@@ -194,7 +196,7 @@ fn main() {
                     {
                         continue;
                     }
-                    data.transporters.push(data_structs::TransporterData {
+                    data.transporters.push(map::TransporterData {
                         mapid,
                         is_active: true,
                         data: p,

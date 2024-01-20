@@ -1,4 +1,4 @@
-use crate::{flags::Flags, AccountStorages, Error};
+use crate::{flags::Flags, inventory::AccountStorages, Error};
 use aes_gcm::{
     aead::{Aead, KeyInit},
     AeadCore, Aes256Gcm,
@@ -42,6 +42,10 @@ pub enum MasterShipAction {
         id: u32,
         flags: Flags,
     },
+    PutUUID {
+        id: u32,
+        uuid: u64,
+    },
     /// Create a new block login challenge. Parameter is the player id
     NewBlockChallenge(u32),
     /// Result of a new block login challenge request.
@@ -79,7 +83,6 @@ pub struct ShipInfo {
     pub id: u32,
     pub max_players: u32,
     pub name: String,
-    pub data_type: DataTypeDef,
     pub status: ShipStatus,
     pub key: KeyInfo,
 }
@@ -99,6 +102,7 @@ pub enum UserLoginResult {
         nickname: String,
         accountflags: Flags,
         isgm: bool,
+        last_uuid: u64,
     },
     InvalidPassword(u32),
     NotFound,
@@ -115,12 +119,6 @@ pub struct UserCreds {
     pub username: String,
     pub password: String,
     pub ip: Ipv4Addr,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum DataTypeDef {
-    Parsed,
-    Binary,
 }
 
 #[cfg(feature = "ship")]

@@ -890,7 +890,6 @@ dependencies = [
  "rand_core",
  "rmp-serde",
  "serde",
- "serde_json",
  "sqlx",
  "thiserror",
  "tokio",
@@ -1109,7 +1108,7 @@ dependencies = [
 [[package]]
 name = "packetlib_impl"
 version = "0.1.0"
-source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=4c20b36#4c20b369e2a8cc0a89172711745094bc49a583e0"
+source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=6c3fae2#6c3fae2473fc9105afa71e369eaf81da982b9417"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1266,7 +1265,7 @@ dependencies = [
 [[package]]
 name = "pso2packetlib"
 version = "0.1.0"
-source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=4c20b36#4c20b369e2a8cc0a89172711745094bc49a583e0"
+source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=6c3fae2#6c3fae2473fc9105afa71e369eaf81da982b9417"
 dependencies = [
  "aes",
  "byteorder",

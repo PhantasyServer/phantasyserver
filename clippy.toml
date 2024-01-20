@@ -1,0 +1,3 @@
+# is this even desirable or is this an unwanted lint
+# my opinion is that rust is indent heavy
+excessive-nesting-threshold = 4

@@ -6,12 +6,11 @@ use crate::{
     Action, BlockData, BlockInfo, Error,
 };
 use console::style;
-use data_structs::ItemParameters;
+use data_structs::inventory::ItemParameters;
 use pso2packetlib::PrivateKey;
 use std::{
-    collections::HashMap,
     io,
-    net::TcpListener,
+    net::{TcpListener, TcpStream},
     sync::{
         atomic::{AtomicU32, Ordering},
         mpsc, Arc,
@@ -31,26 +30,10 @@ pub async fn init_block(
 
     let latest_mapid = AtomicU32::new(0);
 
-    let mut maps = HashMap::new();
-
-    for (map_name, map_path) in this_block.maps {
-        match map::Map::new(map_path, &latest_mapid) {
-            Ok(x) => {
-                maps.insert(map_name, Arc::new(Mutex::new(x)));
-            }
-            Err(e) => {
-                eprintln!(
-                    "{}",
-                    style(format!("Failed to load map {}: {}", map_name, e)).red()
-                );
-            }
-        }
-    }
-
-    let lobby = match maps.get("lobby") {
-        Some(x) => x.clone(),
-        None => return Err(Error::NoLobby),
-    };
+    let lobby = Arc::new(Mutex::new(map::Map::new(
+        this_block.lobby_map,
+        &latest_mapid,
+    )?));
 
     let block_data = Arc::new(BlockData {
         sql,
@@ -73,42 +56,15 @@ pub async fn init_block(
         for stream in listener.incoming() {
             match stream {
                 Ok(s) => {
-                    println!("{}", style("Client connected").cyan());
-                    let mut lock = block_data.blocks.write().await;
-                    if let Some(block) = lock.iter_mut().find(|x| x.id == this_block.id) {
-                        if block.players >= block.max_players {
-                            continue;
-                        }
-                        block.players += 1;
-                    }
-                    drop(lock);
-                    let client = Arc::new(Mutex::new(User::new(s, block_data.clone())?));
-                    clients.push((conn_id, client.clone()));
-                    let send = send.clone();
-                    tokio::spawn(async move {
-                        loop {
-                            match User::tick(client.lock().await).await {
-                                Ok(Action::Nothing) => {}
-                                Ok(Action::Disconnect) => {
-                                    send.send((conn_id, Action::Disconnect)).unwrap();
-                                    return;
-                                }
-                                Ok(a) => {
-                                    send.send((conn_id, a)).unwrap();
-                                }
-                                Err(Error::IOError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
-                                }
-                                Err(e) => {
-                                    let error_msg = format!("Client error: {e}");
-                                    let _ = client.lock().await.send_error(&error_msg);
-                                    eprintln!("{}", style(error_msg).red());
-                                }
-                            }
-                            tokio::time::sleep(Duration::from_millis(1)).await;
-                        }
-                    });
-
-                    conn_id += 1;
+                    new_conn_handler(
+                        s,
+                        &block_data,
+                        &mut clients,
+                        send.clone(),
+                        this_block.id,
+                        &mut conn_id,
+                    )
+                    .await?;
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => {
@@ -124,6 +80,54 @@ pub async fn init_block(
         }
         tokio::time::sleep(Duration::from_millis(1)).await;
     }
+}
+
+async fn new_conn_handler(
+    s: TcpStream,
+    block_data: &Arc<BlockData>,
+    clients: &mut Vec<(usize, Arc<Mutex<User>>)>,
+    send: mpsc::Sender<(usize, Action)>,
+    block_id: u32,
+    conn_id_ref: &mut usize,
+) -> Result<(), Error> {
+    println!("{}", style("Client connected").cyan());
+
+    let mut lock = block_data.blocks.write().await;
+    if let Some(block) = lock.iter_mut().find(|x| x.id == block_id) {
+        if block.players >= block.max_players {
+            return Ok(());
+        }
+        block.players += 1;
+    }
+    drop(lock);
+
+    let client = Arc::new(Mutex::new(User::new(s, block_data.clone())?));
+    clients.push((*conn_id_ref, client.clone()));
+    let conn_id = *conn_id_ref;
+    tokio::spawn(async move {
+        loop {
+            match User::tick(client.lock().await).await {
+                Ok(Action::Nothing) => {}
+                Ok(Action::Disconnect) => {
+                    send.send((conn_id, Action::Disconnect)).unwrap();
+                    return;
+                }
+                Ok(a) => {
+                    send.send((conn_id, a)).unwrap();
+                }
+                Err(Error::IOError(e)) if e.kind() == io::ErrorKind::WouldBlock => {}
+                Err(e) => {
+                    let error_msg = format!("Client error: {e}");
+                    let _ = client.lock().await.send_error(&error_msg);
+                    eprintln!("{}", style(error_msg).red());
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    });
+
+    *conn_id_ref += 1;
+    Ok(())
 }
 
 async fn run_action(
@@ -143,12 +147,12 @@ async fn run_action(
         Action::Nothing => {}
         Action::Disconnect => {
             println!("{}", style("Client disconnected").cyan());
+            clients.remove(pos);
+
             let mut lock = block_data.blocks.write().await;
             if let Some(block) = lock.iter_mut().find(|x| x.id == block_data.block_id) {
                 block.players -= 1;
             }
-            drop(lock);
-            clients.remove(pos);
         }
         Action::InitialLoad => {
             let (_, user) = &clients[pos];
@@ -164,17 +168,17 @@ async fn run_action(
                 .init_add_player(user.clone())
                 .await?;
         }
-        Action::SendPartyInvite(invitee) => {
+        Action::SendPartyInvite(invitee_id) => {
             let (_, inviter) = &clients[pos];
-            let invitee = async {
-                for client in clients.iter().map(|(_, p)| p) {
-                    if client.lock().await.get_user_id() == invitee {
-                        return Some(client.clone());
-                    }
+
+            let mut invitee = None;
+            for (_, client) in &*clients {
+                if client.lock().await.get_user_id() == invitee_id {
+                    invitee = Some(client.clone());
+                    break;
                 }
-                None
             }
-            .await;
+
             if let Some(invitee) = invitee {
                 party::Party::send_invite(inviter.clone(), invitee).await?;
             }

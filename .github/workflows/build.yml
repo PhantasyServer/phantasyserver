@@ -8,13 +8,15 @@ jobs:
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
-    # TODO: some sort of testing would probably go a long way
     - name: Check
       if: ${{ success() }}
       run: cargo check --all-targets --all-features
     - name: Run clippy
       if: ${{ success() }}
       run: cargo clippy --all-targets --all-features
+    - name: Run tests
+      if: ${{ success() }}
+      run: cargo test --all-features
   build-linux:
     runs-on: ubuntu-22.04
     needs: test

@@ -32,7 +32,11 @@ impl<T> Mutex<T> {
             mutex: PMutex::new(val),
         }
     }
-    pub async fn lock(&self) -> MutexGuard<T> {
+    pub async fn lock(&self) -> MutexGuard<T>
+    where
+        Self: Send,
+        T: Send,
+    {
         loop {
             match self.mutex.try_lock() {
                 Some(guard) => return MutexGuard { guard },
@@ -63,7 +67,9 @@ impl<'a, T> DerefMut for MutexGuard<'a, T> {
 impl<'a, T> MutexGuard<'a, T> {
     pub async fn unlocked<F, R>(s: &mut Self, f: F) -> R
     where
-        F: FnOnce() -> R,
+        Self: Send,
+        F: FnOnce() -> R + Send,
+        R: Send,
     {
         let mutex = PGuard::mutex(&s.guard);
         //SAFETY: same as below
@@ -80,7 +86,8 @@ impl<'a, T> MutexGuard<'a, T> {
     }
     pub async fn unlocked_async<F, Fu>(s: &mut Self, f: F) -> Fu::Output
     where
-        F: FnOnce() -> Fu,
+        Self: Send,
+        F: FnOnce() -> Fu + Send,
         Fu: Future + Send,
         Fu::Output: Send,
     {
@@ -105,7 +112,11 @@ impl<T> RwLock<T> {
             lock: PRwLock::new(val),
         }
     }
-    pub async fn read(&self) -> RwReadGuard<T> {
+    pub async fn read(&self) -> RwReadGuard<T>
+    where
+        Self: Send,
+        T: Send + Sync,
+    {
         loop {
             match self.lock.try_read() {
                 Some(guard) => return RwReadGuard { guard },
@@ -118,7 +129,11 @@ impl<T> RwLock<T> {
             guard: self.lock.read(),
         }
     }
-    pub async fn write(&self) -> RwWriteGuard<T> {
+    pub async fn write(&self) -> RwWriteGuard<T>
+    where
+        Self: Send,
+        T: Send + Sync,
+    {
         loop {
             match self.lock.try_write() {
                 Some(guard) => return RwWriteGuard { guard },
@@ -157,7 +172,9 @@ impl<'a, T> DerefMut for RwWriteGuard<'a, T> {
 impl<'a, T> RwReadGuard<'a, T> {
     pub async fn unlocked<F, R>(s: &mut Self, f: F) -> R
     where
-        F: FnOnce() -> R,
+        Self: Send,
+        F: FnOnce() -> R + Send,
+        R: Send,
     {
         let rwlock = PRwReadGuard::rwlock(&s.guard);
         //SAFETY: same as below
@@ -174,7 +191,8 @@ impl<'a, T> RwReadGuard<'a, T> {
     }
     pub async fn unlocked_async<F, Fu>(s: &mut Self, f: F) -> Fu::Output
     where
-        F: FnOnce() -> Fu,
+        Self: Send,
+        F: FnOnce() -> Fu + Send,
         Fu: Future + Send,
         Fu::Output: Send,
     {
@@ -196,7 +214,9 @@ impl<'a, T> RwReadGuard<'a, T> {
 impl<'a, T> RwWriteGuard<'a, T> {
     pub async fn unlocked<F, R>(s: &mut Self, f: F) -> R
     where
-        F: FnOnce() -> R,
+        Self: Send,
+        F: FnOnce() -> R + Send,
+        R: Send,
     {
         let rwlock = PRwWriteGuard::rwlock(&s.guard);
         //SAFETY: same as below
@@ -213,7 +233,8 @@ impl<'a, T> RwWriteGuard<'a, T> {
     }
     pub async fn unlocked_async<F, Fu>(s: &mut Self, f: F) -> Fu::Output
     where
-        F: FnOnce() -> Fu,
+        Self: Send,
+        F: FnOnce() -> Fu + Send,
         Fu: Future + Send,
         Fu::Output: Send,
     {

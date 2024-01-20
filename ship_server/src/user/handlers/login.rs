@@ -41,6 +41,7 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                     }))?;
                     user.accountflags = x.accountflags;
                     user.isgm = x.isgm;
+                    user.uuid = x.last_uuid;
                 }
                 Err(Error::InvalidPassword) => {
                     status = login::LoginStatus::Failure;
@@ -65,6 +66,7 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
             id = user_psn.id;
             user.accountflags = user_psn.accountflags;
             user.isgm = user_psn.isgm;
+            user.uuid = user_psn.last_uuid;
         }
         _ => unreachable!(),
     }
@@ -147,6 +149,7 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
             }))?;
             user.accountflags = x.accountflags;
             user.isgm = x.isgm;
+            user.uuid = x.last_uuid;
         }
         Err(Error::NoUser) => {
             status = login::LoginStatus::Failure;
@@ -179,10 +182,14 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
 pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPacket) -> HResult {
     let lock = user.blockdata.blocks.read().await;
     if let Some(block) = lock.iter().find(|b| b.id == packet.block_id as u32) {
+        let challenge_data = crate::sql::ChallengeData {
+            lang: user.text_lang,
+            packet_type: user.packet_type,
+        };
         let challenge = user
             .blockdata
             .sql
-            .new_challenge(user.player_id, user.text_lang, user.packet_type)
+            .new_challenge(user.player_id, challenge_data)
             .await?;
         let packet = Packet::BlockSwitchResponse(login::BlockSwitchResponsePacket {
             unk1: packet.unk1,
@@ -273,13 +280,12 @@ pub async fn newname_request(
     user: &mut User,
     packet: login::CharacterNewNameRequestPacket,
 ) -> HResult {
-    let char = user
+    let mut char = user
         .blockdata
         .sql
         .get_character(user.player_id, packet.char_id)
         .await?;
-    let mut char = char.character;
-    char.name = packet.name.clone();
+    char.character.name = packet.name.clone();
     user.blockdata.sql.update_character(&char).await?;
     let packet_out = login::CharacterNewNamePacket {
         status: login::NewNameStatus::Success,
@@ -299,13 +305,15 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
     let mut character = packet.character;
     character.character_id = user.char_id;
     character.player_id = user.player_id;
+    //TODO: add class defaults
     user.character = Some(character);
-    user.inventory = user
+    user.inventory = Default::default();
+    user.inventory.storages = user
         .blockdata
         .sql
-        .get_inventory(user.char_id, user.player_id)
+        .get_account_storage(user.player_id)
         .await?;
-    user.palette = user.blockdata.sql.get_palette(user.char_id).await?;
+    user.palette = Default::default();
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }
@@ -319,12 +327,8 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
         .await?;
     user.character = Some(char.character);
     user.charflags = char.flags;
-    user.inventory = user
-        .blockdata
-        .sql
-        .get_inventory(user.char_id, user.player_id)
-        .await?;
-    user.palette = user.blockdata.sql.get_palette(user.char_id).await?;
+    user.inventory = char.inventory;
+    user.palette = char.palette;
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }

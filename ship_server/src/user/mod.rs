@@ -47,6 +47,7 @@ pub struct User {
     accountflags: Flags,
     charflags: Flags,
     pub isgm: bool,
+    uuid: u64,
 }
 
 impl User {
@@ -95,6 +96,7 @@ impl User {
             accountflags: Default::default(),
             charflags: Default::default(),
             isgm: false,
+            uuid: 0,
         })
     }
     // I hope async guard won't cause me troubles in the future
@@ -155,10 +157,10 @@ impl User {
     pub fn set_map(&mut self, map: Arc<Mutex<Map>>) {
         self.map = Some(map)
     }
-    pub fn get_user_id(&self) -> u32 {
+    pub const fn get_user_id(&self) -> u32 {
         self.player_id
     }
-    pub fn get_map_id(&self) -> u32 {
+    pub const fn get_map_id(&self) -> u32 {
         self.mapid
     }
     pub async fn send_item_attrs(&mut self) -> Result<(), Error> {
@@ -281,11 +283,11 @@ async fn packet_handler(
         }
 
         // Item packets
-        Packet::MoveToStorageRequest(data) => H::item::move_to_storage(user, data).await,
-        Packet::MoveToInventoryRequest(data) => H::item::move_to_inventory(user, data).await,
+        Packet::MoveToStorageRequest(data) => H::item::move_to_storage(user, data),
+        Packet::MoveToInventoryRequest(data) => H::item::move_to_inventory(user, data),
         Packet::MoveMeseta(data) => H::item::move_meseta(user, data),
         Packet::DiscardItemRequest(data) => H::item::discard_inventory(user, data),
-        Packet::MoveStoragesRequest(data) => H::item::move_storages(user, data).await,
+        Packet::MoveStoragesRequest(data) => H::item::move_storages(user, data),
         Packet::GetItemDescription(data) => H::item::get_description(user, data).await,
         Packet::DiscardStorageItemRequest(data) => H::item::discard_storage(user, data),
 
@@ -388,16 +390,19 @@ impl Drop for User {
         let player_id = self.player_id;
         if self.character.is_some() {
             let sql = self.blockdata.sql.clone();
-            let inventory = std::mem::take(&mut self.inventory);
-            let palette = std::mem::take(&mut self.palette);
-            let char_id = self.char_id;
+            let char = crate::sql::CharData {
+                character: std::mem::take(self.character.as_mut().unwrap()),
+                inventory: std::mem::take(&mut self.inventory),
+                palette: std::mem::take(&mut self.palette),
+                flags: std::mem::take(&mut self.charflags),
+            };
             let acc_flags = std::mem::take(&mut self.accountflags);
-            let char_flags = std::mem::take(&mut self.charflags);
+            let uuid = self.uuid;
             tokio::spawn(async move {
-                let _ = sql.update_inventory(char_id, player_id, &inventory).await;
-                let _ = sql.update_palette(char_id, &palette).await;
+                let _ = sql.update_character(&char).await;
+                let _ = sql.update_account_storage(player_id, &char.inventory).await;
                 let _ = sql.put_account_flags(player_id, acc_flags).await;
-                let _ = sql.update_char_flags(char_id, char_flags).await;
+                let _ = sql.put_uuid(player_id, uuid).await;
             });
         }
         if let Some(party) = self.party.take() {

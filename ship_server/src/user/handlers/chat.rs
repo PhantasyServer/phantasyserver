@@ -2,7 +2,7 @@ use super::HResult;
 use crate::{create_attr_files, mutex::MutexGuard, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
-use pso2packetlib::protocol::{chat::ChatArea, flag::FlagType, Packet};
+use pso2packetlib::protocol::{chat::ChatArea, flag::FlagType, items::ItemId, Packet};
 
 pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResult {
     let Packet::ChatMessage(ref data) = packet else {
@@ -128,16 +128,46 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
             }
             "!set_acc_flag" => set_flag(&mut user, FlagType::Account, &mut args)?,
             "!set_char_flag" => set_flag(&mut user, FlagType::Character, &mut args)?,
+            "!add_item" => {
+                let Some(item_type) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No item type provided")?;
+                    return Ok(Action::Nothing);
+                };
+                let Some(id) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No id provided")?;
+                    return Ok(Action::Nothing);
+                };
+                let Some(subid) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No subid provided")?;
+                    return Ok(Action::Nothing);
+                };
+                let item_id = ItemId {
+                    id,
+                    subid,
+                    item_type,
+                    ..Default::default()
+                };
+                let user: &mut User = &mut user;
+                let packet = user.inventory.add_default_item(&mut user.uuid, item_id);
+                user.send_packet(&packet)?;
+            }
             _ => user.send_system_msg("Unknown command")?,
         }
         return Ok(Action::Nothing);
     }
-    if let ChatArea::Map = data.area {
+    if ChatArea::Map == data.area {
         let id = user.player_id;
-        let map = user.map.clone();
+        let map = user.get_current_map();
         drop(user);
         if let Some(map) = map {
             map.lock().await.send_message(packet, id).await;
+        }
+    } else if ChatArea::Party == data.area {
+        let id = user.player_id;
+        let party = user.get_current_party();
+        drop(user);
+        if let Some(party) = party {
+            party.read().await.send_message(packet, id).await;
         }
     }
     Ok(Action::Nothing)

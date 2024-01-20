@@ -4,7 +4,7 @@ use pso2packetlib::protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct Flags {
     flags: Vec<u8>,
     params: Vec<u32>,
@@ -34,13 +34,13 @@ impl Flags {
         (self.flags[index] & 1 << bit_index) >> bit_index
     }
     pub fn set_param(&mut self, id: usize, val: u32) {
-        if self.flags.len() < id + 1 {
-            self.flags.resize(id + 1, 0);
+        if self.params.len() < id + 1 {
+            self.params.resize(id + 1, 0);
         }
         self.params[id] = val;
     }
     pub fn get_param(&self, id: usize) -> u32 {
-        if self.flags.len() < id + 1 {
+        if self.params.len() < id + 1 {
             0
         } else {
             self.params[id]
@@ -60,7 +60,25 @@ impl Flags {
     }
 }
 
-fn set_bit(byte: u8, index: u8, val: u8) -> u8 {
+const fn set_bit(byte: u8, index: u8, val: u8) -> u8 {
     let byte = byte & !(1 << index);
-    byte | (val << index)
+    byte | ((val & 1) << index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Flags;
+
+    #[test]
+    fn test_flags() {
+        let mut flags = Flags::new();
+        flags.set(10, 1);
+        flags.set(20, 2);
+        flags.set(30, 3);
+        flags.set_param(10, 123);
+        assert_eq!(flags.get(10), 1);
+        assert_eq!(flags.get(20), 0);
+        assert_eq!(flags.get(30), 1);
+        assert_eq!(flags.get_param(10), 123);
+    }
 }

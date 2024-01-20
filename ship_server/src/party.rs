@@ -7,6 +7,7 @@ use crate::{
 };
 use pso2packetlib::protocol::{
     party::{self, BusyState, ChatStatusPacket, Color, NewBusyStatePacket},
+    symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
     EntityType, ObjectHeader, Packet,
 };
 use std::{
@@ -48,11 +49,9 @@ impl Party {
     }
     fn add_color(&mut self, id: u32) -> Color {
         let colors = [Color::Red, Color::Blue, Color::Green, Color::Yellow];
-        'outer: for color in colors {
-            for player in &self.colors {
-                if player.1 == color {
-                    continue 'outer;
-                }
+        for color in colors {
+            if self.colors.iter().any(|(_, c)| *c == color) {
+                continue;
             }
             self.colors.push((id, color));
             return color;
@@ -281,25 +280,31 @@ impl Party {
                 ..Default::default()
             },
         });
-        exec_users(&self.players, |_, mut player| {
+        let mut leader_changed = false;
+        exec_users(&self.players, |id, mut player| {
             if let Packet::RemoveMember(ref mut data) = remove_packet {
                 data.receiver.id = player.get_user_id();
-                if self.leader.id == data.removed_member.id {
-                    self.leader = data.receiver;
-                }
+            }
+            if self.leader.id == removed_obj.id {
+                self.leader.id = id;
+                leader_changed = true;
+            }
+            if leader_changed {
+                let _ = player.send_packet(&Packet::NewLeader(party::NewLeaderPacket {
+                    leader: self.leader,
+                }));
+            }
+            let _ = player.send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
+                target: removed_obj,
+                in_party: 0,
+                ..Default::default()
+            }));
+            if self.players.len() == 1 {
                 let _ = player.send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
-                    target: data.removed_member,
+                    target: removed_obj,
                     in_party: 0,
                     ..Default::default()
                 }));
-                if self.players.len() == 1 {
-                    let _ =
-                        player.send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
-                            target: data.receiver,
-                            in_party: 0,
-                            ..Default::default()
-                        }));
-                }
             }
             let _ = player.send_packet(&remove_packet);
         })
@@ -407,7 +412,7 @@ impl Party {
             return Ok(());
         }
         let mut packet = party::PartyDetailsPacket::default();
-        for (i, party) in user_invites.iter().enumerate() {
+        for party in user_invites.iter() {
             if packet.num_of_details >= 0xC {
                 player.send_packet(&Packet::PartyDetails(packet))?;
                 packet = Default::default()
@@ -416,7 +421,7 @@ impl Party {
                 continue;
             };
             let party = party.read().await;
-            packet.details[i] = party::PartyDetails {
+            let mut detail = party::PartyDetails {
                 party_id: party.id,
                 party_desc: party.settings.comments.clone(),
                 unk5: 4294967295,
@@ -427,7 +432,7 @@ impl Party {
             };
             let mut player_i = 0;
             exec_users(&party.players, |_, player| {
-                packet.details[i].unk10[player_i] = party::PartyMember {
+                detail.unk10[player_i] = party::PartyMember {
                     char_name: player.character.as_ref().unwrap().name.clone(),
                     nickname: player.nickname.clone(),
                     id: ObjectHeader {
@@ -444,6 +449,7 @@ impl Party {
                 player_i += 1;
             })
             .await;
+            packet.details.push(detail);
             packet.num_of_details += 1;
         }
         if packet.num_of_details != 0 {
@@ -579,11 +585,44 @@ impl Party {
     pub fn get_quest_map(&self) -> Option<Arc<Mutex<Map>>> {
         self.quest.as_ref().map(|q| q.get_map())
     }
+
+    pub async fn send_message(&self, mut packet: Packet, id: u32) {
+        if let Packet::ChatMessage(ref mut data) = packet {
+            data.object = ObjectHeader {
+                id,
+                entity_type: EntityType::Player,
+                ..Default::default()
+            };
+        }
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.send_packet(&packet);
+        })
+        .await;
+    }
+
+    pub async fn send_sa(&self, data: SendSymbolArtPacket, id: u32) {
+        let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
+            object: ObjectHeader {
+                id,
+                entity_type: EntityType::Player,
+                ..Default::default()
+            },
+            uuid: data.uuid,
+            area: data.area,
+            unk1: data.unk1,
+            unk2: data.unk2,
+            unk3: data.unk3,
+        });
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.send_packet(&packet);
+        })
+        .await;
+    }
 }
 
 async fn exec_users<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
 where
-    F: FnMut(u32, MutexGuard<User>),
+    F: FnMut(u32, MutexGuard<User>) + Send,
 {
     for (id, user) in users
         .iter()

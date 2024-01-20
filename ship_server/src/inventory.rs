@@ -1,8 +1,8 @@
 use crate::Error;
-use data_structs::{AccountStorages, ItemParameters, StorageInventory};
+use data_structs::inventory::{AccountStorages, ItemParameters, StorageInventory};
 use pso2packetlib::protocol::{
     items::{
-        DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipedItem,
+        AddedItemPacket, DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipedItem,
         InventoryMesetaPacket, Item, ItemId, ItemType, LoadEquipedPacket, LoadItemPacket,
         LoadPlayerInventoryPacket, LoadStoragesPacket, MesetaDirection, MoveMesetaPacket,
         MoveStoragesPacket, MoveStoragesRequestPacket, MoveToInventoryPacket,
@@ -11,7 +11,7 @@ use pso2packetlib::protocol::{
         UpdateStoragePacket,
     },
     login::Language,
-    ObjectHeader, Packet,
+    ObjectHeader, Packet, ProtocolRW,
 };
 use serde::{Deserialize, Serialize};
 
@@ -508,6 +508,31 @@ impl Inventory {
             meseta: self.storages.storage_meseta,
         }));
         packets
+    }
+    pub fn add_default_item(&mut self, uuid: &mut u64, item_id: ItemId) -> Packet {
+        let item = Item {
+            uuid: *uuid,
+            id: item_id,
+            data: ItemType::default(),
+        };
+        *uuid += 1;
+
+        // transform item data into known item data
+        let packet = Packet::AddedItem(AddedItemPacket {
+            item,
+            ..Default::default()
+        })
+        .write(pso2packetlib::protocol::PacketType::NA);
+        let packet = Packet::read(&packet, pso2packetlib::protocol::PacketType::NA)
+            .expect("Reading from memory shouldn't fail")
+            .pop()
+            .expect("Should always contain an item");
+        let Packet::AddedItem(added_item) = &packet else {
+            unreachable!("Read and write impls should agree");
+        };
+        self.inventory.items.push(added_item.item.clone());
+
+        packet
     }
 }
 fn load_items_inner(

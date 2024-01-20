@@ -1,6 +1,6 @@
 use crate::Error;
 use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use data_structs::{flags::Flags, AccountStorages};
+use data_structs::{flags::Flags, inventory::AccountStorages};
 use pso2packetlib::{
     protocol::login::{LoginAttempt, LoginResult, UserInfoPacket},
     AsciiString,
@@ -18,11 +18,26 @@ pub struct Sql {
     connection: sqlx::AnyPool,
 }
 
+#[derive(PartialEq, Debug)]
 pub struct User {
     pub id: u32,
+
     pub nickname: String,
     pub account_flags: Flags,
     pub isgm: bool,
+    pub last_uuid: u64,
+}
+
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+struct UserData {
+    nickname: String,
+    settings: String,
+    storage: AccountStorages,
+    info: UserInfoPacket,
+    flags: Flags,
+    isgm: bool,
+    last_uuid: u64,
 }
 
 impl Sql {
@@ -46,15 +61,10 @@ impl Sql {
                 "
             create table if not exists Users (
                 Id integer primary key {},
-                Username blob default NULL,
-                Nickname blob default NULL,
-                Password blob default NULL,
-                PSNNickname blob default NULL,
-                Settings blob default NULL,
-                Storage blob default NULL,
-                Info blob default NULL,
-                AccountFlags blob default NULL,
-                IsGM integer default 0,
+                Username blob,
+                Password blob,
+                PSNUsername blob,
+                Data blob
             );
         ",
                 auto_inc
@@ -107,12 +117,6 @@ impl Sql {
             Some(data) => {
                 let stored_password = from_utf8(data.try_get("Password")?)?;
                 let id = data.try_get::<i64, _>("Id")? as u32;
-                let nickname = from_utf8(data.try_get("Nickname").unwrap_or_default())?;
-                let account_flags = match data.try_get("AccountFlags") {
-                    Ok(d) => rmp_serde::from_slice(d)?,
-                    Err(_) => Default::default(),
-                };
-                let isgm = data.try_get::<i64, _>("IsGM").unwrap_or_default() == 1;
                 // SAFETY: reference doesn't outlive the scope because the thread is immediately
                 // joined
                 let stored_password: &'static str = unsafe { std::mem::transmute(stored_password) };
@@ -139,51 +143,44 @@ impl Sql {
                     }
                 }
                 self.put_login(id, ip, LoginResult::Successful).await?;
+                let user_data: UserData = rmp_serde::from_slice(data.try_get("Data")?)?;
                 Ok(User {
                     id,
-                    nickname: nickname.to_string(),
-                    account_flags,
-                    isgm,
+                    nickname: user_data.nickname,
+                    account_flags: user_data.flags,
+                    isgm: user_data.isgm,
+                    last_uuid: user_data.last_uuid,
                 })
             }
             None => Err(Error::NoUser),
         }
     }
     pub async fn get_user_info(&self, user_id: u32) -> Result<UserInfoPacket, Error> {
-        let row = sqlx::query("select * from Users where Id = ?")
+        let Some(row) = sqlx::query("select * from Users where Id = ?")
             .bind(user_id as i64)
             .fetch_optional(&self.connection)
-            .await?;
-        if row.is_none() {
+            .await?
+        else {
             return Err(Error::NoUser);
-        }
-        Ok(match row.unwrap().try_get("Info") {
-            Ok(d) => serde_json::from_slice(d)?,
-            Err(_) => Default::default(),
-        })
+        };
+        let user_data: UserData = rmp_serde::from_slice(row.try_get("Data")?)?;
+        Ok(user_data.info)
     }
     pub async fn put_user_info(&self, user_id: u32, info: UserInfoPacket) -> Result<(), Error> {
-        sqlx::query("update Users set Info = ? where Id = ?")
-            .bind(serde_json::to_vec(&info)?)
-            .bind(user_id as i64)
-            .execute(&self.connection)
-            .await?;
-        Ok(())
+        self.update_userdata(user_id, |user_data| user_data.info = info)
+            .await
     }
     pub async fn put_account_flags(&self, user_id: u32, flags: Flags) -> Result<(), Error> {
-        sqlx::query("update Users set AccountFlags = ? where Id = ?")
-            .bind(rmp_serde::to_vec(&flags)?)
-            .bind(user_id as i64)
-            .execute(&self.connection)
-            .await?;
-        Ok(())
+        self.update_userdata(user_id, |user_data| user_data.flags = flags)
+            .await
     }
     pub async fn new_challenge(&self, user_id: u32) -> Result<u32, Error> {
-        let row = sqlx::query("select * from Users where Id = ?")
+        if sqlx::query("select * from Users where Id = ?")
             .bind(user_id as i64)
             .fetch_optional(&self.connection)
-            .await?;
-        if row.is_none() {
+            .await?
+            .is_none()
+        {
             return Err(Error::NoUser);
         }
         let challenge = OsRng.next_u32();
@@ -231,17 +228,13 @@ impl Sql {
                 .bind(user_id as i64)
                 .fetch_one(&self.connection)
                 .await?;
-            let nickname = from_utf8(row.try_get("Nickname").unwrap_or_default())?;
-            let account_flags = match row.try_get("AccountFlags") {
-                Ok(d) => rmp_serde::from_slice(d)?,
-                Err(_) => Default::default(),
-            };
-            let isgm = row.try_get::<i64, _>("IsGM").unwrap_or_default() == 1;
+            let user_data: UserData = rmp_serde::from_slice(row.try_get("Data")?)?;
             return Ok(User {
                 id: user_id,
-                nickname: nickname.to_string(),
-                account_flags,
-                isgm,
+                nickname: user_data.nickname,
+                account_flags: user_data.flags,
+                isgm: user_data.isgm,
+                last_uuid: user_data.last_uuid,
             });
         }
         Err(Error::NoUser)
@@ -250,47 +243,52 @@ impl Sql {
         if username.is_empty() {
             return Err(Error::InvalidData);
         }
-        let row = sqlx::query("select * from Users where PSNNickname = ?")
+        let row = sqlx::query("select * from Users where PSNUsername = ?")
             .bind(username.as_bytes())
             .fetch_optional(&self.connection)
             .await?;
         match row {
             Some(data) => {
                 let id = data.try_get::<i64, _>("Id")? as u32;
-                let nickname = from_utf8(data.try_get("Nickname").unwrap_or_default())?;
-                let account_flags = match data.try_get("AccountFlags") {
-                    Ok(d) => rmp_serde::from_slice(d)?,
-                    Err(_) => Default::default(),
-                };
-                let isgm = data.try_get::<i64, _>("IsGM").unwrap_or_default() == 1;
+                let user_data: UserData = rmp_serde::from_slice(data.try_get("Data")?)?;
                 self.put_login(id, ip, LoginResult::Successful).await?;
                 Ok(User {
                     id,
-                    nickname: nickname.to_string(),
-                    account_flags,
-                    isgm,
+                    nickname: user_data.nickname,
+                    account_flags: user_data.flags,
+                    isgm: user_data.isgm,
+                    last_uuid: user_data.last_uuid,
                 })
             }
             None => Err(Error::NoUser),
         }
     }
     pub async fn create_psn_user(&self, username: &str) -> Result<User, Error> {
-        sqlx::query("insert into Users (PSNNickname, Settings) values (?, ?)")
-            .bind(username.as_bytes())
-            .bind("".as_bytes())
-            .execute(&self.connection)
-            .await?;
-        let row = sqlx::query("select Id from Users where PSNNickname = ?")
+        let user_data = UserData {
+            last_uuid: 1,
+            ..Default::default()
+        };
+        sqlx::query(
+            "insert into Users (Username, Password, PSNUsername, Data) values (?, ?, ?, ?)",
+        )
+        .bind(&b""[..])
+        .bind(&b""[..])
+        .bind(username.as_bytes())
+        .bind(rmp_serde::to_vec(&user_data)?)
+        .execute(&self.connection)
+        .await?;
+        let id = sqlx::query("select Id from Users where PSNUsername = ?")
             .bind(username.as_bytes())
             .fetch_one(&self.connection)
-            .await?;
-        let id = row.try_get::<i64, _>("Id")? as u32;
+            .await?
+            .try_get::<i64, _>("Id")? as u32;
 
         Ok(User {
             id,
-            nickname: String::new(),
-            account_flags: Flags::new(),
-            isgm: false,
+            nickname: user_data.nickname,
+            account_flags: user_data.flags,
+            isgm: user_data.isgm,
+            last_uuid: user_data.last_uuid,
         })
     }
     pub async fn create_sega_user(&self, username: &str, password: &str) -> Result<User, Error> {
@@ -307,22 +305,32 @@ impl Sql {
         })
         .await
         .unwrap()?;
-        sqlx::query("insert into Users (Username, Password, Settings) values (?, ?, ?)")
-            .bind(username.as_bytes())
-            .bind(hash.as_bytes())
-            .bind("".as_bytes())
-            .execute(&self.connection)
-            .await?;
-        let id = sqlx::query("select Id from Users where Username = ?")
+
+        let user_data = UserData {
+            last_uuid: 1,
+            ..Default::default()
+        };
+        sqlx::query(
+            "insert into Users (Username, Password, PSNUsername, Data) values (?, ?, ?, ?)",
+        )
+        .bind(username.as_bytes())
+        .bind(hash.as_bytes())
+        .bind(&b""[..])
+        .bind(rmp_serde::to_vec(&user_data)?)
+        .execute(&self.connection)
+        .await?;
+        let id = sqlx::query("select * from Users where Username = ?")
             .bind(username.as_bytes())
             .fetch_one(&self.connection)
             .await?
             .try_get::<i64, _>("Id")? as u32;
+
         Ok(User {
             id,
-            nickname: String::new(),
-            account_flags: Flags::new(),
-            isgm: false,
+            nickname: user_data.nickname,
+            account_flags: user_data.flags,
+            isgm: user_data.isgm,
+            last_uuid: user_data.last_uuid,
         })
     }
     pub async fn get_logins(&self, id: u32) -> Result<Vec<LoginAttempt>, Error> {
@@ -334,15 +342,15 @@ impl Sql {
                 .await?;
         for row in rows {
             attempts.push(LoginAttempt {
-                ip: serde_json::from_slice(row.try_get("IpAddress")?)?,
-                status: serde_json::from_slice(row.try_get("Status")?)?,
+                ip: rmp_serde::from_slice(row.try_get("IpAddress")?)?,
+                status: rmp_serde::from_slice(row.try_get("Status")?)?,
                 timestamp: Duration::from_secs(row.try_get::<i64, _>("Timestamp")? as u64),
                 ..Default::default()
             })
         }
         Ok(attempts)
     }
-    pub async fn put_login(&self, id: u32, ip: Ipv4Addr, status: LoginResult) -> Result<(), Error> {
+    async fn put_login(&self, id: u32, ip: Ipv4Addr, status: LoginResult) -> Result<(), Error> {
         let timestamp_int = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -351,51 +359,164 @@ impl Sql {
             "insert into Logins (UserId, IpAddress, Status, Timestamp) values (?, ?, ?, ?)",
         )
         .bind(id as i64)
-        .bind(serde_json::to_string(&ip)?.as_bytes())
-        .bind(serde_json::to_string(&status)?.as_bytes())
+        .bind(rmp_serde::to_vec(&ip)?)
+        .bind(rmp_serde::to_vec(&status)?)
         .bind(timestamp_int as i64)
         .execute(&self.connection)
         .await?;
         Ok(())
     }
     pub async fn get_account_storage(&self, user_id: u32) -> Result<AccountStorages, Error> {
-        let row = sqlx::query("select Storage from Users where Id = ?")
+        let row = sqlx::query("select Data from Users where Id = ?")
             .bind(user_id as i64)
             .fetch_one(&self.connection)
             .await?;
-        match row.try_get("Storage") {
-            Ok(d) => Ok(serde_json::from_slice(d)?),
-            Err(_) => Ok(Default::default()),
-        }
+        let user_data: UserData = rmp_serde::from_slice(row.try_get("Data")?)?;
+        Ok(user_data.storage)
     }
     pub async fn put_account_storage(
         &self,
         user_id: u32,
         storage: AccountStorages,
     ) -> Result<(), Error> {
-        sqlx::query("update Users set Storage = ? where Id = ?")
-            .bind(serde_json::to_string(&storage)?.as_bytes())
-            .bind(user_id as i64)
-            .execute(&self.connection)
-            .await?;
-        Ok(())
+        self.update_userdata(user_id, |user_data| user_data.storage = storage)
+            .await
     }
     pub async fn get_settings(&self, id: u32) -> Result<AsciiString, Error> {
-        let row = sqlx::query("select Settings from Users where Id = ?")
+        let row = sqlx::query("select Data from Users where Id = ?")
             .bind(id as i64)
-            .fetch_optional(&self.connection)
+            .fetch_one(&self.connection)
             .await?;
-        match row {
-            Some(data) => Ok(from_utf8(data.try_get("Settings")?)?.into()),
-            None => Ok(Default::default()),
-        }
+        let user_data: UserData = rmp_serde::from_slice(row.try_get("Data")?)?;
+        Ok(user_data.settings.into())
     }
     pub async fn save_settings(&self, id: u32, settings: &str) -> Result<(), Error> {
-        sqlx::query("update Users set Settings = ? where Id = ?")
-            .bind(settings.as_bytes())
-            .bind(id as i64)
-            .execute(&self.connection)
+        self.update_userdata(id, |user_data| user_data.settings = settings.into())
+            .await
+    }
+    pub async fn put_uuid(&self, user_id: u32, uuid: u64) -> Result<(), Error> {
+        self.update_userdata(user_id, |user_data| user_data.last_uuid = uuid)
+            .await
+    }
+
+    async fn update_userdata<F>(&self, user_id: u32, f: F) -> Result<(), Error>
+    where
+        F: FnOnce(&mut UserData) + Send,
+    {
+        let mut transaction = self.connection.begin().await?;
+        let row = sqlx::query("select Data from Users where Id = ?")
+            .bind(user_id as i64)
+            .fetch_one(&mut *transaction)
             .await?;
+        let mut user_data: UserData = rmp_serde::from_slice(row.try_get("Data")?)?;
+        f(&mut user_data);
+        sqlx::query("update Users set Data = ? where Id = ?")
+            .bind(rmp_serde::to_vec(&user_data)?)
+            .bind(user_id as i64)
+            .execute(&mut *transaction)
+            .await?;
+        transaction.commit().await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::sql::Sql;
+    use data_structs::flags::Flags;
+    use pso2packetlib::{
+        protocol::{
+            login::{LoginResult, UserInfoPacket},
+            models::SGValue,
+        },
+        AsciiString,
+    };
+    use std::{net::Ipv4Addr, time::Duration};
+
+    #[tokio::test]
+    async fn test_master_db() {
+        let _ = std::fs::remove_file("test.db");
+        let db = Sql::new("sqlite://test.db")
+            .await
+            .expect("DB creation failed");
+
+        let mut created_user = db
+            .create_sega_user("username", "password")
+            .await
+            .expect("SEGAID user creation failed");
+        let login_user = db
+            .get_sega_user("username", "password", Ipv4Addr::UNSPECIFIED)
+            .await
+            .expect("SEGAID user login failed");
+        assert_eq!(created_user, login_user);
+
+        let user_info = UserInfoPacket {
+            free_sg: SGValue(10.0),
+            premium_expiration: Duration::from_secs(10),
+            ..Default::default()
+        };
+        db.put_user_info(created_user.id, user_info.clone())
+            .await
+            .expect("User info insertion failed");
+        let read_user_info = db
+            .get_user_info(created_user.id)
+            .await
+            .expect("Failed to get user info");
+        assert_eq!(user_info, read_user_info);
+
+        let mut flags = Flags::new();
+        flags.set(10, 1);
+        db.put_account_flags(created_user.id, flags.clone())
+            .await
+            .expect("Account flags insertion failed");
+        created_user.account_flags = flags;
+        db.put_uuid(created_user.id, 199)
+            .await
+            .expect("Failed to insert uuid");
+        created_user.last_uuid = 199;
+
+        let challenge = db
+            .new_challenge(created_user.id)
+            .await
+            .expect("Challenge creation failed");
+        let challenge_user = db
+            .login_challenge(created_user.id, challenge)
+            .await
+            .expect("Challenge login failed");
+        assert_eq!(created_user, challenge_user);
+        db.drop_challenges()
+            .await
+            .expect("Dropping challenges failed");
+
+        let psn_user = db
+            .create_psn_user("psnusername")
+            .await
+            .expect("PSN User creation failed");
+        let login_psn_user = db
+            .get_psn_user("psnusername", Ipv4Addr::UNSPECIFIED)
+            .await
+            .expect("PSN User login failed");
+        assert_eq!(psn_user, login_psn_user);
+
+        let logins = db
+            .get_logins(created_user.id)
+            .await
+            .expect("Login attempts request failed");
+        assert!(!logins.is_empty());
+        let login = &logins[0];
+        assert_eq!(login.ip, Ipv4Addr::UNSPECIFIED);
+        assert_eq!(login.status, LoginResult::Successful);
+
+        let settings = AsciiString::from("a");
+        db.save_settings(created_user.id, &settings)
+            .await
+            .expect("Failed to save settings");
+        let read_settings = db
+            .get_settings(created_user.id)
+            .await
+            .expect("Failed to read settings");
+        assert_eq!(read_settings, settings);
+
+        let _ = std::fs::remove_file("test.db");
     }
 }

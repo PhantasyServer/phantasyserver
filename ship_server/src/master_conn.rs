@@ -1,8 +1,7 @@
-use crate::Error;
-use data_structs::{
+use crate::{mutex::Mutex, Error};
+use data_structs::master_ship::{
     MasterShipAction as MAS, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo,
 };
-use parking_lot::{Mutex, MutexGuard};
 use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -52,14 +51,14 @@ impl MasterConnection {
     }
     pub async fn run_action(this: &Mutex<Self>, action: MAS) -> Result<MAS, Error> {
         let call_id = {
-            let mut lock = async_lock(this).await;
+            let mut lock = this.lock().await;
             let id = lock.id;
             lock.id += 1;
             lock.conn.write(MasterShipComm { id, action }).await?;
             id
         };
         loop {
-            let mut lock = async_lock(this).await;
+            let mut lock = this.lock().await;
             if let Some((pos, _)) = lock
                 .actions
                 .iter()
@@ -82,14 +81,14 @@ impl MasterConnection {
         mut info: ShipInfo,
     ) -> Result<RegisterShipResult, Error> {
         {
-            let mut lock = async_lock(this).await;
+            let mut lock = this.lock().await;
             lock.ship_id = info.id;
             info.ip = lock.local_addr;
         }
         match Self::run_action(this, MAS::RegisterShip(info)).await? {
             MAS::RegisterShipResult(x) => Ok(x),
             MAS::Error(e) => Err(Error::MSError(e)),
-            _ => Err(Error::InvalidInput("register_ship")),
+            _ => Err(Error::MSUnexpected),
         }
     }
 }
@@ -101,15 +100,6 @@ impl Drop for MasterConnection {
                 id: self.ship_id,
                 action: MAS::UnregisterShip(self.ship_id),
             });
-        }
-    }
-}
-
-async fn async_lock<T>(mutex: &Mutex<T>) -> MutexGuard<T> {
-    loop {
-        match mutex.try_lock() {
-            Some(lock) => return lock,
-            None => tokio::time::sleep(Duration::from_millis(1)).await,
         }
     }
 }

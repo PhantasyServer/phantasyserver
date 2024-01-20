@@ -10,31 +10,23 @@ use pso2packetlib::protocol::{
     login::Language,
 };
 
-pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
-    let packet = {
-        let mut uuid = user.blockdata.sql.get_uuid().await?;
-        let packet = user.inventory.move_to_storage(packet, &mut uuid)?;
-        user.blockdata.sql.set_uuid(uuid).await?;
-        packet
-    };
+pub fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
+    let packet = user.inventory.move_to_storage(packet, &mut user.uuid)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }
 
-pub async fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPacket) -> HResult {
-    let packet = {
-        let mut uuid = user.blockdata.sql.get_uuid().await?;
-        let packet = user.inventory.move_to_inventory(packet, &mut uuid)?;
-        user.blockdata.sql.set_uuid(uuid).await?;
-        packet
-    };
+pub fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPacket) -> HResult {
+    let packet = user.inventory.move_to_inventory(packet, &mut user.uuid)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }
 
 pub fn move_meseta(user: &mut User, packet: MoveMesetaPacket) -> HResult {
     let packets = user.inventory.move_meseta(packet);
-    packets.into_iter().map(|x| user.send_packet(&x)).count();
+    for packet in packets {
+        user.send_packet(&packet)?;
+    }
     Ok(Action::Nothing)
 }
 
@@ -50,13 +42,8 @@ pub fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestPacket)
     Ok(Action::Nothing)
 }
 
-pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
-    let packet = {
-        let mut uuid = user.blockdata.sql.get_uuid().await?;
-        let packet = user.inventory.move_storages(packet, &mut uuid)?;
-        user.blockdata.sql.set_uuid(uuid).await?;
-        packet
-    };
+pub fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
+    let packet = user.inventory.move_storages(packet, &mut user.uuid)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }

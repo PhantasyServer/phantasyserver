@@ -77,13 +77,19 @@ pub async fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPac
 }
 
 pub async fn send_sa(user: MutexGuard<'_, User>, packet: SendSymbolArtPacket) -> HResult {
-    if let ChatArea::Map = packet.area {
-        let id = user.player_id;
-        let map = user.map.clone();
-        drop(user);
+    let id = user.player_id;
+    let map = user.get_current_map();
+    let party = user.get_current_party();
+    drop(user);
+    if ChatArea::Map == packet.area {
         if let Some(map) = map {
             map.lock().await.send_sa(packet, id).await;
         }
+    } else if ChatArea::Party == packet.area {
+        if let Some(party) = party {
+            party.read().await.send_sa(packet, id).await;
+        }
     }
+
     Ok(Action::Nothing)
 }

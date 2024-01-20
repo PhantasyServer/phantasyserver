@@ -47,7 +47,7 @@ struct IceGroupEntry {
 }
 
 impl IceInfo {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             crc32: 0,
             flags: 0,
@@ -117,13 +117,13 @@ impl IceFileHeader {
     fn write(&self, writer: &mut impl Write) -> Result<u32, std::io::Error> {
         let filename_size = self.filename.chars().filter(char::is_ascii).count();
         writer.write_all(&write_utf8(&self.file_ext, 4))?;
-        let alligned_filename_size = align(self.filename.len() + 1, 0x10);
+        let alligned_filename_size = (self.filename.len() + 1).next_multiple_of(0x10);
         let data_offset = alligned_filename_size + 0x40; // size of header
         let mut full_size = data_offset + self.data_size as usize;
         if self.file_ext.contains("dds") {
             full_size += self.data_size as usize % 0x10;
         }
-        let padding = (align(full_size, 0x10) - full_size) as u32;
+        let padding = (full_size.next_multiple_of(0x10) - full_size) as u32;
         writer.write_u32::<LittleEndian>(full_size as u32 + padding)?;
         writer.write_u32::<LittleEndian>(self.data_size)?;
         writer.write_u32::<LittleEndian>(data_offset as u32)?;
@@ -326,8 +326,4 @@ impl<W: Write> Write for IceWriter<W> {
         self.group1.buffer.flush()?;
         self.group2.buffer.flush()
     }
-}
-
-pub fn align(size: usize, align_to: usize) -> usize {
-    (size + align_to - 1) & (usize::MAX ^ (align_to - 1))
 }

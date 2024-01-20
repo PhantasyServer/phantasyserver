@@ -1,6 +1,9 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
+#![warn(clippy::future_not_send)]
+#![warn(clippy::missing_const_for_fn)]
 #![allow(clippy::await_holding_lock)]
 #![allow(dead_code)]
+
 mod block;
 mod ice;
 mod inventory;
@@ -15,7 +18,11 @@ mod sql;
 mod user;
 
 use console::style;
-use data_structs::{ItemParameters, SerDeFile as _, ShipInfo};
+use data_structs::{
+    inventory::ItemParameters,
+    master_ship::{self, ShipInfo},
+    SerDeFile,
+};
 use ice::{IceFileInfo, IceWriter};
 use indicatif::{MultiProgress, ProgressBar};
 use master_conn::MasterConnection;
@@ -27,13 +34,12 @@ use pso2packetlib::{
 use quests::Quests;
 use rand::Rng;
 use rsa::{
-    pkcs8::{DecodePrivateKey as _, EncodePrivateKey as _},
-    traits::PublicKeyParts as _,
+    pkcs8::{DecodePrivateKey, EncodePrivateKey},
+    traits::PublicKeyParts,
     RsaPrivateKey,
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     io::{self, Cursor},
     net::Ipv4Addr,
     sync::{atomic::AtomicU32, Arc},
@@ -44,6 +50,7 @@ use user::*;
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
 struct Settings {
+    server_name: String,
     db_name: String,
     blocks: Vec<BlockSettings>,
     balance_port: u16,
@@ -57,7 +64,7 @@ struct BlockSettings {
     port: Option<u16>,
     name: String,
     max_players: u32,
-    maps: HashMap<String, String>,
+    lobby_map: String,
 }
 
 impl Settings {
@@ -82,11 +89,12 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            db_name: "sqlite://ship.db".into(),
+            server_name: String::from("phantasyserver"),
+            db_name: String::from("sqlite://ship.db"),
             balance_port: 12000,
             blocks: vec![BlockSettings::default()],
-            master_ship: "localhost:15000".into(),
-            quest_dir: "quests".to_string(),
+            master_ship: String::from("localhost:15000"),
+            quest_dir: String::from("quests"),
         }
     }
 }
@@ -96,7 +104,7 @@ impl Default for BlockSettings {
             port: None,
             name: "Block 1".to_string(),
             max_players: 32,
-            maps: HashMap::from([("lobby".to_string(), "lobby.mp".to_string())]),
+            lobby_map: "lobby.mp".to_string(),
         }
     }
 }
@@ -109,43 +117,41 @@ pub enum Error {
     InvalidPassword,
     #[error("No user found")]
     NoUser,
-    #[error("Unable to hash the password")]
-    HashError,
+    #[error("No user {0} found in mapset {1}")]
+    NoUserInMap(u32, String),
+    #[error("Mapid {0} not found in mapset {1}")]
+    NoMapInMapSet(u32, String),
     #[error("Invalid character")]
     InvalidCharacter,
     #[error("No character loaded")]
     NoCharacter,
-    #[error("No lobby map")]
-    NoLobby,
     #[error("Master ship returned error: {0}")]
     MSError(String),
     #[error("Master ship sent unexpected data")]
     MSUnexpected,
 
     // passthrough errors
-    #[error(transparent)]
+    #[error("SQL error: {0}")]
     SqlError(#[from] sqlx::Error),
-    #[error(transparent)]
+    #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
-    #[error(transparent)]
+    #[error("JSON error: {0}")]
     SerdeError(#[from] serde_json::Error),
     #[error(transparent)]
     DataError(#[from] data_structs::Error),
-    #[error(transparent)]
+    #[error("Lua error: {0}")]
     LuaError(#[from] mlua::Error),
-    #[error(transparent)]
+    #[error("MP Serialization error: {0}")]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
-    #[error(transparent)]
+    #[error("MP Deserialization error: {0}")]
     RMPDecodeError(#[from] rmp_serde::decode::Error),
-    #[error(transparent)]
-    UTF8Error(#[from] std::str::Utf8Error),
-    #[error(transparent)]
+    #[error("TOML Serialization error: {0}")]
     TomlSerError(#[from] toml::ser::Error),
-    #[error(transparent)]
+    #[error("TOML Deserialization error: {0}")]
     TomlDeError(#[from] toml::de::Error),
-    #[error(transparent)]
+    #[error("RSA error: {0}")]
     RSAError(#[from] rsa::Error),
-    #[error(transparent)]
+    #[error("PKCS8 error: {0}")]
     PKCS8Error(#[from] rsa::pkcs8::Error),
 }
 
@@ -157,7 +163,7 @@ struct BlockInfo {
     port: u16,
     max_players: u32,
     players: u32,
-    maps: HashMap<String, String>,
+    lobby_map: String,
     quests: Arc<Quests>,
 }
 
@@ -166,7 +172,7 @@ struct BlockData {
     block_id: u32,
     block_name: String,
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
-    //TODO: remove rwlock after testing is done (waaay is the future)
+    //TODO: remove rwlock after testing is done (waaay in the future)
     item_attrs: Arc<RwLock<ItemParameters>>,
     lobby: Arc<Mutex<map::Map>>,
     key: PrivateKey,
@@ -207,7 +213,7 @@ pub async fn run() -> Result<(), Error> {
     };
     let settings = Settings::load("ship.toml").await?;
     let (data_pc, data_vita) = create_attr_files(&mul_progress)?;
-    let quests = Arc::new(Quests::load(&settings.quest_dir));
+    let quests = Arc::new(Quests::load(&settings.quest_dir, &mul_progress));
     let mut item_data = ItemParameters::load_from_mp_file("names.mp")?;
     item_data.pc_attrs = data_pc;
     item_data.vita_attrs = data_vita;
@@ -220,6 +226,7 @@ pub async fn run() -> Result<(), Error> {
             .expect("No ips found for master ship"),
     )
     .await?;
+    let total_max_players = settings.blocks.iter().map(|b| b.max_players).sum();
     for id in 2..10 {
         let resp = MasterConnection::register_ship(
             &master_conn,
@@ -227,11 +234,10 @@ pub async fn run() -> Result<(), Error> {
                 ip: Ipv4Addr::UNSPECIFIED,
                 id,
                 port: settings.balance_port,
-                max_players: 32,
-                name: "Test".into(),
-                data_type: data_structs::DataTypeDef::Parsed,
+                max_players: total_max_players,
+                name: settings.server_name.clone(),
                 status: pso2packetlib::protocol::login::ShipStatus::Online,
-                key: data_structs::KeyInfo {
+                key: master_ship::KeyInfo {
                     n: key.n().to_bytes_le(),
                     e: key.e().to_bytes_le(),
                 },
@@ -239,8 +245,8 @@ pub async fn run() -> Result<(), Error> {
         )
         .await?;
         match resp {
-            data_structs::RegisterShipResult::Success => break,
-            data_structs::RegisterShipResult::AlreadyTaken => {
+            master_ship::RegisterShipResult::Success => break,
+            master_ship::RegisterShipResult::AlreadyTaken => {
                 if id != 9 {
                     continue;
                 }
@@ -265,7 +271,7 @@ pub async fn run() -> Result<(), Error> {
             port,
             max_players: block.max_players,
             players: 0,
-            maps: block.maps,
+            lobby_map: block.lobby_map,
             quests: quests.clone(),
         };
         blockstatus_lock.push(new_block.clone());
@@ -333,9 +339,7 @@ async fn send_block_balance(
             }
         }
     }
-    let server = servers
-        .get_mut(rand::thread_rng().gen_range(0..server_count) as usize)
-        .unwrap();
+    let server = &mut servers[rand::thread_rng().gen_range(0..server_count) as usize];
     let packet = login::BlockBalancePacket {
         ip: server.ip,
         port: server.port,
