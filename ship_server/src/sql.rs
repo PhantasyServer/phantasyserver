@@ -14,11 +14,11 @@ use pso2packetlib::{
     },
     AsciiString,
 };
-use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
+use sqlx::{migrate::MigrateDatabase, Executor, Row};
 use std::net::Ipv4Addr;
 
 pub struct Sql {
-    connection: sqlx::AnyPool,
+    connection: sqlx::SqlitePool,
     master_ship: Mutex<MasterConnection>,
 }
 
@@ -58,10 +58,10 @@ pub struct ChallengeData {
 impl Sql {
     pub async fn new(path: &str, master_ship: Mutex<MasterConnection>) -> Result<Self, Error> {
         sqlx::any::install_default_drivers();
-        let conn = if !sqlx::Any::database_exists(path).await.unwrap_or(false) {
+        let conn = if !sqlx::Sqlite::database_exists(path).await.unwrap_or(false) {
             Self::create_db(path).await?
         } else {
-            let conn = sqlx::AnyPool::connect(path).await?;
+            let conn = sqlx::SqlitePool::connect(path).await?;
             sqlx::query("delete from Challenges").execute(&conn).await?;
             conn
         };
@@ -71,37 +71,25 @@ impl Sql {
         })
     }
 
-    async fn create_db(path: &str) -> Result<sqlx::AnyPool, Error> {
-        sqlx::Any::create_database(path).await?;
-        let auto_inc = match sqlx::AnyConnection::connect(path).await?.backend_name() {
-            "SQLite" => "autoincrement",
-            _ => "auto_increment",
-        };
-        let conn = sqlx::AnyPool::connect(path).await?;
+    async fn create_db(path: &str) -> Result<sqlx::SqlitePool, Error> {
+        sqlx::Sqlite::create_database(path).await?;
+        let conn = sqlx::SqlitePool::connect(path).await?;
         conn.execute(
-            format!(
-                "
+            "
             create table if not exists Users (
-                Id integer primary key {},
+                Id integer primary key autoincrement,
                 Data blob
             );
         ",
-                auto_inc
-            )
-            .as_str(),
         )
         .await?;
         conn.execute(
-            format!(
-                "
+            "
             create table if not exists Characters (
-                Id integer primary key {},
+                Id integer primary key autoincrement,
                 Data blob
             );
         ",
-                auto_inc
-            )
-            .as_str(),
         )
         .await?;
         conn.execute(
@@ -459,16 +447,16 @@ impl Sql {
             character: char.clone(),
             ..Default::default()
         };
+
+        let mut transaction = self.connection.begin().await?;
         let data = rmp_serde::to_vec(&char_data)?;
-        sqlx::query("insert into Characters (Data) values (?)")
+        let char_id = sqlx::query("insert into Characters (Data) values (?) returning Id")
             .bind(&data)
-            .execute(&self.connection)
-            .await?;
-        let char_id = sqlx::query("select Id from Characters where Data = ?")
-            .bind(&data)
-            .fetch_one(&self.connection)
+            .fetch_one(&mut *transaction)
             .await?
             .try_get::<i64, _>("Id")?;
+        transaction.commit().await?;
+
         self.update_userdata(id, |user_data| user_data.character_ids.push(char_id as u32))
             .await?;
 

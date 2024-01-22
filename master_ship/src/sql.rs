@@ -6,7 +6,7 @@ use pso2packetlib::{
     AsciiString,
 };
 use rand_core::{OsRng, RngCore};
-use sqlx::{migrate::MigrateDatabase, Connection, Executor, Row};
+use sqlx::{migrate::MigrateDatabase, Executor, Row};
 use std::{
     net::Ipv4Addr,
     ops::Add,
@@ -15,7 +15,7 @@ use std::{
 };
 
 pub struct Sql {
-    connection: sqlx::AnyPool,
+    connection: sqlx::SqlitePool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -42,50 +42,37 @@ struct UserData {
 
 impl Sql {
     pub async fn new(path: &str) -> Result<Self, Error> {
-        sqlx::any::install_default_drivers();
-        if !sqlx::Any::database_exists(path).await.unwrap_or(false) {
+        if !sqlx::Sqlite::database_exists(path).await.unwrap_or(false) {
             return Self::create_db(path).await;
         }
-        let conn = sqlx::AnyPool::connect(path).await?;
+        let conn = sqlx::SqlitePool::connect(path).await?;
         Ok(Self { connection: conn })
     }
     async fn create_db(path: &str) -> Result<Self, Error> {
-        sqlx::Any::create_database(path).await?;
-        let auto_inc = match sqlx::AnyConnection::connect(path).await?.backend_name() {
-            "SQLite" => "autoincrement",
-            _ => "auto_increment",
-        };
-        let conn = sqlx::AnyPool::connect(path).await?;
+        sqlx::Sqlite::create_database(path).await?;
+        let conn = sqlx::SqlitePool::connect(path).await?;
         conn.execute(
-            format!(
-                "
+            "
             create table if not exists Users (
-                Id integer primary key {},
+                Id integer primary key autoincrement,
                 Username blob,
                 Password blob,
                 PSNUsername blob,
                 Data blob
             );
         ",
-                auto_inc
-            )
-            .as_str(),
         )
         .await?;
         conn.execute(
-            format!(
-                "
+            "
             create table if not exists Logins (
-                Id integer primary key {},
+                Id integer primary key autoincrement,
                 UserId integer default NULL,
                 IpAddress blob default NULL,
                 Status blob default NULL,
                 Timestamp integer default NULL
             );
         ",
-                auto_inc
-            )
-            .as_str(),
         )
         .await?;
         conn.execute(
@@ -264,24 +251,23 @@ impl Sql {
         }
     }
     pub async fn create_psn_user(&self, username: &str) -> Result<User, Error> {
+        let mut transaction = self.connection.begin().await?;
         let user_data = UserData {
             last_uuid: 1,
             ..Default::default()
         };
-        sqlx::query(
-            "insert into Users (Username, Password, PSNUsername, Data) values (?, ?, ?, ?)",
+        let id = sqlx::query(
+            "insert into Users (Username, Password, PSNUsername, Data) values (?, ?, ?, ?) 
+            returning Id",
         )
         .bind(&b""[..])
         .bind(&b""[..])
         .bind(username.as_bytes())
         .bind(rmp_serde::to_vec(&user_data)?)
-        .execute(&self.connection)
-        .await?;
-        let id = sqlx::query("select Id from Users where PSNUsername = ?")
-            .bind(username.as_bytes())
-            .fetch_one(&self.connection)
-            .await?
-            .try_get::<i64, _>("Id")? as u32;
+        .fetch_one(&mut *transaction)
+        .await?
+        .try_get::<i64, _>("Id")? as u32;
+        transaction.commit().await?;
 
         Ok(User {
             id,
@@ -306,24 +292,23 @@ impl Sql {
         .await
         .unwrap()?;
 
+        let mut transaction = self.connection.begin().await?;
         let user_data = UserData {
             last_uuid: 1,
             ..Default::default()
         };
-        sqlx::query(
-            "insert into Users (Username, Password, PSNUsername, Data) values (?, ?, ?, ?)",
+        let id = sqlx::query(
+            "insert into Users (Username, Password, PSNUsername, Data) values (?, ?, ?, ?) 
+            returning Id",
         )
         .bind(username.as_bytes())
         .bind(hash.as_bytes())
         .bind(&b""[..])
         .bind(rmp_serde::to_vec(&user_data)?)
-        .execute(&self.connection)
-        .await?;
-        let id = sqlx::query("select * from Users where Username = ?")
-            .bind(username.as_bytes())
-            .fetch_one(&self.connection)
-            .await?
-            .try_get::<i64, _>("Id")? as u32;
+        .fetch_one(&mut *transaction)
+        .await?
+        .try_get::<i64, _>("Id")? as u32;
+        transaction.commit().await?;
 
         Ok(User {
             id,
@@ -436,16 +421,18 @@ mod tests {
     #[tokio::test]
     async fn test_master_db() {
         let _ = std::fs::remove_file("test.db");
-        let db = Sql::new("sqlite://test.db")
+        let db = Sql::new("sqlite:test.db")
             .await
             .expect("DB creation failed");
 
+        let (segaid, pass) = ("username", "password");
+
         let mut created_user = db
-            .create_sega_user("username", "password")
+            .create_sega_user(segaid, pass)
             .await
             .expect("SEGAID user creation failed");
         let login_user = db
-            .get_sega_user("username", "password", Ipv4Addr::UNSPECIFIED)
+            .get_sega_user(segaid, pass, Ipv4Addr::UNSPECIFIED)
             .await
             .expect("SEGAID user login failed");
         assert_eq!(created_user, login_user);
@@ -488,12 +475,14 @@ mod tests {
             .await
             .expect("Dropping challenges failed");
 
+        let psn_username = "psnusername";
+
         let psn_user = db
-            .create_psn_user("psnusername")
+            .create_psn_user(psn_username)
             .await
             .expect("PSN User creation failed");
         let login_psn_user = db
-            .get_psn_user("psnusername", Ipv4Addr::UNSPECIFIED)
+            .get_psn_user(psn_username, Ipv4Addr::UNSPECIFIED)
             .await
             .expect("PSN User login failed");
         assert_eq!(psn_user, login_psn_user);
