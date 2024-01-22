@@ -13,7 +13,7 @@ data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite", "migrate"] }
 serde = { version = "1.0.195", features = ["derive"] }
 thiserror = "1.0.50"
-argon2 = "0.5.2"
+argon2 = "0.5.3"
 rand_core = "0.6.4"
 toml = "0.8.8"
 rmp-serde = "1.1.2"
