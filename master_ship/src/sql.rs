@@ -16,6 +16,7 @@ use std::{
 
 pub struct Sql {
     connection: sqlx::SqlitePool,
+    registration_enabled: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -41,14 +42,17 @@ struct UserData {
 }
 
 impl Sql {
-    pub async fn new(path: &str) -> Result<Self, Error> {
+    pub async fn new(path: &str, reg_enabled: bool) -> Result<Self, Error> {
         if !sqlx::Sqlite::database_exists(path).await.unwrap_or(false) {
-            return Self::create_db(path).await;
+            return Self::create_db(path, reg_enabled).await;
         }
         let conn = sqlx::SqlitePool::connect(path).await?;
-        Ok(Self { connection: conn })
+        Ok(Self {
+            connection: conn,
+            registration_enabled: reg_enabled,
+        })
     }
-    async fn create_db(path: &str) -> Result<Self, Error> {
+    async fn create_db(path: &str, reg_enabled: bool) -> Result<Self, Error> {
         sqlx::Sqlite::create_database(path).await?;
         let conn = sqlx::SqlitePool::connect(path).await?;
         conn.execute(
@@ -85,7 +89,18 @@ impl Sql {
         ",
         )
         .await?;
-        Ok(Self { connection: conn })
+        conn.execute(
+            "
+            create table if not exists Ships (
+                PSK blob
+            );
+        ",
+        )
+        .await?;
+        Ok(Self {
+            connection: conn,
+            registration_enabled: reg_enabled,
+        })
     }
     pub async fn get_sega_user(
         &self,
@@ -384,6 +399,25 @@ impl Sql {
             .await
     }
 
+    pub async fn get_ship_data(&self, psk: &[u8]) -> Result<bool, Error> {
+        let count = sqlx::query("select count(*) from Ships where PSK = ?")
+            .bind(psk)
+            .fetch_one(&self.connection)
+            .await?
+            .try_get::<i64, _>(0)?;
+        Ok(count != 0)
+    }
+    pub fn registration_enabled(&self) -> bool {
+        self.registration_enabled
+    }
+    pub async fn put_ship_data(&self, psk: &[u8]) -> Result<(), Error> {
+        sqlx::query("insert into Ships (PSK) values (?)")
+            .bind(psk)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+
     async fn update_userdata<F>(&self, user_id: u32, f: F) -> Result<(), Error>
     where
         F: FnOnce(&mut UserData) + Send,
@@ -421,7 +455,7 @@ mod tests {
     #[tokio::test]
     async fn test_master_db() {
         let _ = std::fs::remove_file("test.db");
-        let db = Sql::new("sqlite:test.db")
+        let db = Sql::new("sqlite:test.db", false)
             .await
             .expect("DB creation failed");
 

@@ -28,7 +28,7 @@ pub struct Party {
 
 impl Drop for Party {
     fn drop(&mut self) {
-        println!("Party {} dropped", self.id.id);
+        log::debug!("Party {} dropped", self.id.id);
     }
 }
 impl Party {

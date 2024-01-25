@@ -2,8 +2,10 @@
 #![warn(clippy::future_not_send)]
 pub mod sql;
 use data_structs::master_ship::{
-    MasterShipAction, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo, UserLoginResult,
+    MasterShipAction, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo,
+    ShipLoginResult, UserLoginResult,
 };
+use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
     protocol::{login, Packet, PacketType},
@@ -20,12 +22,16 @@ use std::{
 use tokio::net::{TcpListener, TcpStream};
 
 type Ships = Arc<RwLock<Vec<ShipInfo>>>;
-type ASql = Arc<sql::Sql>;
+type Sql = Arc<sql::Sql>;
 
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub db_name: String,
+    pub registration_enabled: bool,
+    pub log_dir: String,
+    pub file_log_level: log::LevelFilter,
+    pub console_log_level: log::LevelFilter,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -51,7 +57,11 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            db_name: "sqlite://master_ship.db".into(),
+            db_name: "master_ship.db".into(),
+            registration_enabled: false,
+            log_dir: String::from("logs"),
+            file_log_level: log::LevelFilter::Info,
+            console_log_level: log::LevelFilter::Debug,
         }
     }
 }
@@ -60,6 +70,10 @@ impl Default for Settings {
 pub enum Error {
     #[error("Invalid arguments")]
     InvalidData,
+    #[error("Invalid action")]
+    InvalidAction,
+    #[error("Unknown ship")]
+    UnknownShip,
     #[error("Invalid password for user id {0}")]
     InvalidPassword(u32),
     #[error("No user")]
@@ -87,75 +101,158 @@ pub enum Error {
 
 static IS_RUNNING: AtomicBool = AtomicBool::new(true);
 
+pub async fn run() -> Result<(), Error> {
+    let settings = Settings::load("master_ship.toml").await?;
+    // setup logging
+    {
+        use simplelog::*;
+        let _ = std::fs::create_dir_all(&settings.log_dir);
+        let mut path = std::path::PathBuf::from(&settings.log_dir);
+        path.push(format!(
+            "master_ship_{}.log",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        ));
+        let log_file = std::fs::File::create(path)?;
+        CombinedLogger::init(vec![
+            TermLogger::new(
+                settings.console_log_level,
+                Config::default(),
+                TerminalMode::Mixed,
+                ColorChoice::Auto,
+            ),
+            WriteLogger::new(settings.file_log_level, Config::default(), log_file),
+        ])
+        .unwrap();
+    }
+    log::info!("Starting master ship...");
+    tokio::spawn(ctrl_c_handler());
+    let sql = Arc::new(sql::Sql::new(&settings.db_name, settings.registration_enabled).await?);
+    let servers = Arc::new(RwLock::new(vec![]));
+    tokio::spawn(make_keys(servers.clone()));
+    make_query(servers.clone()).await?;
+    make_block_balance(servers.clone()).await?;
+    ship_receiver(servers, sql).await?;
+    Ok(())
+}
+
 pub async fn ctrl_c_handler() {
     tokio::signal::ctrl_c().await.expect("failed to listen");
-    println!();
-    println!("Shutting down...");
+    log::info!("Shutting down...");
     IS_RUNNING.swap(false, std::sync::atomic::Ordering::Relaxed);
 }
 
-pub async fn load_hostkey() -> [u8; 32] {
+pub async fn load_key() -> SigningKey {
     let mut data = tokio::fs::read("master_key.bin").await.unwrap_or_default();
     data.resize_with(32, || OsRng.next_u32() as u8);
     let _ = tokio::fs::write("master_key.bin", &data).await;
-    data.try_into().unwrap()
+    SigningKey::from_slice(&data).unwrap()
 }
 
-pub async fn ship_receiver(servers: Ships, sql: ASql) -> Result<(), Error> {
+pub async fn ship_receiver(servers: Ships, sql: Sql) -> Result<(), Error> {
     let listener = TcpListener::bind(("0.0.0.0", 15000)).await?;
-    let hostkey = load_hostkey().await;
+    log::info!("Loading signing key...");
+    let signing_key = load_key().await;
+    // this is 65 bytes
+    let hostkey = signing_key.verifying_key().to_sec1_bytes().to_vec();
+    log::info!("Started master server");
     loop {
         if !IS_RUNNING.load(std::sync::atomic::Ordering::Relaxed) {
             return Ok(());
         }
-        let result = match tokio::time::timeout(Duration::from_secs(1), listener.accept()).await {
-            Ok(x) => x,
-            Err(_) => continue,
+        let Ok(result) = tokio::time::timeout(Duration::from_secs(1), listener.accept()).await
+        else {
+            continue;
         };
-        match result {
-            Ok((s, _)) => {
-                let servers = servers.clone();
-                let sql = sql.clone();
-                tokio::spawn(async move {
-                    let conn = ShipConnection::new_server(s, &hostkey).await.unwrap();
-                    connection_handler(conn, servers, sql).await
-                });
-            }
-            Err(e) => Err(e)?,
-        }
+        let (socket, _) = result?;
+        log::info!("New connection");
+        let servers = servers.clone();
+        let sql = sql.clone();
+        let signing_key = signing_key.clone();
+        let hostkey = hostkey.clone();
+        tokio::spawn(async move {
+            let conn = match ShipConnection::new_server(socket, &signing_key, &hostkey).await {
+                Ok(c) => c,
+                Err(e) => {
+                    log::warn!("Failed to setup ship connection: {e}");
+                    return;
+                }
+            };
+            connection_handler(conn, servers, sql).await
+        });
     }
 }
 
-async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: ASql) {
+async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: Sql) {
+    match ship_login(&mut conn, &sql).await {
+        Ok(_) => {}
+        Err(e) => {
+            log::warn!("Login error: {e}");
+            return;
+        }
+    };
     loop {
         match conn.read_for(Duration::from_secs(1)).await {
             Ok(d) => match run_action(&servers, &sql, d).await {
                 Ok(a) => match conn.write(a).await {
                     Ok(_) => {}
                     Err(e) => {
-                        eprintln!("Write error: {e}");
+                        log::warn!("Write error: {e}");
                         return;
                     }
                 },
-                Err(e) => eprintln!("Action error: {e}"),
+                Err(e) => log::warn!("Action error: {e}"),
             },
             Err(data_structs::Error::IOError(e))
                 if e.kind() == io::ErrorKind::ConnectionAborted =>
             {
-                return
+                log::info!("Ship disconnected");
+                return;
             }
             Err(data_structs::Error::Timeout) => {}
             Err(e) => {
-                eprintln!("Read error: {e}");
+                log::warn!("Read error: {e}");
                 return;
             }
         }
     }
 }
 
+async fn ship_login(conn: &mut ShipConnection, sql: &Sql) -> Result<(), Error> {
+    let action = conn.read_for(Duration::from_secs(10)).await?;
+    let mut response = MasterShipComm {
+        id: action.id,
+        action: MasterShipAction::Ok,
+    };
+    let MasterShipAction::ShipLogin { psk } = action.action else {
+        response.action = MasterShipAction::Error(String::from("Invalid action"));
+        conn.write(response).await?;
+        return Err(Error::InvalidAction);
+    };
+
+    match sql.get_ship_data(&psk).await? {
+        true => {}
+        false => {
+            if !sql.registration_enabled() {
+                response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::UnknownShip);
+                conn.write(response).await?;
+                return Err(Error::UnknownShip);
+            }
+            sql.put_ship_data(&psk).await?;
+        }
+    };
+
+    response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::Ok);
+    conn.write(response).await?;
+
+    Ok(())
+}
+
 pub async fn run_action(
     ships: &Ships,
-    sql: &ASql,
+    sql: &Sql,
     action: MasterShipComm,
 ) -> Result<MasterShipComm, Error> {
     let mut response = MasterShipComm {
@@ -323,6 +420,12 @@ pub async fn run_action(
             Ok(_) => response.action = MasterShipAction::Ok,
             Err(e) => response.action = MasterShipAction::Error(e.to_string()),
         },
+        MasterShipAction::ShipLogin { .. } => {
+            response.action = MasterShipAction::Error(Error::InvalidAction.to_string())
+        }
+        MasterShipAction::ShipLoginResult(_) => {
+            response.action = MasterShipAction::Error(Error::InvalidAction.to_string())
+        }
     }
     Ok(response)
 }
@@ -335,7 +438,7 @@ pub async fn make_keys(servers: Ships) -> io::Result<()> {
                 let _ = send_keys(s, servers.clone());
             }
             Err(e) => {
-                eprintln!("Failed to accept connection: {}", e);
+                log::error!("Failed to accept key connection: {e}");
                 return Err(e);
             }
         }
@@ -361,17 +464,18 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
     loop {
         match listener.accept().await {
             Ok((s, _)) => {
-                let _ = send_querry(s, servers.clone());
+                let _ = send_query(s, servers.clone());
             }
             Err(e) => {
-                eprintln!("Failed to accept connection: {}", e);
+                log::error!("Failed to accept query connection: {e}");
                 return;
             }
         }
     }
 }
 
-fn send_querry(stream: TcpStream, servers: Ships) -> io::Result<()> {
+fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
+    log::debug!("Sending query information...");
     stream.set_nodelay(true)?;
     let mut con = Connection::new(
         stream.into_std()?,
@@ -418,7 +522,7 @@ async fn block_listener(listener: TcpListener, server_statuses: Ships) {
                 let _ = send_block_balance(s, server_statuses.clone());
             }
             Err(e) => {
-                eprintln!("Failed to accept connection: {}", e);
+                log::error!("Failed to accept connection: {e}");
                 return;
             }
         }
@@ -426,6 +530,7 @@ async fn block_listener(listener: TcpListener, server_statuses: Ships) {
 }
 
 pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
+    log::debug!("Sending block balance...");
     stream.set_nodelay(true)?;
     let port = stream.local_addr()?.port();
     let id = if port % 3 == 0 {
@@ -460,6 +565,7 @@ pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
 }
 
 pub fn send_keys(stream: TcpStream, servers: Ships) -> Result<(), Error> {
+    log::debug!("Sending keys...");
     let mut stream = stream.into_std()?;
     stream.set_nodelay(true)?;
     let lock = servers.read();

@@ -82,7 +82,7 @@ impl Map {
             self.data.luas.insert(
                 name.to_owned(),
                 "if call_type == \"interaction\" then
-                    print(packet[\"object1\"][\"id\"], packet[\"action\"])
+                    print(packet.object1.id, packet.action)
                 elseif call_type == \"to_vita\" then
 	                for i=1,size,2 do
 		                if data[i] > 50 and data[i] < 80 then
@@ -102,19 +102,19 @@ impl Map {
             self.data.luas.insert(
                 name.to_owned(),
                 "if call_type == \"interaction\" then
-                    if packet[\"action\"] == \"READY\" then
+                    if packet.action == \"READY\" then
                         local ready_data = {}; 
                         local packet_data = {};
-                        packet_data[\"attribute\"] = \"FavsNeutral\";
-                        packet_data[\"receiver\"] = packet[\"object3\"];
-                        packet_data[\"target\"] = packet[\"object1\"];
-                        packet_data[\"object3\"] = packet[\"object1\"];
-                        ready_data[\"SetTag\"] = packet_data; 
+                        packet_data.attribute = \"FavsNeutral\";
+                        packet_data.receiver = packet.object3;
+                        packet_data.target = packet.object1;
+                        packet_data.object3 = packet.object1;
+                        ready_data.SetTag = packet_data; 
                         send(sender, ready_data);
-                        ready_data[\"SetTag\"][\"attribute\"] = \"AP\";
+                        ready_data.SetTag.attribute = \"AP\";
                         send(sender, ready_data);
                     else
-                        print(packet[\"object1\"][\"id\"], packet[\"action\"]);
+                        print(packet.object1.id, packet.action);
                     end
                 end"
                 .into(),
@@ -483,12 +483,12 @@ impl Map {
                     .map(|s| s.as_str())
                     .unwrap_or("");
                 let globals = lua.globals();
-                globals.set("data", lua.to_value(&obj.data.data)?)?;
+                globals.set("data", &*obj.data.data)?;
                 globals.set("call_type", "to_vita")?;
                 globals.set("size", obj.data.data.len())?;
                 let chunk = lua.load(lua_code);
                 chunk.exec()?;
-                obj.data.data = lua.from_value(globals.get("data")?)?;
+                obj.data.data = globals.get("data")?;
                 globals.raw_remove("data")?;
                 globals.raw_remove("call_type")?;
                 globals.raw_remove("size")?;

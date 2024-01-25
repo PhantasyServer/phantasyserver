@@ -68,7 +68,7 @@ pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) 
             };
             user.send_packet(&protocol::Packet::LoadItemDescription(packet))?;
         }
-        None => println!("Unknown item: {:?}", packet.item),
+        None => log::debug!("No item description for {:?}", packet.item),
     }
 
     Ok(Action::Nothing)

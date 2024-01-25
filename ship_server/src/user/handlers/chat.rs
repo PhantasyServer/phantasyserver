@@ -113,9 +113,8 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 }
             }
             "!reload_items" => {
-                let mul_progress = indicatif::MultiProgress::new();
                 let (pc, vita) = {
-                    tokio::task::spawn_blocking(move || create_attr_files(&mul_progress))
+                    tokio::task::spawn_blocking(create_attr_files)
                         .await
                         .unwrap()?
                 };

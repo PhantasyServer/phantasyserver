@@ -554,7 +554,7 @@ fn load_items_inner(
                     id: item.id,
                 }),
                 None => {
-                    println!("Unknown item: {:?}", item.id);
+                    log::debug!("No item name for {:?}", item.id);
                     continue;
                 }
             }

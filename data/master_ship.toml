@@ -1,0 +1,14 @@
+# Location of the SQLite database
+db_name = "master_ship.db"
+
+# Is auto registration enabled?
+registration_enabled = false
+
+# Location of the logs directory
+log_dir = "logs"
+
+# Level of file logging. Possible levels: Error, Warn, Info, Debug, Trace
+file_log_level = "INFO"
+
+# Level of console logging
+console_log_level = "DEBUG"

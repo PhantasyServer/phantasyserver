@@ -22,15 +22,16 @@ mlua = { version = "0.9.4", features = ["serialize", "vendored", "send", "async"
 parking_lot = {version = "0.12.1", features = ["send_guard"]}
 crc32fast = "1.3.2"
 indicatif = "0.17.7"
-console = "0.15.8"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 tokio = { version = "1.35.1", features = ["full"] }
 toml = "0.8.8"
+log = { version = "0.4.20", features = ["serde", "release_max_level_info", "std"] }
+simplelog = "0.12.1"
 
-# luajit doesn't compile on musl
-[target.'cfg(target_env = "musl")'.dependencies.mlua]
+# luajit doesn't compile on musl or on arm
+[target.'cfg(any(target_env = "musl", target_arch = "arm"))'.dependencies.mlua]
 version = "0.9.4"
 features = ["lua51"]
-[target.'cfg(not(target_env = "musl"))'.dependencies.mlua]
+[target.'cfg(not(any(target_env = "musl", target_arch = "arm")))'.dependencies.mlua]
 version = "0.9.4"
 features = ["luajit"]

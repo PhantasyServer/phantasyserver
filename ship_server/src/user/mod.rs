@@ -356,7 +356,7 @@ async fn packet_handler(
         Packet::MissionPassRequest => H::missionpass::mission_pass(user),
 
         data => {
-            println!("Client {}: {data:?}", user.player_id);
+            log::debug!("Client {} sent unknown packet: {data:?}", user.player_id);
             Ok(Action::Nothing)
         }
     }
@@ -387,6 +387,7 @@ async fn packet_handler(
 
 impl Drop for User {
     fn drop(&mut self) {
+        log::debug!("Dropping user {}", self.player_id);
         let player_id = self.player_id;
         if self.character.is_some() {
             let sql = self.blockdata.sql.clone();
@@ -411,6 +412,6 @@ impl Drop for User {
         if let Some(map) = self.map.take() {
             tokio::spawn(async move { map.lock().await.remove_player(player_id).await });
         }
-        println!("User {} dropped", self.player_id);
+        log::debug!("User {} dropped", self.player_id);
     }
 }

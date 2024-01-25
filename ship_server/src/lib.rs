@@ -14,17 +14,16 @@ mod mutex;
 mod palette;
 mod party;
 mod quests;
+mod settings;
 mod sql;
 mod user;
 
-use console::style;
 use data_structs::{
     inventory::ItemParameters,
     master_ship::{self, ShipInfo},
     SerDeFile,
 };
 use ice::{IceFileInfo, IceWriter};
-use indicatif::{MultiProgress, ProgressBar};
 use master_conn::MasterConnection;
 use mutex::{Mutex, RwLock};
 use pso2packetlib::{
@@ -38,7 +37,7 @@ use rsa::{
     traits::PublicKeyParts,
     RsaPrivateKey,
 };
-use serde::{Deserialize, Serialize};
+use settings::Settings;
 use std::{
     io::{self, Cursor},
     net::Ipv4Addr,
@@ -46,68 +45,6 @@ use std::{
 };
 use thiserror::Error;
 use user::*;
-
-#[derive(Serialize, Deserialize)]
-#[serde(default)]
-struct Settings {
-    server_name: String,
-    db_name: String,
-    blocks: Vec<BlockSettings>,
-    balance_port: u16,
-    master_ship: String,
-    quest_dir: String,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(default)]
-struct BlockSettings {
-    port: Option<u16>,
-    name: String,
-    max_players: u32,
-    lobby_map: String,
-}
-
-impl Settings {
-    async fn load(path: &str) -> Result<Settings, Error> {
-        let string = match tokio::fs::read_to_string(path).await {
-            Ok(s) => s,
-            Err(_) => {
-                let mut settings = Settings::default();
-                settings.blocks.push(BlockSettings {
-                    port: Some(13002),
-                    name: "Block 2".into(),
-                    ..Default::default()
-                });
-                tokio::fs::write(path, toml::to_string_pretty(&settings)?).await?;
-                return Ok(settings);
-            }
-        };
-        Ok(toml::from_str(&string)?)
-    }
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            server_name: String::from("phantasyserver"),
-            db_name: String::from("sqlite://ship.db"),
-            balance_port: 12000,
-            blocks: vec![BlockSettings::default()],
-            master_ship: String::from("localhost:15000"),
-            quest_dir: String::from("quests"),
-        }
-    }
-}
-impl Default for BlockSettings {
-    fn default() -> Self {
-        Self {
-            port: None,
-            name: "Block 1".to_string(),
-            max_players: 32,
-            lobby_map: "lobby.mp".to_string(),
-        }
-    }
-}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -129,6 +66,8 @@ pub enum Error {
     MSError(String),
     #[error("Master ship sent unexpected data")]
     MSUnexpected,
+    #[error("Invalid master ship PSK")]
+    MSInvalidPSK,
 
     // passthrough errors
     #[error("SQL error: {0}")]
@@ -192,42 +131,73 @@ enum Action {
     SendPartyInvite(u32),
 }
 
+// feel free to suggest log level changes
 pub async fn run() -> Result<(), Error> {
-    let mul_progress = MultiProgress::new();
-    let startup_progress = mul_progress.add(ProgressBar::new_spinner());
-    startup_progress.set_message("Starting server...");
+    let settings = Settings::load("ship.toml").await?;
+    // setup logging
+    {
+        use simplelog::*;
+        let _ = std::fs::create_dir_all(&settings.log_dir);
+        let mut path = std::path::PathBuf::from(&settings.log_dir);
+        path.push(format!(
+            "ship_{}.log",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        ));
+        let log_file = std::fs::File::create(path)?;
+        CombinedLogger::init(vec![
+            TermLogger::new(
+                settings.console_log_level,
+                Config::default(),
+                TerminalMode::Mixed,
+                ColorChoice::Auto,
+            ),
+            WriteLogger::new(settings.file_log_level, Config::default(), log_file),
+        ])
+        .unwrap();
+    }
+
+    log::info!("Starting server...");
+    log::info!("Loading keypair");
     let key = match std::fs::metadata("keypair.pem") {
         Ok(..) => RsaPrivateKey::read_pkcs8_pem_file("keypair.pem")?,
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            let key_progress = mul_progress.add(ProgressBar::new_spinner());
-            key_progress.set_message(style("No keyfile found, creating...").yellow().to_string());
+            log::warn!("No keyfile found, creating...");
             let mut rand_gen = rand::thread_rng();
             let key = RsaPrivateKey::new(&mut rand_gen, 1024)?;
             key.write_pkcs8_pem_file("keypair.pem", rsa::pkcs8::LineEnding::default())?;
-            key_progress.finish_with_message("Keyfile created.");
+            log::info!("Keyfile created.");
             key
         }
         Err(e) => {
+            log::error!("Failed to load keypair: {e}");
             return Err(e.into());
         }
     };
-    let settings = Settings::load("ship.toml").await?;
-    let (data_pc, data_vita) = create_attr_files(&mul_progress)?;
-    let quests = Arc::new(Quests::load(&settings.quest_dir, &mul_progress));
-    let mut item_data = ItemParameters::load_from_mp_file("names.mp")?;
+    log::info!("Loaded keypair");
+    let (data_pc, data_vita) = create_attr_files()?;
+    let quests = Arc::new(Quests::load(&settings.quest_dir));
+    let mut item_data = ItemParameters::load_from_mp_file("data/names.mp")?;
     item_data.pc_attrs = data_pc;
     item_data.vita_attrs = data_vita;
     let item_data = Arc::new(RwLock::new(item_data));
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
+    log::info!("Connecting to master ship...");
     let master_conn = MasterConnection::new(
         tokio::net::lookup_host(settings.master_ship)
             .await?
             .next()
             .expect("No ips found for master ship"),
+        settings.master_ship_psk.as_bytes(),
     )
     .await?;
+    log::info!("Connected to master ship");
     let total_max_players = settings.blocks.iter().map(|b| b.max_players).sum();
+    log::info!("Registering ship");
     for id in 2..10 {
+        log::debug!("Requested ship id: {id}");
         let resp = MasterConnection::register_ship(
             &master_conn,
             ShipInfo {
@@ -250,17 +220,19 @@ pub async fn run() -> Result<(), Error> {
                 if id != 9 {
                     continue;
                 }
-                eprintln!("No stots left");
+                log::error!("No stots left");
                 return Ok(());
             }
         }
     }
+    log::info!("Registed ship");
 
     let sql = Arc::new(sql::Sql::new(&settings.db_name, master_conn).await?);
     make_block_balance(server_statuses.clone(), settings.balance_port).await?;
     let mut blocks = vec![];
     let mut ports = 13001;
     let mut blockstatus_lock = server_statuses.write().await;
+    log::info!("Starting blocks...");
     for (i, block) in settings.blocks.into_iter().enumerate() {
         let port = block.port.unwrap_or(ports);
         ports += 1;
@@ -279,16 +251,17 @@ pub async fn run() -> Result<(), Error> {
         let sql = sql.clone();
         let item_data = item_data.clone();
         let key = PrivateKey::Key(key.clone());
+        log::debug!("Started block {}", block.name);
         blocks.push(tokio::spawn(async move {
             match block::init_block(server_statuses, new_block, sql, item_data, key).await {
                 Ok(_) => {}
-                Err(e) => eprintln!("Block \"{}\" failed: {e}", block.name),
+                Err(e) => log::error!("Block \"{}\" failed: {e}", block.name),
             }
         }))
     }
     drop(blockstatus_lock);
 
-    startup_progress.finish_with_message("Server started.");
+    log::info!("Server started.");
     tokio::signal::ctrl_c().await?;
 
     Ok(())
@@ -308,7 +281,7 @@ async fn make_block_balance(
                         send_block_balance(s.into_std().unwrap(), server_statuses.clone()).await;
                 }
                 Err(e) => {
-                    eprintln!("Failed to accept connection: {}", e);
+                    log::warn!("Failed to accept block balance connection: {}", e);
                     return;
                 }
             }
@@ -319,46 +292,47 @@ async fn make_block_balance(
 
 async fn send_block_balance(
     stream: std::net::TcpStream,
-    servers: Arc<RwLock<Vec<BlockInfo>>>,
+    blocks: Arc<RwLock<Vec<BlockInfo>>>,
 ) -> io::Result<()> {
     stream.set_nonblocking(true)?;
     stream.set_nodelay(true)?;
     let local_addr = stream.local_addr()?.ip();
+    log::debug!("Block balancing {local_addr}...");
     let mut con = Connection::new(
         stream,
         PacketType::Classic,
         PrivateKey::None,
         PublicKey::None,
     );
-    let mut servers = servers.write().await;
-    let server_count = servers.len() as u32;
-    for block in servers.iter_mut() {
+    let mut blocks = blocks.write().await;
+    let server_count = blocks.len() as u32;
+    for block in blocks.iter_mut() {
         if block.ip == Ipv4Addr::UNSPECIFIED {
             if let std::net::IpAddr::V4(addr) = local_addr {
                 block.ip = addr
             }
         }
     }
-    let server = &mut servers[rand::thread_rng().gen_range(0..server_count) as usize];
+    let block = &mut blocks[rand::thread_rng().gen_range(0..server_count) as usize];
     let packet = login::BlockBalancePacket {
-        ip: server.ip,
-        port: server.port,
-        blockname: server.name.clone(),
+        ip: block.ip,
+        port: block.port,
+        blockname: block.name.clone(),
         ..Default::default()
     };
     con.write_packet(&Packet::BlockBalance(packet))?;
     Ok(())
 }
 
-fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u8>), Error> {
-    let progress = mul_progress.add(ProgressBar::new_spinner());
-    progress.set_message("Loading item attributes...");
-    let attrs_str = std::fs::read_to_string("item_attrs.json")?;
-    progress.set_message("Parsing item attributes...");
+fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>), Error> {
+    log::info!("Creating item attributes");
+    log::debug!("Loading item attributes...");
+    let attrs_str = std::fs::read_to_string("data/item_attrs.json")?;
+    log::debug!("Parsing item attributes...");
     let attrs: item_attrs::ItemAttributes = serde_json::from_str(&attrs_str)?;
 
     // PC attributes
-    progress.set_message("Creating PC item attributes...");
+    log::debug!("Creating PC item attributes...");
     let outdata_pc = Cursor::new(vec![]);
     let attrs: item_attrs::ItemAttributesPC = attrs.into();
     let mut attrs_data_pc = Cursor::new(vec![]);
@@ -375,7 +349,7 @@ fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u8>),
     let outdata_pc = ice_writer.into_inner()?.into_inner();
 
     // Vita attributes
-    progress.set_message("Creating Vita item attributes...");
+    log::debug!("Creating Vita item attributes...");
     let outdata_vita = Cursor::new(vec![]);
     let attrs: item_attrs::ItemAttributesVita = attrs.into();
     let mut attrs_data_vita = Cursor::new(vec![]);
@@ -391,6 +365,6 @@ fn create_attr_files(mul_progress: &MultiProgress) -> Result<(Vec<u8>, Vec<u8>),
     std::io::copy(&mut attrs_data_vita, &mut ice_writer)?;
     let outdata_vita = ice_writer.into_inner()?.into_inner();
 
-    progress.finish_with_message("Created item attributes");
+    log::info!("Created item attributes");
     Ok((outdata_pc, outdata_vita))
 }

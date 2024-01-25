@@ -16,7 +16,7 @@ pub enum Error {
     #[error("Invalid input")]
     InvalidInput,
     #[error("Unknown hostkey: {0:?}")]
-    UnknownHostkey([u8; 32]),
+    UnknownHostkey(Vec<u8>),
     #[error("Operation timed out")]
     Timeout,
 

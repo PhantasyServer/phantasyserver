@@ -3,7 +3,14 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
     AeadCore, Aes256Gcm,
 };
-use p256::{ecdh::EphemeralSecret, PublicKey};
+use p256::{
+    ecdh::EphemeralSecret,
+    ecdsa::{
+        signature::{Signer, Verifier},
+        Signature, SigningKey, VerifyingKey,
+    },
+    PublicKey,
+};
 use pso2packetlib::{
     protocol::login::{LoginAttempt, ShipStatus, UserInfoPacket},
     AsciiString,
@@ -24,6 +31,12 @@ pub struct MasterShipComm {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum MasterShipAction {
+    /// (S->MS) Ship wants to login.
+    ShipLogin {
+        psk: Vec<u8>,
+    },
+    /// (MS->S) Login result.
+    ShipLoginResult(ShipLoginResult),
     /// New ship wants to connect
     RegisterShip(ShipInfo),
     RegisterShipResult(RegisterShipResult),
@@ -74,6 +87,12 @@ pub enum MasterShipAction {
     Ok,
     /// Error has occured
     Error(String),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ShipLoginResult {
+    Ok,
+    UnknownShip,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -131,42 +150,91 @@ pub struct ShipConnection {
 
 #[cfg(feature = "ship")]
 impl ShipConnection {
+    // this should prevent mitm attacks, but i'm not 100% sure
+    // also this is derived from ssh handshake
     pub async fn new_server(
         mut stream: tokio::net::TcpStream,
-        hostkey: &[u8; 32],
+        priv_key: &SigningKey,
+        hostkey: &[u8],
     ) -> Result<Self, Error> {
         //send hostkey
+        stream
+            .write_all(&(hostkey.len() as u32).to_le_bytes())
+            .await?;
         stream.write_all(hostkey).await?;
-        let key = ShipConnection::key_exchange(&mut stream).await?;
+
+        let shared_secret = ShipConnection::key_exchange(&mut stream).await?;
+        let hash = {
+            use sha2::Digest;
+            let mut hasher = <sha2::Sha256 as sha2::Digest>::new();
+            hasher.update(shared_secret);
+            hasher.update(hostkey);
+            hasher.finalize()
+        };
+
+        let signature = Signer::<Signature>::sign(priv_key, &hash).to_vec();
+        stream
+            .write_all(&(signature.len() as u32).to_le_bytes())
+            .await?;
+        stream.write_all(&signature).await?;
+
         Ok(Self {
             stream,
             raw_read_buffer: vec![],
             length: 0,
-            aes: Aes256Gcm::new(&key.into()),
+            aes: Aes256Gcm::new(&shared_secret.into()),
         })
     }
     pub async fn new_client<F>(mut stream: tokio::net::TcpStream, check: F) -> Result<Self, Error>
     where
-        F: FnOnce(Ipv4Addr, &[u8; 32]) -> bool + Send,
+        F: FnOnce(Ipv4Addr, &[u8]) -> bool + Send,
     {
-        //send hostkey
-        let mut hostkey = [0; 32];
+        //receive hostkey
+        let mut len_buf = [0; 4];
 
-        tokio::time::timeout(Duration::from_secs(5), stream.read_exact(&mut hostkey))
+        tokio::time::timeout(Duration::from_secs(5), stream.read_exact(&mut len_buf))
             .await
             .map_err(|_| Error::Timeout)??;
         let IpAddr::V4(ip) = stream.peer_addr()?.ip() else {
             unreachable!()
         };
+
+        let key_len = u32::from_le_bytes(len_buf) as usize;
+        let mut hostkey = vec![0; key_len];
+        tokio::time::timeout(Duration::from_secs(5), stream.read_exact(&mut hostkey))
+            .await
+            .map_err(|_| Error::Timeout)??;
         if !check(ip, &hostkey) {
             return Err(Error::UnknownHostkey(hostkey));
         }
-        let key = ShipConnection::key_exchange(&mut stream).await?;
+
+        let shared_secret = ShipConnection::key_exchange(&mut stream).await?;
+        let hash = {
+            use sha2::Digest;
+            let mut hasher = <sha2::Sha256 as sha2::Digest>::new();
+            hasher.update(shared_secret);
+            hasher.update(&hostkey);
+            hasher.finalize()
+        };
+
+        tokio::time::timeout(Duration::from_secs(5), stream.read_exact(&mut len_buf))
+            .await
+            .map_err(|_| Error::Timeout)??;
+        let signature_len = u32::from_le_bytes(len_buf) as usize;
+        let mut signature = vec![0; signature_len];
+        tokio::time::timeout(Duration::from_secs(5), stream.read_exact(&mut signature))
+            .await
+            .map_err(|_| Error::Timeout)??;
+
+        let signature = Signature::from_slice(&signature)?;
+        let verifying_key = VerifyingKey::from_sec1_bytes(&hostkey)?;
+        verifying_key.verify(&hash, &signature)?;
+
         Ok(Self {
             stream,
             raw_read_buffer: vec![],
             length: 0,
-            aes: Aes256Gcm::new(&key.into()),
+            aes: Aes256Gcm::new(&shared_secret.into()),
         })
     }
     pub async fn read(&mut self) -> Result<MasterShipComm, Error> {

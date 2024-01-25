@@ -2,3 +2,5 @@
 /test
 /keypair.pem
 /ppac_reader/ppaks
+*.db
+*.db-*

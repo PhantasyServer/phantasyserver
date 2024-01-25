@@ -1,0 +1,47 @@
+# Name of the server
+server_name = "phantasyserver"
+
+# Location of the SQLite database
+db_name = "ship.db"
+
+# Port of the block balancer
+balance_port = 12000
+
+# Address of the master ship
+master_ship = "localhost:15000"
+
+# PSK to authenticate with master ship
+master_ship_psk = "master_ship_psk"
+
+# Location of the quest directory
+quest_dir = "quests"
+
+# Location of the logs directory
+log_dir = "logs"
+
+# Level of file logging. Possible levels: Error, Warn, Info, Debug, Trace
+file_log_level = "INFO"
+
+# Level of console logging
+console_log_level = "DEBUG"
+
+[[blocks]]
+
+# Optional port of the block
+#port = 13001
+
+# Name of the block
+name = "Block 1"
+
+# Max number of players
+max_players = 32
+
+# Location of the lobby map (in messagepack format)
+lobby_map = "lobby.mp"
+
+[[blocks]]
+
+#port = 13002
+name = "Block 2"
+max_players = 32
+lobby_map = "lobby.mp"

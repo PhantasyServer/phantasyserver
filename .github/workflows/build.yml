@@ -32,12 +32,12 @@ jobs:
       run: |
         mkdir output
         mv target/release/{pso2ship_server,master_ship,data_compiler} output
-        mv friend.json item_attrs.json lobby.mp names.mp quests output
+        mv data output
     - name: Pack build artifacts and extra data
       if: ${{ success() }}
       run: |
         cd output
-        tar --zstd -cf pso2server.tar.zst pso2ship_server master_ship data_compiler friend.json item_attrs.json lobby.mp names.mp quests
+        tar --zstd -cf pso2server.tar.zst pso2ship_server master_ship data_compiler data
     - name: Upload artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
@@ -66,7 +66,7 @@ jobs:
       run: mv target/x86_64-pc-windows-gnu/release/{pso2ship_server.exe,master_ship.exe,data_compiler.exe} .
     - name: Pack build artifacts and extra data
       if: ${{ success() }}
-      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friend.json item_attrs.json lobby.mp names.mp quests
+      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe data
     - name: Upload artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
@@ -90,7 +90,7 @@ jobs:
         move target/release/data_compiler.exe .
     - name: Pack build artifacts and extra data
       if: ${{ success() }}
-      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe friend.json item_attrs.json lobby.mp names.mp quests
+      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe data
     - name: Upload artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4

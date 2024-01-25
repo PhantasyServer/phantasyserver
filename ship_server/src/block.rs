@@ -5,7 +5,6 @@ use crate::{
     user::User,
     Action, BlockData, BlockInfo, Error,
 };
-use console::style;
 use data_structs::inventory::ItemParameters;
 use pso2packetlib::PrivateKey;
 use std::{
@@ -75,7 +74,7 @@ pub async fn init_block(
         while let Ok((id, action)) = recv.try_recv() {
             match run_action(&mut clients, id, action, &block_data).await {
                 Ok(_) => {}
-                Err(e) => eprintln!("{}", style(format!("Client error: {e}")).red()),
+                Err(e) => log::warn!("Client error: {e}"),
             };
         }
         tokio::time::sleep(Duration::from_millis(1)).await;
@@ -90,7 +89,7 @@ async fn new_conn_handler(
     block_id: u32,
     conn_id_ref: &mut usize,
 ) -> Result<(), Error> {
-    println!("{}", style("Client connected").cyan());
+    log::info!("Client connected");
 
     let mut lock = block_data.blocks.write().await;
     if let Some(block) = lock.iter_mut().find(|x| x.id == block_id) {
@@ -119,7 +118,7 @@ async fn new_conn_handler(
                 Err(e) => {
                     let error_msg = format!("Client error: {e}");
                     let _ = client.lock().await.send_error(&error_msg);
-                    eprintln!("{}", style(error_msg).red());
+                    log::warn!("{}", error_msg);
                 }
             }
             tokio::time::sleep(Duration::from_millis(1)).await;
@@ -146,7 +145,7 @@ async fn run_action(
     match action {
         Action::Nothing => {}
         Action::Disconnect => {
-            println!("{}", style("Client disconnected").cyan());
+            log::info!("Client disconnected");
             clients.remove(pos);
 
             let mut lock = block_data.blocks.write().await;
