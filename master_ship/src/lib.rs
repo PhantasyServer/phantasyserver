@@ -9,7 +9,7 @@ use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
     protocol::{login, Packet, PacketType},
-    Connection, PrivateKey, PublicKey,
+    Connection, PrivateKey,
 };
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -57,7 +57,7 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            db_name: "master_ship.db".into(),
+            db_name: String::from("master_ship.db"),
             registration_enabled: false,
             log_dir: String::from("logs"),
             file_log_level: log::LevelFilter::Info,
@@ -477,12 +477,7 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
 fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
     log::debug!("Sending query information...");
     stream.set_nodelay(true)?;
-    let mut con = Connection::new(
-        stream.into_std()?,
-        PacketType::Classic,
-        PrivateKey::None,
-        PublicKey::None,
-    );
+    let mut con = Connection::new(stream.into_std()?, PacketType::Classic, PrivateKey::None);
     let mut ships = vec![];
     for server in servers.read().iter() {
         ships.push(login::ShipEntry {
@@ -538,12 +533,7 @@ pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
     } else {
         (port - 12000) / 100
     } as u32;
-    let mut con = Connection::new(
-        stream.into_std()?,
-        PacketType::Classic,
-        PrivateKey::None,
-        PublicKey::None,
-    );
+    let mut con = Connection::new(stream.into_std()?, PacketType::Classic, PrivateKey::None);
     let servers = servers.read();
     let Some(server) = servers.iter().find(|x| x.id == id) else {
         con.write_packet(&Packet::LoginResponse(login::LoginResponsePacket {

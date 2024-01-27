@@ -1132,7 +1132,7 @@ dependencies = [
 [[package]]
 name = "packetlib_impl"
 version = "0.1.0"
-source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=6c3fae2#6c3fae2473fc9105afa71e369eaf81da982b9417"
+source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=fc85689#fc8568936078704469c2395a0e2dc35e383b09c3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1295,7 +1295,7 @@ dependencies = [
 [[package]]
 name = "pso2packetlib"
 version = "0.1.0"
-source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=6c3fae2#6c3fae2473fc9105afa71e369eaf81da982b9417"
+source = "git+https://github.com/PhantasyServer/pso2-protocol-lib?rev=fc85689#fc8568936078704469c2395a0e2dc35e383b09c3"
 dependencies = [
  "aes",
  "byteorder",

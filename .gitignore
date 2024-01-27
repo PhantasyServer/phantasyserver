@@ -4,3 +4,10 @@
 /ppac_reader/ppaks
 *.db
 *.db-*
+/master_ship.toml
+/ship.toml
+*.pac
+/logs/
+hostkeys.mp
+master_key.bin
+

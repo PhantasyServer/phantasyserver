@@ -18,7 +18,7 @@ use pso2packetlib::{
         spawn::CharacterSpawnPacket,
         Packet, PacketType,
     },
-    Connection, PublicKey,
+    Connection,
 };
 use std::{io, net::Ipv4Addr, sync::Arc, time::Instant};
 
@@ -57,12 +57,7 @@ impl User {
     ) -> Result<User, Error> {
         stream.set_nonblocking(true)?;
         stream.set_nodelay(true)?;
-        let mut con = Connection::new(
-            stream,
-            PacketType::Classic,
-            blockdata.key.clone(),
-            PublicKey::None,
-        );
+        let mut con = Connection::new(stream, PacketType::Classic, blockdata.key.clone());
         match con.write_packet(&Packet::ServerHello(Pr::server::ServerHelloPacket {
             unk1: 3,
             blockid: blockdata.block_id as u16,

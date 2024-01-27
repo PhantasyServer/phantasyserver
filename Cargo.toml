@@ -5,7 +5,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # pso2packetlib = { path = "../pso2packetlib", default-features = false }
-pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "6c3fae2", default-features = false }
+pso2packetlib = { git = "https://github.com/PhantasyServer/pso2-protocol-lib", rev = "fc85689", default-features = false }
 
 [profile.release]
 lto = true

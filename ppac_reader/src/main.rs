@@ -18,7 +18,6 @@ fn main() {
     let mut map_data: Option<MapData> = None;
     let mut quest_data: Vec<QuestData> = vec![];
     let mut mapid = 0;
-    let mut user_id = 0;
     let mut quest_id = 0;
     let mut quest_diff = 0;
     let mut populated = vec![];
@@ -39,7 +38,6 @@ fn main() {
         let time = time.as_nanos();
         match packet {
             Packet::None => break,
-            Packet::SetPlayerID(p) => user_id = p.player_id,
             Packet::QuestCategory(p) => {
                 for quest in p.quests {
                     if quest_data
@@ -103,20 +101,17 @@ fn main() {
                 populated.push(mapid);
                 mapid = p.settings.map_id;
             }
-            Packet::CharacterSpawn(p) => {
-                println!("{user_id} - {}", p.character.player_id);
-                if p.character.player_id == user_id {
-                    if let Some(ref mut map) = map_data {
-                        let mut exists = false;
-                        for (id, _) in &map.default_location {
-                            if *id == mapid {
-                                exists = true;
-                                break;
-                            }
+            Packet::CharacterSpawnNGS(p) => {
+                if let Some(ref mut map) = map_data {
+                    let mut exists = false;
+                    for (id, _) in &map.default_location {
+                        if *id == mapid {
+                            exists = true;
+                            break;
                         }
-                        if !exists {
-                            map.default_location.push((mapid, p.position));
-                        }
+                    }
+                    if !exists {
+                        map.default_location.push((mapid, p.position));
                     }
                 }
             }

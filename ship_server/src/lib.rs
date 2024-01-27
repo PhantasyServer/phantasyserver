@@ -28,7 +28,7 @@ use master_conn::MasterConnection;
 use mutex::{Mutex, RwLock};
 use pso2packetlib::{
     protocol::{login, models::item_attrs, Packet, PacketType},
-    Connection, PrivateKey, PublicKey,
+    Connection, PrivateKey,
 };
 use quests::Quests;
 use rand::Rng;
@@ -298,12 +298,7 @@ async fn send_block_balance(
     stream.set_nodelay(true)?;
     let local_addr = stream.local_addr()?.ip();
     log::debug!("Block balancing {local_addr}...");
-    let mut con = Connection::new(
-        stream,
-        PacketType::Classic,
-        PrivateKey::None,
-        PublicKey::None,
-    );
+    let mut con = Connection::new(stream, PacketType::Classic, PrivateKey::None);
     let mut blocks = blocks.write().await;
     let server_count = blocks.len() as u32;
     for block in blocks.iter_mut() {
