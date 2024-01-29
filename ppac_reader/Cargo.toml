@@ -9,5 +9,5 @@ edition = "2021"
 byteorder = { version = "1.4.3", features = ["i128"]}
 pso2packetlib = {workspace = true, features = ["serde", "ppac"]}
 data_structs = { path = "../data_structs", features = ["rmp", "json"] }
-serde = "1.0.195"
+serde = "1.0.196"
 serde_json = "1.0.113"
