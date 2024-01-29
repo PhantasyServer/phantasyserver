@@ -14,7 +14,7 @@ ship = ["dep:tokio", "dep:p256", "dep:rand_core", "dep:sha2", "dep:aes-gcm", "rm
 serde = { version = "1.0.195", features = ["derive"] }
 pso2packetlib = { workspace = true, features = ["serde", "item_attrs"] }
 rmp-serde = { version = "1.1.2", optional = true }
-serde_json = { version = "1.0.111", optional = true }
+serde_json = { version = "1.0.113", optional = true }
 thiserror = "1.0.50"
 tokio = { version = "1.35.1", optional = true, features = ["full"] }
 p256 = { version = "0.13.2", optional = true, features = ["ecdh"] }
