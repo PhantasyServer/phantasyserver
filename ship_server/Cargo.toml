@@ -16,7 +16,7 @@ thiserror = "1.0.50"
 serde_json = "1.0.113"
 rmp-serde = "1.1.2" 
 half = "2.3.1"
-serde = "1.0.195"
+serde = "1.0.196"
 memory-stats = "1.1.0"
 mlua = { version = "0.9.5", features = ["serialize", "vendored", "send", "async"] }
 parking_lot = {version = "0.12.1", features = ["send_guard"]}
