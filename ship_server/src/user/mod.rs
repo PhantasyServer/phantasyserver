@@ -1,22 +1,17 @@
 pub(crate) mod handlers;
 use crate::{
-    inventory::Inventory,
     invites::PartyInvite,
     map::Map,
     mutex::{Mutex, MutexGuard, RwLock},
-    palette::Palette,
     party::{self, Party},
+    sql::CharData,
     Action, BlockData, Error,
 };
 use data_structs::flags::Flags;
 use pso2packetlib::{
     protocol::{
-        self as Pr,
-        login::Language,
-        models::{character::Character, Position},
-        party::BusyState,
-        spawn::CharacterSpawnPacket,
-        Packet, PacketType,
+        self as Pr, login::Language, models::Position, party::BusyState,
+        spawn::CharacterSpawnPacket, Packet, PacketType,
     },
     Connection,
 };
@@ -32,7 +27,7 @@ pub struct User {
     text_lang: Language,
     map: Option<Arc<Mutex<Map>>>,
     pub party: Option<Arc<RwLock<Party>>>,
-    pub character: Option<Character>,
+    pub character: Option<CharData>,
     last_ping: Instant,
     failed_pings: u32,
     pub packet_type: PacketType,
@@ -40,12 +35,9 @@ pub struct User {
     pub nickname: String,
     pub party_invites: Vec<PartyInvite>,
     pub party_ignore: Pr::party::RejectStatus,
-    pub inventory: Inventory,
-    pub palette: Palette,
     pub mapid: u32,
     firstload: bool,
     accountflags: Flags,
-    charflags: Flags,
     pub isgm: bool,
     uuid: u64,
 }
@@ -84,12 +76,9 @@ impl User {
             nickname: String::new(),
             party_invites: vec![],
             party_ignore: Default::default(),
-            inventory: Default::default(),
-            palette: Default::default(),
             mapid: 0,
             firstload: true,
             accountflags: Default::default(),
-            charflags: Default::default(),
             isgm: false,
             uuid: 0,
         })
@@ -386,12 +375,7 @@ impl Drop for User {
         let player_id = self.player_id;
         if self.character.is_some() {
             let sql = self.blockdata.sql.clone();
-            let char = crate::sql::CharData {
-                character: std::mem::take(self.character.as_mut().unwrap()),
-                inventory: std::mem::take(&mut self.inventory),
-                palette: std::mem::take(&mut self.palette),
-                flags: std::mem::take(&mut self.charflags),
-            };
+            let char = std::mem::take(self.character.as_mut().unwrap());
             let acc_flags = std::mem::take(&mut self.accountflags);
             let uuid = self.uuid;
             tokio::spawn(async move {

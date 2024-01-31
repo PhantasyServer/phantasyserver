@@ -1,4 +1,5 @@
-use crate::{Action, Error, User};
+use super::HResult;
+use crate::{sql::CharData, Action, Error, User};
 use pso2packetlib::{
     ppac::Direction,
     protocol::{
@@ -8,8 +9,6 @@ use pso2packetlib::{
     },
 };
 use std::time::{SystemTime, UNIX_EPOCH};
-
-use super::HResult;
 
 pub fn encryption_request(user: &mut User, _: login::EncryptionRequestPacket) -> HResult {
     let key = user.connection.get_key();
@@ -32,16 +31,16 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                 .get_sega_user(&packet.username, &packet.password, ip)
                 .await;
             match sega_user {
-                Ok(x) => {
-                    id = x.id;
-                    user.nickname = x.nickname;
+                Ok(data) => {
+                    id = data.id;
+                    user.nickname = data.nickname;
                     user.text_lang = packet.text_lang;
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                         data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
                     }))?;
-                    user.accountflags = x.accountflags;
-                    user.isgm = x.isgm;
-                    user.uuid = x.last_uuid;
+                    user.accountflags = data.accountflags;
+                    user.isgm = data.isgm;
+                    user.uuid = data.last_uuid;
                 }
                 Err(Error::InvalidPassword) => {
                     status = login::LoginStatus::Failure;
@@ -84,8 +83,14 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
         ..Default::default()
     }))?;
     if let login::LoginStatus::Failure = status {
-        return Ok(Action::Nothing);
+        return Ok(Action::Disconnect);
     }
+
+    on_successful_login(user).await
+}
+
+pub async fn on_successful_login(user: &mut User) -> HResult {
+    let id = user.get_user_id();
     user.connection
         .create_ppac(format!("{}.pac", id), Direction::ToClient)
         .unwrap();
@@ -171,13 +176,10 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
         ..Default::default()
     }))?;
     if let login::LoginStatus::Failure = status {
-        return Ok(Action::Nothing);
+        return Ok(Action::Disconnect);
     }
-    user.send_item_attrs().await?;
-    let info = user.blockdata.sql.get_user_info(id).await?;
-    user.send_packet(&Packet::UserInfo(info))?;
 
-    Ok(Action::Nothing)
+    on_successful_login(user).await
 }
 pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPacket) -> HResult {
     let lock = user.blockdata.blocks.read().await;
@@ -305,15 +307,17 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
     let mut character = packet.character;
     character.character_id = user.char_id;
     character.player_id = user.player_id;
+    let mut char_data = CharData {
+        character,
+        ..Default::default()
+    };
     //TODO: add class defaults
-    user.character = Some(character);
-    user.inventory = Default::default();
-    user.inventory.storages = user
+    char_data.inventory.storages = user
         .blockdata
         .sql
         .get_account_storage(user.player_id)
         .await?;
-    user.palette = Default::default();
+    user.character = Some(char_data);
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }
@@ -325,10 +329,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
         .sql
         .get_character(user.player_id, user.char_id)
         .await?;
-    user.character = Some(char.character);
-    user.charflags = char.flags;
-    user.inventory = char.inventory;
-    user.palette = char.palette;
+    user.character = Some(char);
     user.send_packet(&Packet::LoadingScreenTransition)?;
     Ok(Action::Nothing)
 }

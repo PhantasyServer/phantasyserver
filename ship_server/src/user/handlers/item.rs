@@ -11,19 +11,26 @@ use pso2packetlib::protocol::{
 };
 
 pub fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
-    let packet = user.inventory.move_to_storage(packet, &mut user.uuid)?;
+    let character = user.character.as_mut().unwrap();
+    let packet = character
+        .inventory
+        .move_to_storage(packet, &mut user.uuid)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }
 
 pub fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPacket) -> HResult {
-    let packet = user.inventory.move_to_inventory(packet, &mut user.uuid)?;
+    let character = user.character.as_mut().unwrap();
+    let packet = character
+        .inventory
+        .move_to_inventory(packet, &mut user.uuid)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }
 
 pub fn move_meseta(user: &mut User, packet: MoveMesetaPacket) -> HResult {
-    let packets = user.inventory.move_meseta(packet);
+    let character = user.character.as_mut().unwrap();
+    let packets = character.inventory.move_meseta(packet);
     for packet in packets {
         user.send_packet(&packet)?;
     }
@@ -31,19 +38,22 @@ pub fn move_meseta(user: &mut User, packet: MoveMesetaPacket) -> HResult {
 }
 
 pub fn discard_inventory(user: &mut User, packet: DiscardItemRequestPacket) -> HResult {
-    let packet = user.inventory.discard_inventory(packet)?;
+    let character = user.character.as_mut().unwrap();
+    let packet = character.inventory.discard_inventory(packet)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }
 
 pub fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestPacket) -> HResult {
-    let packet = user.inventory.discard_storage(packet)?;
+    let character = user.character.as_mut().unwrap();
+    let packet = character.inventory.discard_storage(packet)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }
 
 pub fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
-    let packet = user.inventory.move_storages(packet, &mut user.uuid)?;
+    let character = user.character.as_mut().unwrap();
+    let packet = character.inventory.move_storages(packet, &mut user.uuid)?;
     user.send_packet(&packet)?;
     Ok(Action::Nothing)
 }

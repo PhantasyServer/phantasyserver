@@ -40,7 +40,7 @@ struct UserData {
     symbol_arts: Vec<u128>,
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, serde::Serialize, serde::Deserialize, Clone)]
 #[serde(default)]
 pub struct CharData {
     pub character: Character,
@@ -202,7 +202,7 @@ impl Sql {
                 })
             }
             MasterShipAction::UserLoginResult(UserLoginResult::InvalidPassword(_)) => {
-                Err(Error::InvalidPassword)
+                Err(Error::MSUnexpected)
             }
             MasterShipAction::UserLoginResult(UserLoginResult::NotFound) => {
                 self.create_psn_user(username).await

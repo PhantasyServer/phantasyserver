@@ -105,9 +105,10 @@ pub async fn campship_down(user: MutexGuard<'_, User>, _: CampshipDownPacket) ->
 pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     let packet = protocol::unk19::LobbyMonitorPacket { video_id: 1 };
     user.send_packet(&Packet::LobbyMonitor(packet))?;
-    let packets = user.inventory.send(
+    let character = user.character.as_mut().unwrap();
+    let packets = character.inventory.send(
         user.player_id,
-        user.character.as_ref().unwrap().name.clone(),
+        character.character.name.clone(),
         &*user.blockdata.item_attrs.read().await,
         user.text_lang,
     );
@@ -115,7 +116,8 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     if user.firstload {
         let flags = user.accountflags.to_account_flags();
         user.send_packet(&flags)?;
-        let flags = user.charflags.to_char_flags();
+        let character = user.character.as_ref().unwrap();
+        let flags = character.flags.to_char_flags();
         user.send_packet(&flags)?;
     }
 
@@ -143,7 +145,12 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
 pub async fn set_flag(user: &mut User, data: SetFlagPacket) -> HResult {
     match data.flag_type {
         FlagType::Account => user.accountflags.set(data.id as usize, data.value as u8),
-        FlagType::Character => user.charflags.set(data.id as usize, data.value as u8),
+        FlagType::Character => user
+            .character
+            .as_mut()
+            .unwrap()
+            .flags
+            .set(data.id as usize, data.value as u8),
     }
     Ok(Action::Nothing)
 }

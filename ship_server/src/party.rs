@@ -97,15 +97,19 @@ impl Party {
             people_amount: self.players.len() as u32 + 1,
             ..Default::default()
         };
+        let new_char = np_lock
+            .character
+            .as_ref()
+            .expect("Users added should have characters");
         party_init.entries[0] = party::PartyEntry {
             id: new_player_obj,
             nickname: np_lock.nickname.clone(),
-            char_name: np_lock.character.as_ref().unwrap().name.clone(),
-            class: np_lock.character.as_ref().unwrap().classes.main_class,
-            subclass: np_lock.character.as_ref().unwrap().classes.sub_class,
+            char_name: new_char.character.name.clone(),
+            class: new_char.character.classes.main_class,
+            subclass: new_char.character.classes.sub_class,
             hp: [100, 100, 100],
-            level: np_lock.character.as_ref().unwrap().get_level().level1 as u8,
-            sublevel: np_lock.character.as_ref().unwrap().get_sublevel().level1 as u8,
+            level: new_char.character.get_level().level1 as u8,
+            sublevel: new_char.character.get_sublevel().level1 as u8,
             map_id: np_lock.get_map_id() as u16,
             color,
             ..Default::default()
@@ -150,15 +154,19 @@ impl Party {
                 in_party: 1,
                 ..Default::default()
             });
+            let char = player
+                .character
+                .as_ref()
+                .expect("Users added should have characters");
             party_init.entries[i] = party::PartyEntry {
                 id: other_player_obj,
                 nickname: player.nickname.clone(),
-                char_name: player.character.as_ref().unwrap().name.clone(),
-                class: player.character.as_ref().unwrap().classes.main_class,
-                subclass: player.character.as_ref().unwrap().classes.sub_class,
+                char_name: char.character.name.clone(),
+                class: char.character.classes.main_class,
+                subclass: char.character.classes.sub_class,
                 hp: [100, 100, 100],
-                level: player.character.as_ref().unwrap().get_level().level1 as u8,
-                sublevel: player.character.as_ref().unwrap().get_sublevel().level1 as u8,
+                level: char.character.get_level().level1 as u8,
+                sublevel: char.character.get_sublevel().level1 as u8,
                 map_id: player.get_map_id() as u16,
                 color: self.get_color(id),
                 ..Default::default()
@@ -196,9 +204,13 @@ impl Party {
                 return Err(Error::NoCharacter);
             }
             let _ = lock.send_packet(&Packet::PartyInviteResult(Default::default()));
+            let character = lock
+                .character
+                .as_ref()
+                .expect("Users in party should have characters");
             (
                 lock.party.clone().unwrap(),
-                lock.character.as_ref().unwrap().name.clone(),
+                character.character.name.clone(),
                 lock.get_user_id(),
             )
         };
@@ -432,18 +444,22 @@ impl Party {
             };
             let mut player_i = 0;
             exec_users(&party.players, |_, player| {
+                let char = player
+                    .character
+                    .as_ref()
+                    .expect("Users in parties should have characters");
                 detail.unk10[player_i] = party::PartyMember {
-                    char_name: player.character.as_ref().unwrap().name.clone(),
+                    char_name: char.character.name.clone(),
                     nickname: player.nickname.clone(),
                     id: ObjectHeader {
                         id: player.get_user_id(),
                         entity_type: EntityType::Player,
                         ..Default::default()
                     },
-                    class: player.character.as_ref().unwrap().classes.main_class,
-                    subclass: player.character.as_ref().unwrap().classes.sub_class,
-                    level: player.character.as_ref().unwrap().get_level().level1 as u8,
-                    sublevel: player.character.as_ref().unwrap().get_sublevel().level1 as u8,
+                    class: char.character.classes.main_class,
+                    subclass: char.character.classes.sub_class,
+                    level: char.character.get_level().level1 as u8,
+                    sublevel: char.character.get_sublevel().level1 as u8,
                     ..Default::default()
                 };
                 player_i += 1;
