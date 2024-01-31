@@ -2,8 +2,8 @@
 #![warn(clippy::future_not_send)]
 pub mod sql;
 use data_structs::master_ship::{
-    MasterShipAction, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo,
-    ShipLoginResult, UserLoginResult,
+    MasterShipAction, MasterShipComm, RegisterShipResult, SetNicknameResult, ShipConnection,
+    ShipInfo, ShipLoginResult, UserLoginResult,
 };
 use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
@@ -426,6 +426,19 @@ pub async fn run_action(
         MasterShipAction::ShipLoginResult(_) => {
             response.action = MasterShipAction::Error(Error::InvalidAction.to_string())
         }
+        MasterShipAction::SetNickname { id, nickname } => {
+            match sql.set_nickname(id, &nickname).await {
+                Ok(true) => {
+                    response.action = MasterShipAction::SetNicknameResult(SetNicknameResult::Ok)
+                }
+                Ok(false) => {
+                    response.action =
+                        MasterShipAction::SetNicknameResult(SetNicknameResult::AlreadyTaken)
+                }
+                Err(e) => response.action = MasterShipAction::Error(e.to_string()),
+            }
+        }
+        MasterShipAction::SetNicknameResult(_) => {}
     }
     Ok(response)
 }

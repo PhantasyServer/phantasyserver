@@ -1,10 +1,11 @@
 use super::HResult;
-use crate::{sql::CharData, Action, Error, User};
+use crate::{sql::CharData, user::UserState, Action, Error, User};
+use data_structs::master_ship::SetNicknameResult;
 use pso2packetlib::{
     ppac::Direction,
     protocol::{
         self,
-        login::{self, BlockListPacket},
+        login::{self, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket},
         ObjectHeader, Packet, PacketType,
     },
 };
@@ -71,9 +72,30 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
     }
     user.player_id = id;
 
+    if status == login::LoginStatus::Failure {
+        user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
+            status,
+            error,
+            blockname: user.blockdata.block_name.clone(),
+            ..Default::default()
+        }))?;
+        return Ok(Action::Disconnect);
+    }
+
+    if user.nickname.is_empty() {
+        user.state = UserState::NewUsername;
+        user.send_packet(&Packet::NicknameRequest(Default::default()))?;
+        Ok(Action::Nothing)
+    } else {
+        on_successful_login(user).await
+    }
+}
+
+pub async fn on_successful_login(user: &mut User) -> HResult {
+    let id = user.get_user_id();
     user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
-        status,
-        error,
+        status: login::LoginStatus::Success,
+        error: String::new(),
         blockname: user.blockdata.block_name.clone(),
         player: ObjectHeader {
             id,
@@ -82,23 +104,30 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
         },
         ..Default::default()
     }))?;
-    if let login::LoginStatus::Failure = status {
-        return Ok(Action::Disconnect);
-    }
-
-    on_successful_login(user).await
-}
-
-pub async fn on_successful_login(user: &mut User) -> HResult {
-    let id = user.get_user_id();
     user.connection
         .create_ppac(format!("{}.pac", id), Direction::ToClient)
         .unwrap();
     user.send_item_attrs().await?;
     let info = user.blockdata.sql.get_user_info(id).await?;
     user.send_packet(&Packet::UserInfo(info))?;
+    user.state = UserState::CharacterSelect;
 
     Ok(Action::Nothing)
+}
+
+pub async fn set_username(user: &mut User, packet: NicknameResponsePacket) -> HResult {
+    let sql = user.blockdata.sql.clone();
+    let result = sql.set_username(user.player_id, &packet.nickname).await?;
+    //FIXME: error code 1 is for nickname == username
+    match result {
+        SetNicknameResult::Ok => {}
+        SetNicknameResult::AlreadyTaken => {
+            user.send_packet(&Packet::NicknameRequest(NicknameRequestPacket { error: 1 }))?;
+            return Ok(Action::Nothing);
+        }
+    }
+
+    on_successful_login(user).await
 }
 
 pub async fn block_list(user: &mut User) -> HResult {
@@ -319,6 +348,7 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
         .await?;
     user.character = Some(char_data);
     user.send_packet(&Packet::LoadingScreenTransition)?;
+    user.state = UserState::InGame;
     Ok(Action::Nothing)
 }
 
@@ -331,6 +361,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
         .await?;
     user.character = Some(char);
     user.send_packet(&Packet::LoadingScreenTransition)?;
+    user.state = UserState::InGame;
     Ok(Action::Nothing)
 }
 

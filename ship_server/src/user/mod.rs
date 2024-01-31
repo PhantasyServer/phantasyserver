@@ -15,7 +15,7 @@ use pso2packetlib::{
     },
     Connection,
 };
-use std::{io, net::Ipv4Addr, sync::Arc, time::Instant};
+use std::{fmt::Display, io, net::Ipv4Addr, sync::Arc, time::Instant};
 
 pub struct User {
     // ideally all of these should be private
@@ -40,6 +40,7 @@ pub struct User {
     accountflags: Flags,
     pub isgm: bool,
     uuid: u64,
+    state: UserState,
 }
 
 impl User {
@@ -81,6 +82,7 @@ impl User {
             accountflags: Default::default(),
             isgm: false,
             uuid: 0,
+            state: UserState::LoggingIn,
         })
     }
     // I hope async guard won't cause me troubles in the future
@@ -204,143 +206,171 @@ async fn packet_handler(
     packet: Packet,
 ) -> Result<Action, Error> {
     let user: &mut User = &mut user_guard;
-    use handlers as H;
-    match packet {
+    let state = user.state;
+    // sidestep borrow checker
+    let match_unit = (state, packet);
+    use {handlers as H, Packet as P, UserState as US};
+
+    match match_unit {
         // Server packets
-        Packet::InitialLoad => Ok(Action::InitialLoad),
-        Packet::ServerPong => {
+        (US::InGame, P::InitialLoad) => Ok(Action::InitialLoad),
+        (_, P::ServerPong) => {
             user.failed_pings = 0;
             Ok(Action::Nothing)
         }
-        Packet::MapLoaded(data) => H::server::map_loaded(user, data).await,
-        Packet::ToCampship(data) => H::server::to_campship(user_guard, data).await,
-        Packet::CampshipDown(data) => H::server::campship_down(user_guard, data).await,
-        Packet::CasinoToLobby(data) => H::server::move_from_casino(user_guard, data).await,
-        Packet::CasinoTransport(data) => H::server::move_to_casino(user_guard, data).await,
-        Packet::BridgeToLobby(data) => H::server::move_from_bridge(user_guard, data).await,
-        Packet::BridgeTransport(data) => H::server::move_to_bridge(user_guard, data).await,
-        Packet::CafeToLobby(data) => H::server::move_from_cafe(user_guard, data).await,
-        Packet::CafeTransport(data) => H::server::move_to_cafe(user_guard, data).await,
+        (US::InGame, P::MapLoaded(data)) => H::server::map_loaded(user, data).await,
+        (US::InGame, P::ToCampship(data)) => H::server::to_campship(user_guard, data).await,
+        (US::InGame, P::CampshipDown(data)) => H::server::campship_down(user_guard, data).await,
+        (US::InGame, P::CasinoToLobby(data)) => H::server::move_from_casino(user_guard, data).await,
+        (US::InGame, P::CasinoTransport(data)) => H::server::move_to_casino(user_guard, data).await,
+        (US::InGame, P::BridgeToLobby(data)) => H::server::move_from_bridge(user_guard, data).await,
+        (US::InGame, P::BridgeTransport(data)) => H::server::move_to_bridge(user_guard, data).await,
+        (US::InGame, P::CafeToLobby(data)) => H::server::move_from_cafe(user_guard, data).await,
+        (US::InGame, P::CafeTransport(data)) => H::server::move_to_cafe(user_guard, data).await,
 
         // Object packets
-        Packet::Movement(data) => H::object::movement(user_guard, data).await,
-        Packet::MovementAction(..) => User::send_position(user_guard, packet).await,
-        Packet::Interact(data) => H::object::action(user_guard, data).await,
-        Packet::ActionUpdate(..) => User::send_position(user_guard, packet).await,
-        Packet::MovementEnd(ref data) => {
+        (US::InGame, P::Movement(data)) => H::object::movement(user_guard, data).await,
+        (US::InGame, P::MovementAction(..)) => User::send_position(user_guard, match_unit.1).await,
+        (US::InGame, P::Interact(data)) => H::object::action(user_guard, data).await,
+        (US::InGame, P::ActionUpdate(..)) => User::send_position(user_guard, match_unit.1).await,
+        (US::InGame, P::MovementEnd(ref data)) => {
             user.position = data.cur_pos;
-            User::send_position(user_guard, packet).await
+            User::send_position(user_guard, match_unit.1).await
         }
 
         // Chat packets
-        Packet::ChatMessage(..) => H::chat::send_chat(user_guard, packet).await,
+        (US::InGame, P::ChatMessage(..)) => H::chat::send_chat(user_guard, match_unit.1).await,
 
         // Quest List packets
-        Packet::AvailableQuestsRequest(data) => H::quest::avaliable_quests(user, data),
-        Packet::QuestCategoryRequest(data) => H::quest::quest_category(user, data),
-        Packet::QuestDifficultyRequest(data) => H::quest::quest_difficulty(user, data),
-        Packet::AcceptQuest(data) => H::quest::set_quest(user_guard, data).await,
-        Packet::QuestCounterRequest => H::quest::counter_request(user),
+        (US::InGame, P::AvailableQuestsRequest(data)) => H::quest::avaliable_quests(user, data),
+        (US::InGame, P::QuestCategoryRequest(data)) => H::quest::quest_category(user, data),
+        (US::InGame, P::QuestDifficultyRequest(data)) => H::quest::quest_difficulty(user, data),
+        (US::InGame, P::AcceptQuest(data)) => H::quest::set_quest(user_guard, data).await,
+        (US::InGame, P::QuestCounterRequest) => H::quest::counter_request(user),
 
         // Party packets
-        Packet::PartyInviteRequest(data) => Ok(Action::SendPartyInvite(data.invitee.id)),
-        Packet::AcceptInvite(data) => H::party::accept_invite(user_guard, data).await,
-        Packet::LeaveParty => H::party::leave_party(user_guard).await,
-        Packet::NewPartySettings(data) => H::party::set_party_settings(user_guard, data).await,
-        Packet::TransferLeader(data) => H::party::transfer_leader(user_guard, data).await,
-        Packet::KickMember(data) => H::party::kick_player(user_guard, data).await,
-        Packet::DisbandParty(..) => H::party::disband_party(user_guard).await,
-        Packet::ChatStatus(data) => H::party::set_chat_state(user_guard, data).await,
-        Packet::GetPartyDetails(data) => {
+        (US::InGame, P::PartyInviteRequest(data)) => Ok(Action::SendPartyInvite(data.invitee.id)),
+        (US::InGame, P::AcceptInvite(data)) => H::party::accept_invite(user_guard, data).await,
+        (US::InGame, P::LeaveParty) => H::party::leave_party(user_guard).await,
+        (US::InGame, P::NewPartySettings(data)) => {
+            H::party::set_party_settings(user_guard, data).await
+        }
+        (US::InGame, P::TransferLeader(data)) => H::party::transfer_leader(user_guard, data).await,
+        (US::InGame, P::KickMember(data)) => H::party::kick_player(user_guard, data).await,
+        (US::InGame, P::DisbandParty(..)) => H::party::disband_party(user_guard).await,
+        (US::InGame, P::ChatStatus(data)) => H::party::set_chat_state(user_guard, data).await,
+        (US::InGame, P::GetPartyDetails(data)) => {
             party::Party::get_details(user_guard, data).await?;
             Ok(Action::Nothing)
         }
-        Packet::SetBusy => H::party::set_busy_state(user_guard, BusyState::Busy).await,
-        Packet::SetNotBusy => H::party::set_busy_state(user_guard, BusyState::NotBusy).await,
-        Packet::SetInviteDecline(data) => {
+        (US::InGame, P::SetBusy) => H::party::set_busy_state(user_guard, BusyState::Busy).await,
+        (US::InGame, P::SetNotBusy) => {
+            H::party::set_busy_state(user_guard, BusyState::NotBusy).await
+        }
+        (US::InGame, P::SetInviteDecline(data)) => {
             user.party_ignore = data.decline_status;
             Ok(Action::Nothing)
         }
-        Packet::GetPartyInfo(data) => {
+        (US::InGame, P::GetPartyInfo(data)) => {
             party::Party::get_info(user, data).await?;
             Ok(Action::Nothing)
         }
 
         // Item packets
-        Packet::MoveToStorageRequest(data) => H::item::move_to_storage(user, data),
-        Packet::MoveToInventoryRequest(data) => H::item::move_to_inventory(user, data),
-        Packet::MoveMeseta(data) => H::item::move_meseta(user, data),
-        Packet::DiscardItemRequest(data) => H::item::discard_inventory(user, data),
-        Packet::MoveStoragesRequest(data) => H::item::move_storages(user, data),
-        Packet::GetItemDescription(data) => H::item::get_description(user, data).await,
-        Packet::DiscardStorageItemRequest(data) => H::item::discard_storage(user, data),
+        (US::InGame, P::MoveToStorageRequest(data)) => H::item::move_to_storage(user, data),
+        (US::InGame, P::MoveToInventoryRequest(data)) => H::item::move_to_inventory(user, data),
+        (US::InGame, P::MoveMeseta(data)) => H::item::move_meseta(user, data),
+        (US::InGame, P::DiscardItemRequest(data)) => H::item::discard_inventory(user, data),
+        (US::InGame, P::MoveStoragesRequest(data)) => H::item::move_storages(user, data),
+        (US::InGame, P::GetItemDescription(data)) => H::item::get_description(user, data).await,
+        (US::InGame, P::DiscardStorageItemRequest(data)) => H::item::discard_storage(user, data),
 
         // Login packets
-        Packet::SegaIDLogin(..) => H::login::login_request(user, packet).await,
-        Packet::CharacterListRequest => H::login::character_list(user).await,
-        Packet::StartGame(data) => H::login::start_game(user, data).await,
-        Packet::CharacterCreate(data) => H::login::new_character(user, data).await,
-        Packet::CharacterDeletionRequest(data) => H::login::delete_request(user, data),
-        Packet::EncryptionRequest(data) => H::login::encryption_request(user, data),
-        Packet::ClientPing(data) => H::login::client_ping(user, data),
-        Packet::BlockListRequest => H::login::block_list(user).await,
-        Packet::BlockSwitchRequest(data) => H::login::switch_block(user, data).await,
-        Packet::BlockLogin(data) => H::login::challenge_login(user, data).await,
-        Packet::ClientGoodbye => {
+        (US::LoggingIn, P::SegaIDLogin(..)) => H::login::login_request(user, match_unit.1).await,
+        (US::CharacterSelect, P::CharacterListRequest) => H::login::character_list(user).await,
+        (US::CharacterSelect, P::StartGame(data)) => H::login::start_game(user, data).await,
+        (US::CharacterSelect, P::CharacterCreate(data)) => {
+            H::login::new_character(user, data).await
+        }
+        (US::CharacterSelect, P::CharacterDeletionRequest(data)) => {
+            H::login::delete_request(user, data)
+        }
+        (_, P::EncryptionRequest(data)) => H::login::encryption_request(user, data),
+        (_, P::ClientPing(data)) => H::login::client_ping(user, data),
+        (_, P::BlockListRequest) => H::login::block_list(user).await,
+        (US::InGame, P::BlockSwitchRequest(data)) => H::login::switch_block(user, data).await,
+        (US::LoggingIn, P::BlockLogin(data)) => H::login::challenge_login(user, data).await,
+        (US::NewUsername, P::NicknameResponse(data)) => H::login::set_username(user, data).await,
+        (_, P::ClientGoodbye) => {
             user.ready_to_shutdown = true;
             user.last_ping = Instant::now();
             Ok(Action::Nothing)
         }
-        Packet::SystemInformation(..) => Ok(Action::Nothing),
-        Packet::CreateCharacter1 => H::login::character_create1(user),
-        Packet::CreateCharacter2 => H::login::character_create2(user),
-        Packet::VitaLogin(..) => H::login::login_request(user, packet).await,
-        Packet::ChallengeResponse(..) => {
+        (_, P::SystemInformation(..)) => Ok(Action::Nothing),
+        (US::CharacterSelect, P::CreateCharacter1) => H::login::character_create1(user),
+        (US::CharacterSelect, P::CreateCharacter2) => H::login::character_create2(user),
+        (US::LoggingIn, P::VitaLogin(..)) => H::login::login_request(user, match_unit.1).await,
+        (_, P::ChallengeResponse(..)) => {
             user.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);
             Ok(Action::Nothing)
         }
-        Packet::LoginHistoryRequest => H::login::login_history(user).await,
-        Packet::CharacterUndeletionRequest(data) => H::login::undelete_request(user, data),
-        Packet::CharacterRenameRequest(data) => H::login::rename_request(user, data),
-        Packet::CharacterNewNameRequest(data) => H::login::newname_request(user, data).await,
-        Packet::CharacterMoveRequest(data) => H::login::move_request(user, data),
+        (US::CharacterSelect, P::LoginHistoryRequest) => H::login::login_history(user).await,
+        (US::CharacterSelect, P::CharacterUndeletionRequest(data)) => {
+            H::login::undelete_request(user, data)
+        }
+        (US::CharacterSelect, P::CharacterRenameRequest(data)) => {
+            H::login::rename_request(user, data)
+        }
+        (US::CharacterSelect, P::CharacterNewNameRequest(data)) => {
+            H::login::newname_request(user, data).await
+        }
+        (US::CharacterSelect, P::CharacterMoveRequest(data)) => H::login::move_request(user, data),
 
         // Friends packets
-        Packet::FriendListRequest(data) => H::friends::get_friends(user, data),
+        (US::InGame, P::FriendListRequest(data)) => H::friends::get_friends(user, data),
 
         // Palette packets
-        Packet::FullPaletteInfoRequest => H::palette::send_full_palette(user),
-        Packet::SetPalette(data) => H::palette::set_palette(user_guard, data).await,
-        Packet::UpdateSubPalette(data) => H::palette::update_subpalette(user, data),
-        Packet::UpdatePalette(data) => H::palette::update_palette(user_guard, data).await,
-        Packet::SetSubPalette(data) => H::palette::set_subpalette(user, data),
-        Packet::SetDefaultPAs(data) => H::palette::set_default_pa(user, data),
+        (US::InGame, P::FullPaletteInfoRequest) => H::palette::send_full_palette(user),
+        (US::InGame, P::SetPalette(data)) => H::palette::set_palette(user_guard, data).await,
+        (US::InGame, P::UpdateSubPalette(data)) => H::palette::update_subpalette(user, data),
+        (US::InGame, P::UpdatePalette(data)) => H::palette::update_palette(user_guard, data).await,
+        (US::InGame, P::SetSubPalette(data)) => H::palette::set_subpalette(user, data),
+        (US::InGame, P::SetDefaultPAs(data)) => H::palette::set_default_pa(user, data),
 
         // Flag packets
-        Packet::SetFlag(data) => H::server::set_flag(user, data).await,
-        Packet::SkitItemAddRequest(data) => H::quest::questwork(user_guard, data).await,
+        (US::InGame, P::SetFlag(data)) => H::server::set_flag(user, data).await,
+        (US::InGame, P::SkitItemAddRequest(data)) => H::quest::questwork(user_guard, data).await,
 
         // Settings packets
-        Packet::SettingsRequest => H::settings::settings_request(user).await,
-        Packet::SaveSettings(data) => H::settings::save_settings(user, data).await,
+        (_, P::SettingsRequest) if state >= US::NewUsername => {
+            H::settings::settings_request(user).await
+        }
+        (_, P::SaveSettings(data)) if state >= US::NewUsername => {
+            H::settings::save_settings(user, data).await
+        }
 
         // SA packets
-        Packet::SymbolArtClientDataRequest(data) => H::symbolart::data_request(user, data).await,
-        Packet::SymbolArtData(data) => H::symbolart::add_sa(user, data).await,
-        Packet::ChangeSymbolArt(data) => H::symbolart::change_sa(user, data).await,
-        Packet::SymbolArtListRequest => H::symbolart::list_sa(user).await,
-        Packet::SendSymbolArt(data) => H::symbolart::send_sa(user_guard, data).await,
+        (US::InGame, P::SymbolArtClientDataRequest(data)) => {
+            H::symbolart::data_request(user, data).await
+        }
+        (US::InGame, P::SymbolArtData(data)) => H::symbolart::add_sa(user, data).await,
+        (US::InGame, P::ChangeSymbolArt(data)) => H::symbolart::change_sa(user, data).await,
+        (US::InGame, P::SymbolArtListRequest) => H::symbolart::list_sa(user).await,
+        (US::InGame, P::SendSymbolArt(data)) => H::symbolart::send_sa(user_guard, data).await,
 
         // ARKS Missions packets
-        Packet::MissionListRequest => H::arksmission::mission_list(user),
+        (US::InGame, P::MissionListRequest) => H::arksmission::mission_list(user),
 
         // Mission Pass packets
-        Packet::MissionPassInfoRequest => H::missionpass::mission_pass_info(user),
-        Packet::MissionPassRequest => H::missionpass::mission_pass(user),
+        (US::InGame, P::MissionPassInfoRequest) => H::missionpass::mission_pass_info(user),
+        (US::InGame, P::MissionPassRequest) => H::missionpass::mission_pass(user),
 
-        data => {
-            log::debug!("Client {} sent unknown packet: {data:?}", user.player_id);
+        (state, data) => {
+            log::debug!(
+                "Client {} in state ({state}) sent unhandled packet: {data:?}",
+                user.player_id
+            );
             Ok(Action::Nothing)
         }
     }
@@ -371,11 +401,10 @@ async fn packet_handler(
 
 impl Drop for User {
     fn drop(&mut self) {
-        log::debug!("Dropping user {}", self.player_id);
         let player_id = self.player_id;
-        if self.character.is_some() {
+        log::debug!("Dropping user {player_id}");
+        if let Some(char) = self.character.take() {
             let sql = self.blockdata.sql.clone();
-            let char = std::mem::take(self.character.as_mut().unwrap());
             let acc_flags = std::mem::take(&mut self.accountflags);
             let uuid = self.uuid;
             tokio::spawn(async move {
@@ -391,6 +420,42 @@ impl Drop for User {
         if let Some(map) = self.map.take() {
             tokio::spawn(async move { map.lock().await.remove_player(player_id).await });
         }
-        log::debug!("User {} dropped", self.player_id);
+        log::debug!("User {player_id} dropped");
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, PartialOrd, Debug)]
+pub enum UserState {
+    /// User is logging in, nothing is set up.
+    LoggingIn,
+    /// User is logged in, but no username was set, only user id is set.
+    NewUsername,
+    /// User is logged in, account stuff is set up, but no character info.
+    CharacterSelect,
+    /// User is in the game, character is set up.
+    InGame,
+}
+
+impl Display for UserState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            UserState::LoggingIn => "Logging in",
+            UserState::NewUsername => "Inputting username",
+            UserState::CharacterSelect => "Selecting a character",
+            UserState::InGame => "Playing",
+        };
+        f.write_str(str)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::user::UserState;
+
+    #[test]
+    fn test_userstate() {
+        assert!(UserState::InGame > UserState::CharacterSelect);
+        assert!(!(UserState::InGame < UserState::CharacterSelect));
+        assert!(UserState::InGame > UserState::LoggingIn);
     }
 }

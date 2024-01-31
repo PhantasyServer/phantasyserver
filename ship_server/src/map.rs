@@ -210,10 +210,9 @@ impl Map {
         {
             let p = player.lock().await;
             let pid = p.get_user_id();
-            let char_data = p
-                .character
-                .as_ref()
-                .expect("Users in map should have characters");
+            let Some(char_data) = &p.character else {
+                unreachable!("Users in map should have characters")
+            };
             other_equipment.push(char_data.palette.send_change_palette(pid));
             other_equipment.push(char_data.palette.send_cur_weapon(pid, &char_data.inventory));
             other_equipment.push(char_data.inventory.send_equiped(pid));
@@ -319,14 +318,14 @@ impl Map {
             ));
         };
         let mapid = *mapid;
-        let player = player.upgrade();
-        if player.is_none() {
+        let Some(player) = player.upgrade() else {
             return Err(Error::InvalidInput("send_palette_change"));
-        }
+        };
         let new_eqipment = {
-            let player = player.unwrap();
             let p = player.lock().await;
-            let character = p.character.as_ref().unwrap();
+            let Some(character) = &p.character else {
+                unreachable!("Users in map should have characters")
+            };
             (
                 character.palette.send_change_palette(sender_id),
                 character

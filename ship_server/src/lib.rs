@@ -68,6 +68,8 @@ pub enum Error {
     MSUnexpected,
     #[error("Invalid master ship PSK")]
     MSInvalidPSK,
+    #[error("User sent unexpected packet while being in state: {0}")]
+    UserInvalidState(UserState),
 
     // passthrough errors
     #[error("SQL error: {0}")]

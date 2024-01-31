@@ -192,12 +192,10 @@ fn set_flag_parse<'a>(
         let mut split = range.split('-');
         let lower = split.next().and_then(|r| r.parse().ok());
         let upper = split.next().and_then(|r| r.parse().ok());
-        if lower.is_none() || upper.is_none() {
+        let (Some(lower), Some(upper)) = (lower, upper) else {
             user.send_system_msg("Invalid range")?;
             return Ok(());
-        }
-        let lower = lower.unwrap();
-        let upper = upper.unwrap();
+        };
         if lower > upper {
             user.send_system_msg("Invalid range")?;
             return Ok(());
