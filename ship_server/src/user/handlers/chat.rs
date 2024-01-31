@@ -25,11 +25,11 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 user.send_system_msg(&mem_data_msg)?;
             }
             "!reload_map" => {
-                if let Some(ref map) = user.map {
-                    let map = map.clone();
-                    drop(user);
-                    map.lock().await.reload_objs().await?;
-                }
+                let Some(map) = user.get_current_map() else {
+                    unreachable!("User should be in state >= `InGame`")
+                };
+                drop(user);
+                map.lock().await.reload_objs().await?;
             }
             "!start_con" => {
                 let name = args.next();
@@ -94,12 +94,10 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
             }
             "!get_close_obj" => {
                 let dist = args.next().and_then(|n| n.parse().ok()).unwrap_or(1.0);
-                let map = user.get_current_map();
-                if map.is_none() {
-                    return Ok(Action::Nothing);
-                }
+                let Some(map) = user.get_current_map() else {
+                    unreachable!("User should be in state >= `InGame`")
+                };
                 let mapid = user.mapid;
-                let map = map.unwrap();
                 let lock = map.lock().await;
                 let objs = lock.get_close_objects(mapid, |p| user.position.dist_2d(p) < dist);
                 let user_pos = user.position;

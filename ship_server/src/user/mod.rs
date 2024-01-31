@@ -40,7 +40,7 @@ pub struct User {
     accountflags: Flags,
     pub isgm: bool,
     uuid: u64,
-    state: UserState,
+    pub state: UserState,
 }
 
 impl User {
@@ -213,7 +213,7 @@ async fn packet_handler(
 
     match match_unit {
         // Server packets
-        (US::InGame, P::InitialLoad) => Ok(Action::InitialLoad),
+        (US::PreInGame, P::InitialLoad) => Ok(Action::InitialLoad),
         (_, P::ServerPong) => {
             user.failed_pings = 0;
             Ok(Action::Nothing)
@@ -432,7 +432,9 @@ pub enum UserState {
     NewUsername,
     /// User is logged in, account stuff is set up, but no character info.
     CharacterSelect,
-    /// User is in the game, character is set up.
+    /// User has selected the character, but map and party aren't set up yet.
+    PreInGame,
+    /// User is in the game, character, map, party are set up.
     InGame,
 }
 
@@ -442,6 +444,7 @@ impl Display for UserState {
             UserState::LoggingIn => "Logging in",
             UserState::NewUsername => "Inputting username",
             UserState::CharacterSelect => "Selecting a character",
+            UserState::PreInGame => "Waiting for client to load",
             UserState::InGame => "Playing",
         };
         f.write_str(str)

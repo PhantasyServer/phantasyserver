@@ -211,7 +211,7 @@ impl Map {
             let p = player.lock().await;
             let pid = p.get_user_id();
             let Some(char_data) = &p.character else {
-                unreachable!("Users in map should have characters")
+                unreachable!("User should be in state >= `PreInGame`")
             };
             other_equipment.push(char_data.palette.send_change_palette(pid));
             other_equipment.push(char_data.palette.send_cur_weapon(pid, &char_data.inventory));
@@ -221,7 +221,9 @@ impl Map {
         let mut np_lock = new_player.lock().await;
         np_lock.mapid = mapid;
         let np_id = np_lock.get_user_id();
-        let new_character = np_lock.character.to_owned().ok_or(Error::NoCharacter)?;
+        let Some(new_character) = np_lock.character.to_owned() else {
+            unreachable!("User should be in state >= `PreInGame`")
+        };
         self.data.map_data.receiver.id = np_id;
         self.data.map_data.receiver.entity_type = EntityType::Player;
         np_lock.send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {

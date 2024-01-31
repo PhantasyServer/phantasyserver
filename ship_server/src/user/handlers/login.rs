@@ -348,7 +348,7 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
         .await?;
     user.character = Some(char_data);
     user.send_packet(&Packet::LoadingScreenTransition)?;
-    user.state = UserState::InGame;
+    user.state = UserState::PreInGame;
     Ok(Action::Nothing)
 }
 
@@ -361,7 +361,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
         .await?;
     user.character = Some(char);
     user.send_packet(&Packet::LoadingScreenTransition)?;
-    user.state = UserState::InGame;
+    user.state = UserState::PreInGame;
     Ok(Action::Nothing)
 }
 

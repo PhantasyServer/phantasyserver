@@ -100,7 +100,7 @@ impl Party {
         let new_char = np_lock
             .character
             .as_ref()
-            .expect("Users added should have characters");
+            .expect("User should be in state >= `PreInGame`");
         party_init.entries[0] = party::PartyEntry {
             id: new_player_obj,
             nickname: np_lock.nickname.clone(),
@@ -157,7 +157,7 @@ impl Party {
             let char = player
                 .character
                 .as_ref()
-                .expect("Users added should have characters");
+                .expect("User should be in state >= `PreInGame`");
             party_init.entries[i] = party::PartyEntry {
                 id: other_player_obj,
                 nickname: player.nickname.clone(),
@@ -200,14 +200,10 @@ impl Party {
     ) -> Result<(), Error> {
         let (target_party, inviter_name, inviter_id) = {
             let mut lock = inviter.lock().await;
-            if lock.party.is_none() || lock.character.is_none() {
-                return Err(Error::NoCharacter);
-            }
             let _ = lock.send_packet(&Packet::PartyInviteResult(Default::default()));
-            let character = lock
-                .character
-                .as_ref()
-                .expect("Users in party should have characters");
+            let Some(character) = &lock.character else {
+                unreachable!("User should be in state >= `InGame`")
+            };
             (
                 lock.party.clone().unwrap(),
                 character.character.name.clone(),
