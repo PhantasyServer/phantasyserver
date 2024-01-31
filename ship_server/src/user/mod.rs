@@ -453,12 +453,24 @@ impl Display for UserState {
 
 #[cfg(test)]
 mod test {
+    use std::cmp::Ordering;
+
     use crate::user::UserState;
 
     #[test]
     fn test_userstate() {
-        assert!(UserState::InGame > UserState::CharacterSelect);
-        assert!(!(UserState::InGame < UserState::CharacterSelect));
+        assert_eq!(
+            UserState::InGame
+                .partial_cmp(&UserState::CharacterSelect)
+                .unwrap(),
+            Ordering::Greater
+        );
+        assert_eq!(
+            UserState::CharacterSelect
+                .partial_cmp(&UserState::InGame)
+                .unwrap(),
+            Ordering::Less
+        );
         assert!(UserState::InGame > UserState::LoggingIn);
     }
 }
