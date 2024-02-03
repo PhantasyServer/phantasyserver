@@ -4,7 +4,7 @@ use crate::{
 use data_structs::{
     flags::Flags,
     inventory::AccountStorages,
-    master_ship::{MasterShipAction, UserCreds, UserLoginResult},
+    master_ship::{MasterShipAction, SetNicknameResult, UserCreds, UserLoginResult},
 };
 use pso2packetlib::{
     protocol::{
@@ -40,7 +40,7 @@ struct UserData {
     symbol_arts: Vec<u128>,
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, serde::Serialize, serde::Deserialize, Clone)]
 #[serde(default)]
 pub struct CharData {
     pub character: Character,
@@ -202,7 +202,7 @@ impl Sql {
                 })
             }
             MasterShipAction::UserLoginResult(UserLoginResult::InvalidPassword(_)) => {
-                Err(Error::InvalidPassword)
+                Err(Error::MSUnexpected)
             }
             MasterShipAction::UserLoginResult(UserLoginResult::NotFound) => {
                 self.create_psn_user(username).await
@@ -522,6 +522,23 @@ impl Sql {
             .await?;
         match result {
             MasterShipAction::Ok => Ok(()),
+            MasterShipAction::Error(e) => Err(Error::MSError(e)),
+            _ => Err(Error::MSUnexpected),
+        }
+    }
+    pub async fn set_username(
+        &self,
+        user_id: u32,
+        nickname: &str,
+    ) -> Result<SetNicknameResult, Error> {
+        let result = self
+            .run_action(MasterShipAction::SetNickname {
+                id: user_id,
+                nickname: nickname.to_string(),
+            })
+            .await?;
+        match result {
+            MasterShipAction::SetNicknameResult(res) => Ok(res),
             MasterShipAction::Error(e) => Err(Error::MSError(e)),
             _ => Err(Error::MSUnexpected),
         }

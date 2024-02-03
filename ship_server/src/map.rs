@@ -210,17 +210,20 @@ impl Map {
         {
             let p = player.lock().await;
             let pid = p.get_user_id();
-            if p.character.is_some() {
-                other_equipment.push(p.palette.send_change_palette(pid));
-                other_equipment.push(p.palette.send_cur_weapon(pid, &p.inventory));
-                other_equipment.push(p.inventory.send_equiped(pid));
-                other_characters.push((p.character.clone().unwrap(), p.position, p.isgm));
-            }
+            let Some(char_data) = &p.character else {
+                unreachable!("User should be in state >= `PreInGame`")
+            };
+            other_equipment.push(char_data.palette.send_change_palette(pid));
+            other_equipment.push(char_data.palette.send_cur_weapon(pid, &char_data.inventory));
+            other_equipment.push(char_data.inventory.send_equiped(pid));
+            other_characters.push((char_data.character.clone(), p.position, p.isgm));
         }
         let mut np_lock = new_player.lock().await;
         np_lock.mapid = mapid;
         let np_id = np_lock.get_user_id();
-        let new_character = np_lock.character.clone().ok_or(Error::NoCharacter)?;
+        let Some(new_character) = np_lock.character.to_owned() else {
+            unreachable!("User should be in state >= `PreInGame`")
+        };
         self.data.map_data.receiver.id = np_id;
         self.data.map_data.receiver.entity_type = EntityType::Player;
         np_lock.send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
@@ -239,7 +242,7 @@ impl Map {
         let np_gm = np_lock.isgm as u32;
         np_lock.spawn_character(CharacterSpawnPacket {
             position: pos,
-            character: new_character.clone(),
+            character: new_character.character.clone(),
             is_me: CharacterSpawnType::Myself,
             gm_flag: np_gm,
             player_obj: ObjectHeader {
@@ -269,11 +272,13 @@ impl Map {
             np_lock.send_packet(&equipment)?;
         }
         let new_eqipment = (
-            np_lock.palette.send_change_palette(np_id),
-            np_lock.palette.send_cur_weapon(np_id, &np_lock.inventory),
-            np_lock.inventory.send_equiped(np_id),
+            new_character.palette.send_change_palette(np_id),
+            new_character
+                .palette
+                .send_cur_weapon(np_id, &new_character.inventory),
+            new_character.inventory.send_equiped(np_id),
         );
-        let palette_packet = np_lock.palette.send_palette();
+        let palette_packet = new_character.palette.send_palette();
         np_lock.send_packet(&palette_packet)?;
         np_lock.send_packet(&new_eqipment.0)?;
         np_lock.send_packet(&new_eqipment.1)?;
@@ -285,11 +290,11 @@ impl Map {
                 is_me: CharacterSpawnType::Other,
                 gm_flag: np_gm,
                 player_obj: ObjectHeader {
-                    id: new_character.player_id,
+                    id: new_character.character.player_id,
                     entity_type: EntityType::Player,
                     ..Default::default()
                 },
-                character: new_character.clone(),
+                character: new_character.character.clone(),
                 ..Default::default()
             });
             let _ = player.send_packet(&new_eqipment.0);
@@ -315,16 +320,19 @@ impl Map {
             ));
         };
         let mapid = *mapid;
-        let player = player.upgrade();
-        if player.is_none() {
+        let Some(player) = player.upgrade() else {
             return Err(Error::InvalidInput("send_palette_change"));
-        }
+        };
         let new_eqipment = {
-            let player = player.unwrap();
             let p = player.lock().await;
+            let Some(character) = &p.character else {
+                unreachable!("Users in map should have characters")
+            };
             (
-                p.palette.send_change_palette(sender_id),
-                p.palette.send_cur_weapon(sender_id, &p.inventory),
+                character.palette.send_change_palette(sender_id),
+                character
+                    .palette
+                    .send_cur_weapon(sender_id, &character.inventory),
             )
         };
         exec_users(&self.players, mapid, |_, _, mut player| {

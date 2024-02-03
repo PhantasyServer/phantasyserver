@@ -2,7 +2,7 @@ use crate::{
     map,
     mutex::{Mutex, RwLock},
     party, sql,
-    user::User,
+    user::{User, UserState},
     Action, BlockData, BlockInfo, Error,
 };
 use data_structs::inventory::ItemParameters;
@@ -166,6 +166,8 @@ async fn run_action(
                 .await
                 .init_add_player(user.clone())
                 .await?;
+            let mut user_lock = user.lock().await;
+            user_lock.state = UserState::InGame;
         }
         Action::SendPartyInvite(invitee_id) => {
             let (_, inviter) = &clients[pos];

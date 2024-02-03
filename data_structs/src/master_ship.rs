@@ -45,6 +45,11 @@ pub enum MasterShipAction {
     UserLoginVita(UserCreds),
     UserRegisterVita(UserCreds),
     UserLoginResult(UserLoginResult),
+    SetNickname {
+        id: u32,
+        nickname: String,
+    },
+    SetNicknameResult(SetNicknameResult),
     GetUserInfo(u32),
     UserInfo(UserInfoPacket),
     PutUserInfo {
@@ -93,6 +98,12 @@ pub enum MasterShipAction {
 pub enum ShipLoginResult {
     Ok,
     UnknownShip,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum SetNicknameResult {
+    Ok,
+    AlreadyTaken,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

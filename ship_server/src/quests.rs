@@ -327,20 +327,19 @@ impl Quests {
         packet: AcceptQuestPacket,
         map_obj_id: &AtomicU32,
     ) -> Result<PartyQuest, Error> {
-        let quest = self
+        let Some(quest) = self
             .quests
             .iter()
-            .find(|q| q.definition.quest_obj.id == packet.quest_obj.id);
-        if quest.is_none() {
+            .find(|q| q.definition.quest_obj.id == packet.quest_obj.id)
+        else {
             return Err(Error::InvalidInput("get_quest"));
-        }
-        let quest = quest.unwrap().clone();
+        };
         let map = Arc::new(Mutex::new(Map::new_from_data(
             quest.map.clone(),
             map_obj_id,
         )?));
         Ok(PartyQuest {
-            quest,
+            quest: quest.clone(),
             diff: packet.diff,
             map,
         })

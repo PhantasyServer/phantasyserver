@@ -25,11 +25,11 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 user.send_system_msg(&mem_data_msg)?;
             }
             "!reload_map" => {
-                if let Some(ref map) = user.map {
-                    let map = map.clone();
-                    drop(user);
-                    map.lock().await.reload_objs().await?;
-                }
+                let Some(map) = user.get_current_map() else {
+                    unreachable!("User should be in state >= `InGame`")
+                };
+                drop(user);
+                map.lock().await.reload_objs().await?;
             }
             "!start_con" => {
                 let name = args.next();
@@ -94,12 +94,10 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
             }
             "!get_close_obj" => {
                 let dist = args.next().and_then(|n| n.parse().ok()).unwrap_or(1.0);
-                let map = user.get_current_map();
-                if map.is_none() {
-                    return Ok(Action::Nothing);
-                }
+                let Some(map) = user.get_current_map() else {
+                    unreachable!("User should be in state >= `InGame`")
+                };
                 let mapid = user.mapid;
-                let map = map.unwrap();
                 let lock = map.lock().await;
                 let objs = lock.get_close_objects(mapid, |p| user.position.dist_2d(p) < dist);
                 let user_pos = user.position;
@@ -125,8 +123,8 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 user.send_item_attrs().await?;
                 user.send_system_msg("Done!")?;
             }
-            "!set_acc_flag" => set_flag(&mut user, FlagType::Account, &mut args)?,
-            "!set_char_flag" => set_flag(&mut user, FlagType::Character, &mut args)?,
+            "!set_acc_flag" => set_flag_parse(&mut user, FlagType::Account, &mut args)?,
+            "!set_char_flag" => set_flag_parse(&mut user, FlagType::Character, &mut args)?,
             "!add_item" => {
                 let Some(item_type) = args.next().and_then(|a| a.parse().ok()) else {
                     user.send_system_msg("No item type provided")?;
@@ -147,7 +145,10 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     ..Default::default()
                 };
                 let user: &mut User = &mut user;
-                let packet = user.inventory.add_default_item(&mut user.uuid, item_id);
+                let character = user.character.as_mut().unwrap();
+                let packet = character
+                    .inventory
+                    .add_default_item(&mut user.uuid, item_id);
                 user.send_packet(&packet)?;
             }
             _ => user.send_system_msg("Unknown command")?,
@@ -172,7 +173,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
     Ok(Action::Nothing)
 }
 
-fn set_flag<'a>(
+fn set_flag_parse<'a>(
     user: &mut User,
     ftype: FlagType,
     args: &mut impl Iterator<Item = &'a str>,
@@ -189,29 +190,16 @@ fn set_flag<'a>(
         let mut split = range.split('-');
         let lower = split.next().and_then(|r| r.parse().ok());
         let upper = split.next().and_then(|r| r.parse().ok());
-        if lower.is_none() || upper.is_none() {
+        let (Some(lower), Some(upper)) = (lower, upper) else {
             user.send_system_msg("Invalid range")?;
             return Ok(());
-        }
-        let lower = lower.unwrap();
-        let upper = upper.unwrap();
+        };
         if lower > upper {
             user.send_system_msg("Invalid range")?;
             return Ok(());
         }
         for i in lower..=upper {
-            match ftype {
-                FlagType::Account => user.accountflags.set(i, val),
-                FlagType::Character => user.charflags.set(i, val),
-            };
-            user.send_packet(&Packet::ServerSetFlag(
-                pso2packetlib::protocol::flag::ServerSetFlagPacket {
-                    flag_type: ftype,
-                    id: i as u32,
-                    value: val as u32,
-                    ..Default::default()
-                },
-            ))?;
+            set_flag(user, ftype, i, val)?;
         }
     } else {
         let id = match range.parse() {
@@ -221,18 +209,25 @@ fn set_flag<'a>(
                 return Ok(());
             }
         };
-        match ftype {
-            FlagType::Account => user.accountflags.set(id, val),
-            FlagType::Character => user.charflags.set(id, val),
-        };
-        user.send_packet(&Packet::ServerSetFlag(
-            pso2packetlib::protocol::flag::ServerSetFlagPacket {
-                flag_type: ftype,
-                id: id as u32,
-                value: val as u32,
-                ..Default::default()
-            },
-        ))?;
+        set_flag(user, ftype, id, val)?;
     }
+    Ok(())
+}
+
+fn set_flag(user: &mut User, ftype: FlagType, id: usize, val: u8) -> Result<(), crate::Error> {
+    let character = user.character.as_mut().unwrap();
+    match ftype {
+        FlagType::Account => user.accountflags.set(id, val),
+        FlagType::Character => character.flags.set(id, val),
+    };
+    user.send_packet(&Packet::ServerSetFlag(
+        pso2packetlib::protocol::flag::ServerSetFlagPacket {
+            flag_type: ftype,
+            id: id as u32,
+            value: val as u32,
+            ..Default::default()
+        },
+    ))?;
+
     Ok(())
 }

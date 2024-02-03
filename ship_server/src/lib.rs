@@ -58,16 +58,14 @@ pub enum Error {
     NoUserInMap(u32, String),
     #[error("Mapid {0} not found in mapset {1}")]
     NoMapInMapSet(u32, String),
-    #[error("Invalid character")]
-    InvalidCharacter,
-    #[error("No character loaded")]
-    NoCharacter,
     #[error("Master ship returned error: {0}")]
     MSError(String),
     #[error("Master ship sent unexpected data")]
     MSUnexpected,
     #[error("Invalid master ship PSK")]
     MSInvalidPSK,
+    #[error("User sent unexpected packet while being in state: {0}")]
+    UserInvalidState(UserState),
 
     // passthrough errors
     #[error("SQL error: {0}")]

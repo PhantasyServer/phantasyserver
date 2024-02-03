@@ -417,6 +417,22 @@ impl Sql {
             .await?;
         Ok(())
     }
+    pub async fn set_nickname(&self, user_id: u32, nickname: &str) -> Result<bool, Error> {
+        let rows = sqlx::query("select * from Users")
+            .fetch_all(&self.connection)
+            .await?;
+        for row in rows {
+            let user_data: UserData = rmp_serde::from_slice(row.try_get("Data")?)?;
+            if user_data.nickname == nickname {
+                return Ok(false);
+            }
+        }
+        self.update_userdata(user_id, |user_data| {
+            user_data.nickname = nickname.to_string()
+        })
+        .await?;
+        Ok(true)
+    }
 
     async fn update_userdata<F>(&self, user_id: u32, f: F) -> Result<(), Error>
     where
