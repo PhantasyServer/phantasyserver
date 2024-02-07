@@ -15,7 +15,7 @@ use pso2packetlib::{
     },
     Connection,
 };
-use std::{fmt::Display, io, net::Ipv4Addr, sync::Arc, time::Instant};
+use std::{fmt::Display, net::Ipv4Addr, sync::Arc, time::Instant};
 
 pub struct User {
     // ideally all of these should be private
@@ -99,24 +99,8 @@ impl User {
             s.failed_pings += 1;
             let _ = s.send_packet(&Packet::ServerPing);
         }
-        match s.connection.read_packet() {
-            Ok(packet) => match packet_handler(s, packet).await {
-                Ok(action) => return Ok(action),
-                Err(Error::IOError(x)) if x.kind() == io::ErrorKind::WouldBlock => {}
-                Err(Error::IOError(x)) if x.kind() == io::ErrorKind::ConnectionAborted => {
-                    return Ok(Action::Disconnect)
-                }
-                Err(x) => {
-                    return Err(x);
-                }
-            },
-            Err(x) if x.kind() == io::ErrorKind::WouldBlock => {}
-            Err(x) if x.kind() == io::ErrorKind::ConnectionAborted => {
-                return Ok(Action::Disconnect)
-            }
-            Err(x) => return Err(x.into()),
-        }
-        Ok(Action::Nothing)
+        let packet = s.connection.read_packet()?;
+        packet_handler(s, packet).await
     }
     // Helper functions
     pub fn get_ip(&self) -> Result<Ipv4Addr, Error> {

@@ -9,13 +9,14 @@ use data_structs::inventory::ItemParameters;
 use pso2packetlib::PrivateKey;
 use std::{
     io,
-    net::{TcpListener, TcpStream},
+    net::TcpStream,
     sync::{
         atomic::{AtomicU32, Ordering},
-        mpsc, Arc,
+        Arc,
     },
     time::Duration,
 };
+use tokio::{net::TcpListener, sync::mpsc};
 
 pub async fn init_block(
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
@@ -24,8 +25,7 @@ pub async fn init_block(
     item_attrs: Arc<RwLock<ItemParameters>>,
     key: PrivateKey,
 ) -> Result<(), Error> {
-    let listener = TcpListener::bind(("0.0.0.0", this_block.port))?;
-    listener.set_nonblocking(true)?;
+    let listener = TcpListener::bind(("0.0.0.0", this_block.port)).await?;
 
     let latest_mapid = AtomicU32::new(0);
 
@@ -49,35 +49,31 @@ pub async fn init_block(
 
     let mut clients = vec![];
     let mut conn_id = 0usize;
-    let (send, recv) = mpsc::channel();
+    let (send, mut recv) = mpsc::channel(10);
 
     loop {
-        for stream in listener.incoming() {
-            match stream {
-                Ok(s) => {
-                    new_conn_handler(
-                        s,
-                        &block_data,
-                        &mut clients,
-                        send.clone(),
-                        this_block.id,
-                        &mut conn_id,
-                    )
-                    .await?;
-                }
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => break,
-                Err(e) => {
-                    return Err(e.into());
-                }
+        tokio::select! {
+            // we opt out of random selection because the listener is rarely accepting
+            biased;
+            result = listener.accept() => {
+                let (stream, _) = result?;
+                new_conn_handler(
+                    stream.into_std()?,
+                    &block_data,
+                    &mut clients,
+                    send.clone(),
+                    this_block.id,
+                    &mut conn_id,
+                )
+                .await?;
             }
-        }
-        while let Ok((id, action)) = recv.try_recv() {
-            match run_action(&mut clients, id, action, &block_data).await {
-                Ok(_) => {}
-                Err(e) => log::warn!("Client error: {e}"),
-            };
-        }
-        tokio::time::sleep(Duration::from_millis(1)).await;
+            Some((id, action)) = recv.recv() => {
+                match run_action(&mut clients, id, action, &block_data).await {
+                    Ok(_) => {}
+                    Err(e) => log::warn!("Client error: {e}"),
+                };
+            }
+        };
     }
 }
 
@@ -108,13 +104,17 @@ async fn new_conn_handler(
             match User::tick(client.lock().await).await {
                 Ok(Action::Nothing) => {}
                 Ok(Action::Disconnect) => {
-                    send.send((conn_id, Action::Disconnect)).unwrap();
+                    send.send((conn_id, Action::Disconnect)).await.unwrap();
                     return;
                 }
                 Ok(a) => {
-                    send.send((conn_id, a)).unwrap();
+                    send.send((conn_id, a)).await.unwrap();
                 }
                 Err(Error::IOError(e)) if e.kind() == io::ErrorKind::WouldBlock => {}
+                Err(Error::IOError(x)) if x.kind() == io::ErrorKind::ConnectionAborted => {
+                    send.send((conn_id, Action::Disconnect)).await.unwrap();
+                    return;
+                }
                 Err(e) => {
                     let error_msg = format!("Client error: {e}");
                     let _ = client.lock().await.send_error(&error_msg);

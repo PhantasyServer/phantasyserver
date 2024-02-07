@@ -83,7 +83,7 @@ impl MasterConnection {
             }
 
             drop(lock);
-            tokio::time::sleep(Duration::from_millis(1)).await;
+            tokio::task::yield_now().await;
         }
     }
     pub async fn register_ship(

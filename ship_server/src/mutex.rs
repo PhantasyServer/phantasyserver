@@ -6,7 +6,6 @@ use parking_lot::{
 use std::{
     future::Future,
     ops::{Deref, DerefMut},
-    time::Duration,
 };
 
 // let's reinvent the wheel
@@ -40,7 +39,7 @@ impl<T> Mutex<T> {
         loop {
             match self.mutex.try_lock() {
                 Some(guard) => return MutexGuard { guard },
-                None => tokio::time::sleep(Duration::from_nanos(1)).await,
+                None => tokio::task::yield_now().await,
             }
         }
     }
@@ -80,7 +79,7 @@ impl<'a, T> MutexGuard<'a, T> {
         loop {
             match raw.try_lock() {
                 true => return out,
-                false => tokio::time::sleep(Duration::from_nanos(1)).await,
+                false => tokio::task::yield_now().await,
             }
         }
     }
@@ -100,7 +99,7 @@ impl<'a, T> MutexGuard<'a, T> {
         loop {
             match raw.try_lock() {
                 true => return out,
-                false => tokio::time::sleep(Duration::from_nanos(1)).await,
+                false => tokio::task::yield_now().await,
             }
         }
     }
@@ -120,7 +119,7 @@ impl<T> RwLock<T> {
         loop {
             match self.lock.try_read() {
                 Some(guard) => return RwReadGuard { guard },
-                None => tokio::time::sleep(Duration::from_nanos(1)).await,
+                None => tokio::task::yield_now().await,
             }
         }
     }
@@ -137,7 +136,7 @@ impl<T> RwLock<T> {
         loop {
             match self.lock.try_write() {
                 Some(guard) => return RwWriteGuard { guard },
-                None => tokio::time::sleep(Duration::from_nanos(1)).await,
+                None => tokio::task::yield_now().await,
             }
         }
     }
@@ -185,7 +184,7 @@ impl<'a, T> RwReadGuard<'a, T> {
         loop {
             match raw.try_lock_shared() {
                 true => return out,
-                false => tokio::time::sleep(Duration::from_nanos(1)).await,
+                false => tokio::task::yield_now().await,
             }
         }
     }
@@ -205,7 +204,7 @@ impl<'a, T> RwReadGuard<'a, T> {
         loop {
             match raw.try_lock_shared() {
                 true => return out,
-                false => tokio::time::sleep(Duration::from_nanos(1)).await,
+                false => tokio::task::yield_now().await,
             }
         }
     }
@@ -227,7 +226,7 @@ impl<'a, T> RwWriteGuard<'a, T> {
         loop {
             match raw.try_lock_exclusive() {
                 true => return out,
-                false => tokio::time::sleep(Duration::from_nanos(1)).await,
+                false => tokio::task::yield_now().await,
             }
         }
     }
@@ -247,7 +246,7 @@ impl<'a, T> RwWriteGuard<'a, T> {
         loop {
             match raw.try_lock_exclusive() {
                 true => return out,
-                false => tokio::time::sleep(Duration::from_nanos(1)).await,
+                false => tokio::task::yield_now().await,
             }
         }
     }
