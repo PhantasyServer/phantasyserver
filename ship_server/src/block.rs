@@ -9,14 +9,15 @@ use data_structs::inventory::ItemParameters;
 use pso2packetlib::PrivateKey;
 use std::{
     io,
-    net::TcpStream,
     sync::{
         atomic::{AtomicU32, Ordering},
         Arc,
     },
-    time::Duration,
 };
-use tokio::{net::TcpListener, sync::mpsc};
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::mpsc,
+};
 
 pub async fn init_block(
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
@@ -58,7 +59,7 @@ pub async fn init_block(
             result = listener.accept() => {
                 let (stream, _) = result?;
                 new_conn_handler(
-                    stream.into_std()?,
+                    stream,
                     &block_data,
                     &mut clients,
                     send.clone(),
@@ -96,12 +97,44 @@ async fn new_conn_handler(
     }
     drop(lock);
 
-    let client = Arc::new(Mutex::new(User::new(s, block_data.clone())?));
+    let (client, mut read) = User::new(s, block_data.clone())?;
+    let client = Arc::new(Mutex::new(client));
     clients.push((*conn_id_ref, client.clone()));
     let conn_id = *conn_id_ref;
     tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
         loop {
-            match User::tick(client.lock().await).await {
+            let result = tokio::select! {
+                biased;
+                result = read.read_packet_async() => {
+                    match result {
+                        Ok(a) => {
+                            let lock = client.lock().await;
+                            crate::user::packet_handler(lock, a).await
+                        },
+                        Err(e) if matches!(e.kind(), io::ErrorKind::Interrupted) => Ok(Action::Nothing),
+                        Err(e)
+                            if matches!(
+                                e.kind(),
+                                io::ErrorKind::ConnectionAborted | io::ErrorKind::ConnectionReset
+                            ) =>
+                        {
+                            send.send((conn_id, Action::Disconnect)).await.unwrap();
+                            return;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("Client error: {e}");
+                            let _ = client.lock().await.send_error(&error_msg).await;
+                            log::warn!("{}", error_msg);
+                            Ok(Action::Nothing)
+                        }
+                    }
+                }
+                _ = interval.tick() => {
+                    User::tick(client.lock().await).await
+                }
+            };
+            match result {
                 Ok(Action::Nothing) => {}
                 Ok(Action::Disconnect) => {
                     send.send((conn_id, Action::Disconnect)).await.unwrap();
@@ -110,18 +143,22 @@ async fn new_conn_handler(
                 Ok(a) => {
                     send.send((conn_id, a)).await.unwrap();
                 }
-                Err(Error::IOError(e)) if e.kind() == io::ErrorKind::WouldBlock => {}
-                Err(Error::IOError(x)) if x.kind() == io::ErrorKind::ConnectionAborted => {
+                Err(Error::IOError(e)) if matches!(e.kind(), io::ErrorKind::Interrupted) => {}
+                Err(Error::IOError(e))
+                    if matches!(
+                        e.kind(),
+                        io::ErrorKind::ConnectionAborted | io::ErrorKind::ConnectionReset
+                    ) =>
+                {
                     send.send((conn_id, Action::Disconnect)).await.unwrap();
                     return;
                 }
                 Err(e) => {
                     let error_msg = format!("Client error: {e}");
-                    let _ = client.lock().await.send_error(&error_msg);
+                    let _ = client.lock().await.send_error(&error_msg).await;
                     log::warn!("{}", error_msg);
                 }
             }
-            tokio::time::sleep(Duration::from_millis(1)).await;
         }
     });
 

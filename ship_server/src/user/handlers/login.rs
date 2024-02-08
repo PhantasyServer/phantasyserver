@@ -1,21 +1,19 @@
 use super::HResult;
 use crate::{sql::CharData, user::UserState, Action, Error, User};
 use data_structs::master_ship::SetNicknameResult;
-use pso2packetlib::{
-    ppac::Direction,
-    protocol::{
-        self,
-        login::{self, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket},
-        ObjectHeader, Packet, PacketType,
-    },
+use pso2packetlib::protocol::{
+    self,
+    login::{self, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket},
+    ObjectHeader, Packet, PacketType,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn encryption_request(user: &mut User, _: login::EncryptionRequestPacket) -> HResult {
+pub async fn encryption_request(user: &mut User, _: login::EncryptionRequestPacket) -> HResult {
     let key = user.connection.get_key();
     user.send_packet(&Packet::EncryptionResponse(
         login::EncryptionResponsePacket { data: key },
-    ))?;
+    ))
+    .await?;
     Ok(Action::Nothing)
 }
 
@@ -38,7 +36,8 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                     user.text_lang = packet.text_lang;
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                         data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
-                    }))?;
+                    }))
+                    .await?;
                     user.accountflags = data.accountflags;
                     user.isgm = data.isgm;
                     user.uuid = data.last_uuid;
@@ -78,13 +77,15 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
             error,
             blockname: user.blockdata.block_name.clone(),
             ..Default::default()
-        }))?;
+        }))
+        .await?;
         return Ok(Action::Disconnect);
     }
 
     if user.nickname.is_empty() {
         user.state = UserState::NewUsername;
-        user.send_packet(&Packet::NicknameRequest(Default::default()))?;
+        user.send_packet(&Packet::NicknameRequest(Default::default()))
+            .await?;
         Ok(Action::Nothing)
     } else {
         on_successful_login(user).await
@@ -103,13 +104,11 @@ pub async fn on_successful_login(user: &mut User) -> HResult {
             ..Default::default()
         },
         ..Default::default()
-    }))?;
-    user.connection
-        .create_ppac(format!("{}.pac", id), Direction::ToClient)
-        .unwrap();
+    }))
+    .await?;
     user.send_item_attrs().await?;
     let info = user.blockdata.sql.get_user_info(id).await?;
-    user.send_packet(&Packet::UserInfo(info))?;
+    user.send_packet(&Packet::UserInfo(info)).await?;
     user.state = UserState::CharacterSelect;
 
     Ok(Action::Nothing)
@@ -122,7 +121,8 @@ pub async fn set_username(user: &mut User, packet: NicknameResponsePacket) -> HR
     match result {
         SetNicknameResult::Ok => {}
         SetNicknameResult::AlreadyTaken => {
-            user.send_packet(&Packet::NicknameRequest(NicknameRequestPacket { error: 1 }))?;
+            user.send_packet(&Packet::NicknameRequest(NicknameRequestPacket { error: 1 }))
+                .await?;
             return Ok(Action::Nothing);
         }
     }
@@ -162,7 +162,7 @@ pub async fn block_list(user: &mut User) -> HResult {
         .0;
     blocks.blocks[pos].unk1 = 8;
     blocks.blocks.swap(pos, 0);
-    user.send_packet(&Packet::BlockList(blocks))?;
+    user.send_packet(&Packet::BlockList(blocks)).await?;
     Ok(Action::Nothing)
 }
 
@@ -180,7 +180,8 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
             user.text_lang = x.lang;
             user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                 data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
-            }))?;
+            }))
+            .await?;
             user.accountflags = x.accountflags;
             user.isgm = x.isgm;
             user.uuid = x.last_uuid;
@@ -203,7 +204,8 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
             ..Default::default()
         },
         ..Default::default()
-    }))?;
+    }))
+    .await?;
     if let login::LoginStatus::Failure = status {
         return Ok(Action::Disconnect);
     }
@@ -234,18 +236,18 @@ pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPack
             user_id: user.player_id,
         });
         drop(lock);
-        user.send_packet(&packet)?;
+        user.send_packet(&packet).await?;
     }
     Ok(Action::Nothing)
 }
 
-pub fn client_ping(user: &mut User, packet: login::ClientPingPacket) -> HResult {
+pub async fn client_ping(user: &mut User, packet: login::ClientPingPacket) -> HResult {
     let response = login::ClientPongPacket {
         client_time: packet.time,
         server_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap(),
         unk1: 0,
     };
-    user.send_packet(&Packet::ClientPong(response))?;
+    user.send_packet(&Packet::ClientPong(response)).await?;
     Ok(Action::Nothing)
 }
 
@@ -254,56 +256,63 @@ pub async fn character_list(user: &mut User) -> HResult {
         characters: user.blockdata.sql.get_characters(user.player_id).await?,
         // deletion_flags: [(1, 0); 30],
         ..Default::default()
-    }))?;
+    }))
+    .await?;
     Ok(Action::Nothing)
 }
 
-pub fn character_create1(user: &mut User) -> HResult {
+pub async fn character_create1(user: &mut User) -> HResult {
     user.send_packet(&Packet::CreateCharacter1Response(
         login::CreateCharacter1ResponsePacket::default(),
-    ))?;
+    ))
+    .await?;
     Ok(Action::Nothing)
 }
 
-pub fn character_create2(user: &mut User) -> HResult {
+pub async fn character_create2(user: &mut User) -> HResult {
     user.send_packet(&Packet::CreateCharacter2Response(
         login::CreateCharacter2ResponsePacket { unk: 1 },
-    ))?;
+    ))
+    .await?;
     Ok(Action::Nothing)
 }
 
-pub fn delete_request(user: &mut User, _: login::CharacterDeletionRequestPacket) -> HResult {
+pub async fn delete_request(user: &mut User, _: login::CharacterDeletionRequestPacket) -> HResult {
     let packet = login::CharacterDeletionPacket {
         status: login::DeletionStatus::Success,
         ..Default::default()
     };
-    user.send_packet(&Packet::CharacterDeletion(packet))?;
+    user.send_packet(&Packet::CharacterDeletion(packet)).await?;
     Ok(Action::Nothing)
 }
 
-pub fn undelete_request(user: &mut User, _: login::CharacterUndeletionRequestPacket) -> HResult {
+pub async fn undelete_request(
+    user: &mut User,
+    _: login::CharacterUndeletionRequestPacket,
+) -> HResult {
     let packet = login::CharacterUndeletionPacket {
         status: login::UndeletionStatus::Success,
     };
-    user.send_packet(&Packet::CharacterUndeletion(packet))?;
+    user.send_packet(&Packet::CharacterUndeletion(packet))
+        .await?;
     Ok(Action::Nothing)
 }
 
-pub fn move_request(user: &mut User, _: login::CharacterMoveRequestPacket) -> HResult {
+pub async fn move_request(user: &mut User, _: login::CharacterMoveRequestPacket) -> HResult {
     let packet = login::CharacterMovePacket {
         status: 0,
         ..Default::default()
     };
-    user.send_packet(&Packet::CharacterMove(packet))?;
+    user.send_packet(&Packet::CharacterMove(packet)).await?;
     Ok(Action::Nothing)
 }
 
-pub fn rename_request(user: &mut User, _: login::CharacterRenameRequestPacket) -> HResult {
+pub async fn rename_request(user: &mut User, _: login::CharacterRenameRequestPacket) -> HResult {
     let packet = login::CharacterRenamePacket {
         status: login::RenameRequestStatus::Allowed,
         ..Default::default()
     };
-    user.send_packet(&Packet::CharacterRename(packet))?;
+    user.send_packet(&Packet::CharacterRename(packet)).await?;
     Ok(Action::Nothing)
 }
 
@@ -323,7 +332,8 @@ pub async fn newname_request(
         char_id: packet.char_id,
         name: packet.name,
     };
-    user.send_packet(&Packet::CharacterNewName(packet_out))?;
+    user.send_packet(&Packet::CharacterNewName(packet_out))
+        .await?;
     Ok(Action::Nothing)
 }
 
@@ -347,7 +357,7 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
         .get_account_storage(user.player_id)
         .await?;
     user.character = Some(char_data);
-    user.send_packet(&Packet::LoadingScreenTransition)?;
+    user.send_packet(&Packet::LoadingScreenTransition).await?;
     user.state = UserState::PreInGame;
     Ok(Action::Nothing)
 }
@@ -360,7 +370,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
         .get_character(user.player_id, user.char_id)
         .await?;
     user.character = Some(char);
-    user.send_packet(&Packet::LoadingScreenTransition)?;
+    user.send_packet(&Packet::LoadingScreenTransition).await?;
     user.state = UserState::PreInGame;
     Ok(Action::Nothing)
 }
@@ -369,6 +379,7 @@ pub async fn login_history(user: &mut User) -> HResult {
     let attempts = user.blockdata.sql.get_logins(user.player_id).await?;
     user.send_packet(&Packet::LoginHistoryResponse(login::LoginHistoryPacket {
         attempts,
-    }))?;
+    }))
+    .await?;
     Ok(Action::Nothing)
 }

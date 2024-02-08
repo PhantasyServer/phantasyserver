@@ -2,7 +2,7 @@ use super::HResult;
 use crate::{user::User, Action};
 use pso2packetlib::protocol::{missions, Packet};
 
-pub fn mission_list(user: &mut User) -> HResult {
+pub async fn mission_list(user: &mut User) -> HResult {
     let mission = missions::Mission {
         mission_type: 5,
         start_date: 0,
@@ -27,6 +27,6 @@ pub fn mission_list(user: &mut User) -> HResult {
         tier_update: 1689273267,
         unk1: 0,
     };
-    user.send_packet(&Packet::MissionList(packet))?;
+    user.send_packet(&Packet::MissionList(packet)).await?;
     Ok(Action::Nothing)
 }

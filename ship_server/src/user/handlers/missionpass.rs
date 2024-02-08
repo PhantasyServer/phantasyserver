@@ -2,7 +2,7 @@ use super::HResult;
 use crate::{Action, User};
 use pso2packetlib::protocol::{missionpass, Packet};
 
-pub fn mission_pass_info(user: &mut User) -> HResult {
+pub async fn mission_pass_info(user: &mut User) -> HResult {
     let mut temp = [0u32; 47];
     temp[10] = 1;
     //2 - current tier
@@ -11,11 +11,11 @@ pub fn mission_pass_info(user: &mut User) -> HResult {
     //7 - over run
     //8 - already claimed
     let packet = missionpass::MissionPassInfoPacket { unk: temp.into() };
-    user.send_packet(&Packet::MissionPassInfo(packet))?;
+    user.send_packet(&Packet::MissionPassInfo(packet)).await?;
     Ok(Action::Nothing)
 }
 
-pub fn mission_pass(user: &mut User) -> HResult {
+pub async fn mission_pass(user: &mut User) -> HResult {
     let packet = missionpass::MissionPassPacket {
         unk1: 1,
         cur_season_id: 2,
@@ -35,6 +35,6 @@ pub fn mission_pass(user: &mut User) -> HResult {
         last_season: "abc".to_string(),
         ..Default::default()
     };
-    user.send_packet(&Packet::MissionPass(packet))?;
+    user.send_packet(&Packet::MissionPass(packet)).await?;
     Ok(Action::Nothing)
 }

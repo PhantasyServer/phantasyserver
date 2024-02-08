@@ -1,5 +1,6 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![warn(clippy::future_not_send)]
+#![allow(clippy::await_holding_lock)]
 pub mod sql;
 use data_structs::master_ship::{
     MasterShipAction, MasterShipComm, RegisterShipResult, SetNicknameResult, ShipConnection,
@@ -14,12 +15,15 @@ use pso2packetlib::{
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{
-    io::{self, Write},
+    io,
     net::Ipv4Addr,
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
-use tokio::net::{TcpListener, TcpStream};
+use tokio::{
+    io::AsyncWriteExt,
+    net::{TcpListener, TcpStream},
+};
 
 type Ships = Arc<RwLock<Vec<ShipInfo>>>;
 type Sql = Arc<sql::Sql>;
@@ -448,7 +452,7 @@ pub async fn make_keys(servers: Ships) -> io::Result<()> {
     loop {
         match listener.accept().await {
             Ok((s, _)) => {
-                let _ = send_keys(s, servers.clone());
+                let _ = send_keys(s, servers.clone()).await;
             }
             Err(e) => {
                 log::error!("Failed to accept key connection: {e}");
@@ -477,7 +481,7 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
     loop {
         match listener.accept().await {
             Ok((s, _)) => {
-                let _ = send_query(s, servers.clone());
+                let _ = send_query(s, servers.clone()).await;
             }
             Err(e) => {
                 log::error!("Failed to accept query connection: {e}");
@@ -487,10 +491,10 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
     }
 }
 
-fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
+async fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
     log::debug!("Sending query information...");
     stream.set_nodelay(true)?;
-    let mut con = Connection::new(stream.into_std()?, PacketType::Classic, PrivateKey::None);
+    let mut con = Connection::new_async(stream, PacketType::Classic, PrivateKey::None);
     let mut ships = vec![];
     for server in servers.read().iter() {
         ships.push(login::ShipEntry {
@@ -501,10 +505,11 @@ fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
             order: server.id as u16,
         })
     }
-    con.write_packet(&Packet::ShipList(login::ShipListPacket {
+    con.write_packet_async(&Packet::ShipList(login::ShipListPacket {
         ships,
         ..Default::default()
-    }))?;
+    }))
+    .await?;
     Ok(())
 }
 
@@ -527,7 +532,7 @@ async fn block_listener(listener: TcpListener, server_statuses: Ships) {
     loop {
         match listener.accept().await {
             Ok((s, _)) => {
-                let _ = send_block_balance(s, server_statuses.clone());
+                let _ = send_block_balance(s, server_statuses.clone()).await;
             }
             Err(e) => {
                 log::error!("Failed to accept connection: {e}");
@@ -537,7 +542,7 @@ async fn block_listener(listener: TcpListener, server_statuses: Ships) {
     }
 }
 
-pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
+async fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
     log::debug!("Sending block balance...");
     stream.set_nodelay(true)?;
     let port = stream.local_addr()?.port();
@@ -546,14 +551,15 @@ pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
     } else {
         (port - 12000) / 100
     } as u32;
-    let mut con = Connection::new(stream.into_std()?, PacketType::Classic, PrivateKey::None);
+    let mut con = Connection::new_async(stream, PacketType::Classic, PrivateKey::None);
     let servers = servers.read();
     let Some(server) = servers.iter().find(|x| x.id == id) else {
-        con.write_packet(&Packet::LoginResponse(login::LoginResponsePacket {
+        con.write_packet_async(&Packet::LoginResponse(login::LoginResponsePacket {
             status: login::LoginStatus::Failure,
             error: "Server is offline".to_string(),
             ..Default::default()
-        }))?;
+        }))
+        .await?;
         return Ok(());
     };
 
@@ -563,13 +569,13 @@ pub fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
         blockname: server.name.clone(),
         ..Default::default()
     };
-    con.write_packet(&Packet::BlockBalance(packet))?;
+    con.write_packet_async(&Packet::BlockBalance(packet))
+        .await?;
     Ok(())
 }
 
-pub fn send_keys(stream: TcpStream, servers: Ships) -> Result<(), Error> {
+async fn send_keys(mut stream: TcpStream, servers: Ships) -> Result<(), Error> {
     log::debug!("Sending keys...");
-    let mut stream = stream.into_std()?;
     stream.set_nodelay(true)?;
     let lock = servers.read();
     let mut data = vec![];
@@ -587,7 +593,7 @@ pub fn send_keys(stream: TcpStream, servers: Ships) -> Result<(), Error> {
     let mut out_data = Vec::with_capacity(data.len());
     out_data.append(&mut (data.len() as u32).to_le_bytes().to_vec());
     out_data.append(&mut data);
-    stream.write_all(&out_data)?;
+    stream.write_all(&out_data).await?;
     Ok(())
 }
 

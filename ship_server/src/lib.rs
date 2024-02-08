@@ -275,8 +275,7 @@ async fn make_block_balance(
         loop {
             match listener.accept().await {
                 Ok((s, _)) => {
-                    let _ =
-                        send_block_balance(s.into_std().unwrap(), server_statuses.clone()).await;
+                    let _ = send_block_balance(s, server_statuses.clone()).await;
                 }
                 Err(e) => {
                     log::warn!("Failed to accept block balance connection: {}", e);
@@ -289,14 +288,13 @@ async fn make_block_balance(
 }
 
 async fn send_block_balance(
-    stream: std::net::TcpStream,
+    stream: tokio::net::TcpStream,
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
 ) -> io::Result<()> {
-    stream.set_nonblocking(true)?;
     stream.set_nodelay(true)?;
     let local_addr = stream.local_addr()?.ip();
     log::debug!("Block balancing {local_addr}...");
-    let mut con = Connection::new(stream, PacketType::Classic, PrivateKey::None);
+    let mut con = Connection::new_async(stream, PacketType::Classic, PrivateKey::None);
     let mut blocks = blocks.write().await;
     let server_count = blocks.len() as u32;
     for block in blocks.iter_mut() {
@@ -313,7 +311,8 @@ async fn send_block_balance(
         blockname: block.name.clone(),
         ..Default::default()
     };
-    con.write_packet(&Packet::BlockBalance(packet))?;
+    con.write_packet_async(&Packet::BlockBalance(packet))
+        .await?;
     Ok(())
 }
 

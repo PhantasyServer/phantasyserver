@@ -9,6 +9,7 @@ use crate::{
 };
 use data_structs::flags::Flags;
 use pso2packetlib::{
+    connection::{ConnectionRead, ConnectionWrite},
     protocol::{
         self as Pr, login::Language, models::Position, party::BusyState,
         spawn::CharacterSpawnPacket, Packet, PacketType,
@@ -19,7 +20,7 @@ use std::{fmt::Display, net::Ipv4Addr, sync::Arc, time::Instant};
 
 pub struct User {
     // ideally all of these should be private
-    connection: Connection,
+    connection: ConnectionWrite,
     blockdata: Arc<BlockData>,
     player_id: u32,
     char_id: u32,
@@ -45,12 +46,11 @@ pub struct User {
 
 impl User {
     pub(crate) fn new(
-        stream: std::net::TcpStream,
+        stream: tokio::net::TcpStream,
         blockdata: Arc<BlockData>,
-    ) -> Result<User, Error> {
-        stream.set_nonblocking(true)?;
+    ) -> Result<(User, ConnectionRead), Error> {
         stream.set_nodelay(true)?;
-        let mut con = Connection::new(stream, PacketType::Classic, blockdata.key.clone());
+        let mut con = Connection::new_async(stream, PacketType::Classic, blockdata.key.clone());
         match con.write_packet(&Packet::ServerHello(Pr::server::ServerHelloPacket {
             unk1: 3,
             blockid: blockdata.block_id as u16,
@@ -60,30 +60,34 @@ impl User {
             Err(x) if x.kind() == std::io::ErrorKind::WouldBlock => {}
             Err(x) => return Err(x.into()),
         }
-        Ok(User {
-            connection: con,
-            blockdata,
-            player_id: 0,
-            char_id: 0,
-            character: None,
-            map: None,
-            party: None,
-            position: Default::default(),
-            text_lang: Language::Japanese,
-            last_ping: Instant::now(),
-            failed_pings: 0,
-            packet_type: PacketType::Classic,
-            ready_to_shutdown: false,
-            nickname: String::new(),
-            party_invites: vec![],
-            party_ignore: Default::default(),
-            mapid: 0,
-            firstload: true,
-            accountflags: Default::default(),
-            isgm: false,
-            uuid: 0,
-            state: UserState::LoggingIn,
-        })
+        let (read, write) = con.into_split()?;
+        Ok((
+            User {
+                connection: write,
+                blockdata,
+                player_id: 0,
+                char_id: 0,
+                character: None,
+                map: None,
+                party: None,
+                position: Default::default(),
+                text_lang: Language::Japanese,
+                last_ping: Instant::now(),
+                failed_pings: 0,
+                packet_type: PacketType::Classic,
+                ready_to_shutdown: false,
+                nickname: String::new(),
+                party_invites: vec![],
+                party_ignore: Default::default(),
+                mapid: 0,
+                firstload: true,
+                accountflags: Default::default(),
+                isgm: false,
+                uuid: 0,
+                state: UserState::LoggingIn,
+            },
+            read,
+        ))
     }
     // I hope async guard won't cause me troubles in the future
     pub async fn tick(mut s: MutexGuard<'_, Self>) -> Result<Action, Error> {
@@ -97,25 +101,32 @@ impl User {
         if s.last_ping.elapsed().as_secs() >= 10 {
             s.last_ping = Instant::now();
             s.failed_pings += 1;
-            let _ = s.send_packet(&Packet::ServerPing);
+            let _ = s.send_packet(&Packet::ServerPing).await;
         }
-        let packet = s.connection.read_packet()?;
-        packet_handler(s, packet).await
+        Ok(Action::Nothing)
     }
     // Helper functions
     pub fn get_ip(&self) -> Result<Ipv4Addr, Error> {
         Ok(self.connection.get_ip()?)
     }
-    pub fn send_packet(&mut self, packet: &Packet) -> Result<(), Error> {
-        match self.connection.write_packet(packet) {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
-            Err(e) => return Err(e.into()),
-        }
+    pub async fn send_packet(&mut self, packet: &Packet) -> Result<(), Error> {
+        self.connection.write_packet_async(packet).await?;
         Ok(())
     }
-    pub fn spawn_character(&mut self, packet: CharacterSpawnPacket) -> Result<(), Error> {
-        self.send_packet(&Packet::CharacterSpawn(packet))?;
+    pub fn try_send_packet(&mut self, packet: &Packet) -> Result<(), Error> {
+        match self.connection.write_packet(packet) {
+            Ok(_) => {}
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) => return Err(e.into()),
+        };
+        Ok(())
+    }
+    pub async fn spawn_character(&mut self, packet: CharacterSpawnPacket) -> Result<(), Error> {
+        self.send_packet(&Packet::CharacterSpawn(packet)).await?;
+        Ok(())
+    }
+    pub fn try_spawn_character(&mut self, packet: CharacterSpawnPacket) -> Result<(), Error> {
+        self.try_send_packet(&Packet::CharacterSpawn(packet))?;
         Ok(())
     }
     pub fn get_current_map(&self) -> Option<Arc<Mutex<Map>>> {
@@ -148,27 +159,33 @@ impl User {
                 total_size: size as u32,
                 data: chunk.to_vec(),
             };
-            self.send_packet(&Packet::LoadItemAttributes(packet))?;
+            self.send_packet(&Packet::LoadItemAttributes(packet))
+                .await?;
         }
         Ok(())
     }
-    pub fn send_system_msg(
+    pub async fn send_system_msg(
         &mut self,
-        msg: &(impl std::fmt::Display + ?Sized),
+        msg: &(impl std::fmt::Display + ?Sized + Sync),
     ) -> Result<(), Error> {
         self.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket {
             message: msg.to_string(),
             msg_type: Pr::unk19::MessageType::SystemMessage,
             ..Default::default()
-        }))?;
+        }))
+        .await?;
         Ok(())
     }
-    pub fn send_error(&mut self, msg: &(impl std::fmt::Display + ?Sized)) -> Result<(), Error> {
+    pub async fn send_error(
+        &mut self,
+        msg: &(impl std::fmt::Display + ?Sized + Sync),
+    ) -> Result<(), Error> {
         self.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket {
             message: msg.to_string(),
             msg_type: Pr::unk19::MessageType::AdminMessageInstant,
             ..Default::default()
-        }))?;
+        }))
+        .await?;
         Ok(())
     }
     pub async fn send_position(
@@ -185,7 +202,7 @@ impl User {
     }
 }
 
-async fn packet_handler(
+pub async fn packet_handler(
     mut user_guard: MutexGuard<'_, User>,
     packet: Packet,
 ) -> Result<Action, Error> {
@@ -226,11 +243,15 @@ async fn packet_handler(
         (US::InGame, P::ChatMessage(..)) => H::chat::send_chat(user_guard, match_unit.1).await,
 
         // Quest List packets
-        (US::InGame, P::AvailableQuestsRequest(data)) => H::quest::avaliable_quests(user, data),
-        (US::InGame, P::QuestCategoryRequest(data)) => H::quest::quest_category(user, data),
-        (US::InGame, P::QuestDifficultyRequest(data)) => H::quest::quest_difficulty(user, data),
+        (US::InGame, P::AvailableQuestsRequest(data)) => {
+            H::quest::avaliable_quests(user, data).await
+        }
+        (US::InGame, P::QuestCategoryRequest(data)) => H::quest::quest_category(user, data).await,
+        (US::InGame, P::QuestDifficultyRequest(data)) => {
+            H::quest::quest_difficulty(user, data).await
+        }
         (US::InGame, P::AcceptQuest(data)) => H::quest::set_quest(user_guard, data).await,
-        (US::InGame, P::QuestCounterRequest) => H::quest::counter_request(user),
+        (US::InGame, P::QuestCounterRequest) => H::quest::counter_request(user).await,
 
         // Party packets
         (US::InGame, P::PartyInviteRequest(data)) => Ok(Action::SendPartyInvite(data.invitee.id)),
@@ -261,13 +282,17 @@ async fn packet_handler(
         }
 
         // Item packets
-        (US::InGame, P::MoveToStorageRequest(data)) => H::item::move_to_storage(user, data),
-        (US::InGame, P::MoveToInventoryRequest(data)) => H::item::move_to_inventory(user, data),
-        (US::InGame, P::MoveMeseta(data)) => H::item::move_meseta(user, data),
-        (US::InGame, P::DiscardItemRequest(data)) => H::item::discard_inventory(user, data),
-        (US::InGame, P::MoveStoragesRequest(data)) => H::item::move_storages(user, data),
+        (US::InGame, P::MoveToStorageRequest(data)) => H::item::move_to_storage(user, data).await,
+        (US::InGame, P::MoveToInventoryRequest(data)) => {
+            H::item::move_to_inventory(user, data).await
+        }
+        (US::InGame, P::MoveMeseta(data)) => H::item::move_meseta(user, data).await,
+        (US::InGame, P::DiscardItemRequest(data)) => H::item::discard_inventory(user, data).await,
+        (US::InGame, P::MoveStoragesRequest(data)) => H::item::move_storages(user, data).await,
         (US::InGame, P::GetItemDescription(data)) => H::item::get_description(user, data).await,
-        (US::InGame, P::DiscardStorageItemRequest(data)) => H::item::discard_storage(user, data),
+        (US::InGame, P::DiscardStorageItemRequest(data)) => {
+            H::item::discard_storage(user, data).await
+        }
 
         // Login packets
         (US::LoggingIn, P::SegaIDLogin(..)) => H::login::login_request(user, match_unit.1).await,
@@ -277,10 +302,10 @@ async fn packet_handler(
             H::login::new_character(user, data).await
         }
         (US::CharacterSelect, P::CharacterDeletionRequest(data)) => {
-            H::login::delete_request(user, data)
+            H::login::delete_request(user, data).await
         }
-        (_, P::EncryptionRequest(data)) => H::login::encryption_request(user, data),
-        (_, P::ClientPing(data)) => H::login::client_ping(user, data),
+        (_, P::EncryptionRequest(data)) => H::login::encryption_request(user, data).await,
+        (_, P::ClientPing(data)) => H::login::client_ping(user, data).await,
         (_, P::BlockListRequest) => H::login::block_list(user).await,
         (US::InGame, P::BlockSwitchRequest(data)) => H::login::switch_block(user, data).await,
         (US::LoggingIn, P::BlockLogin(data)) => H::login::challenge_login(user, data).await,
@@ -291,8 +316,8 @@ async fn packet_handler(
             Ok(Action::Nothing)
         }
         (_, P::SystemInformation(..)) => Ok(Action::Nothing),
-        (US::CharacterSelect, P::CreateCharacter1) => H::login::character_create1(user),
-        (US::CharacterSelect, P::CreateCharacter2) => H::login::character_create2(user),
+        (US::CharacterSelect, P::CreateCharacter1) => H::login::character_create1(user).await,
+        (US::CharacterSelect, P::CreateCharacter2) => H::login::character_create2(user).await,
         (US::LoggingIn, P::VitaLogin(..)) => H::login::login_request(user, match_unit.1).await,
         (_, P::ChallengeResponse(..)) => {
             user.packet_type = PacketType::NA;
@@ -301,26 +326,30 @@ async fn packet_handler(
         }
         (US::CharacterSelect, P::LoginHistoryRequest) => H::login::login_history(user).await,
         (US::CharacterSelect, P::CharacterUndeletionRequest(data)) => {
-            H::login::undelete_request(user, data)
+            H::login::undelete_request(user, data).await
         }
         (US::CharacterSelect, P::CharacterRenameRequest(data)) => {
-            H::login::rename_request(user, data)
+            H::login::rename_request(user, data).await
         }
         (US::CharacterSelect, P::CharacterNewNameRequest(data)) => {
             H::login::newname_request(user, data).await
         }
-        (US::CharacterSelect, P::CharacterMoveRequest(data)) => H::login::move_request(user, data),
+        (US::CharacterSelect, P::CharacterMoveRequest(data)) => {
+            H::login::move_request(user, data).await
+        }
 
         // Friends packets
-        (US::InGame, P::FriendListRequest(data)) => H::friends::get_friends(user, data),
+        (US::InGame, P::FriendListRequest(data)) => H::friends::get_friends(user, data).await,
 
         // Palette packets
-        (US::InGame, P::FullPaletteInfoRequest) => H::palette::send_full_palette(user),
+        (_, P::FullPaletteInfoRequest) if state >= US::PreInGame => {
+            H::palette::send_full_palette(user).await
+        }
         (US::InGame, P::SetPalette(data)) => H::palette::set_palette(user_guard, data).await,
-        (US::InGame, P::UpdateSubPalette(data)) => H::palette::update_subpalette(user, data),
+        (US::InGame, P::UpdateSubPalette(data)) => H::palette::update_subpalette(user, data).await,
         (US::InGame, P::UpdatePalette(data)) => H::palette::update_palette(user_guard, data).await,
         (US::InGame, P::SetSubPalette(data)) => H::palette::set_subpalette(user, data),
-        (US::InGame, P::SetDefaultPAs(data)) => H::palette::set_default_pa(user, data),
+        (US::InGame, P::SetDefaultPAs(data)) => H::palette::set_default_pa(user, data).await,
 
         // Flag packets
         (US::InGame, P::SetFlag(data)) => H::server::set_flag(user, data).await,
@@ -344,11 +373,11 @@ async fn packet_handler(
         (US::InGame, P::SendSymbolArt(data)) => H::symbolart::send_sa(user_guard, data).await,
 
         // ARKS Missions packets
-        (US::InGame, P::MissionListRequest) => H::arksmission::mission_list(user),
+        (US::InGame, P::MissionListRequest) => H::arksmission::mission_list(user).await,
 
         // Mission Pass packets
-        (US::InGame, P::MissionPassInfoRequest) => H::missionpass::mission_pass_info(user),
-        (US::InGame, P::MissionPassRequest) => H::missionpass::mission_pass(user),
+        (US::InGame, P::MissionPassInfoRequest) => H::missionpass::mission_pass_info(user).await,
+        (US::InGame, P::MissionPassRequest) => H::missionpass::mission_pass(user).await,
 
         (state, data) => {
             log::debug!(

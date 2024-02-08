@@ -9,7 +9,7 @@ use pso2packetlib::protocol::{
     Packet, PacketHeader,
 };
 
-pub fn counter_request(user: &mut User) -> HResult {
+pub async fn counter_request(user: &mut User) -> HResult {
     let data = vec![
         0x78, 0x00, 0x78, 0x00, 0x00, 0x00, 0x04, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0xF4, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xAC, 0x0D,
@@ -22,7 +22,8 @@ pub fn counter_request(user: &mut User) -> HResult {
             ..Default::default()
         },
         data,
-    )))?;
+    )))
+    .await?;
     let data = vec![
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x78, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -38,7 +39,8 @@ pub fn counter_request(user: &mut User) -> HResult {
             ..Default::default()
         },
         data,
-    )))?;
+    )))
+    .await?;
     let data = vec![
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
         0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
@@ -76,34 +78,39 @@ pub fn counter_request(user: &mut User) -> HResult {
             ..Default::default()
         },
         data,
-    )))?;
+    )))
+    .await?;
     Ok(Action::Nothing)
 }
 
-pub fn avaliable_quests(user: &mut User, _: questlist::AvailableQuestsRequestPacket) -> HResult {
+pub async fn avaliable_quests(
+    user: &mut User,
+    _: questlist::AvailableQuestsRequestPacket,
+) -> HResult {
     let packet = Packet::AvailableQuests(user.blockdata.quests.get_availiable());
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 
-pub fn quest_category(user: &mut User, packet: QuestCategoryRequestPacket) -> HResult {
+pub async fn quest_category(user: &mut User, packet: QuestCategoryRequestPacket) -> HResult {
     let packet = user.blockdata.quests.get_category(packet.category);
-    user.send_packet(&Packet::QuestCategory(packet))?;
-    user.send_packet(&Packet::QuestCategoryStopper)?;
+    user.send_packet(&Packet::QuestCategory(packet)).await?;
+    user.send_packet(&Packet::QuestCategoryStopper).await?;
 
     Ok(Action::Nothing)
 }
 
-pub fn quest_difficulty(user: &mut User, packet: QuestDifficultyRequestPacket) -> HResult {
+pub async fn quest_difficulty(user: &mut User, packet: QuestDifficultyRequestPacket) -> HResult {
     for quest in packet.quests {
         let diff = user.blockdata.quests.get_diff(quest.id);
         if let Some(packet) = diff {
             user.send_packet(&Packet::QuestDifficulty(QuestDifficultyPacket {
                 quests: vec![packet],
-            }))?;
+            }))
+            .await?;
         }
     }
-    user.send_packet(&Packet::QuestDifficultyStopper)?;
+    user.send_packet(&Packet::QuestDifficultyStopper).await?;
     Ok(Action::Nothing)
 }
 

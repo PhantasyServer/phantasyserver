@@ -104,7 +104,7 @@ pub async fn campship_down(user: MutexGuard<'_, User>, _: CampshipDownPacket) ->
 
 pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     let packet = protocol::unk19::LobbyMonitorPacket { video_id: 1 };
-    user.send_packet(&Packet::LobbyMonitor(packet))?;
+    user.send_packet(&Packet::LobbyMonitor(packet)).await?;
     let Some(character) = &mut user.character else {
         unreachable!("Character should be loaded here");
     };
@@ -116,12 +116,12 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     );
     let char_flags = character.flags.to_char_flags();
     for packet in inventory_packets {
-        user.send_packet(&packet)?;
+        user.send_packet(&packet).await?;
     }
     if user.firstload {
         let flags = user.accountflags.to_account_flags();
-        user.send_packet(&flags)?;
-        user.send_packet(&char_flags)?;
+        user.send_packet(&flags).await?;
+        user.send_packet(&char_flags).await?;
     }
 
     user.send_packet(&Packet::LoadPAs(protocol::objects::LoadPAsPacket {
@@ -137,10 +137,11 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
         },
         levels: vec![1; 0xee],
         ..Default::default()
-    }))?;
+    }))
+    .await?;
     // unlock controls?
-    user.send_packet(&Packet::UnlockControls)?;
-    user.send_packet(&Packet::FinishLoading)?;
+    user.send_packet(&Packet::UnlockControls).await?;
+    user.send_packet(&Packet::FinishLoading).await?;
     user.firstload = false;
     Ok(Action::Nothing)
 }

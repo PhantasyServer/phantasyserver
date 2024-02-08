@@ -10,51 +10,51 @@ use pso2packetlib::protocol::{
     login::Language,
 };
 
-pub fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
+pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character
         .inventory
         .move_to_storage(packet, &mut user.uuid)?;
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 
-pub fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPacket) -> HResult {
+pub async fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character
         .inventory
         .move_to_inventory(packet, &mut user.uuid)?;
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 
-pub fn move_meseta(user: &mut User, packet: MoveMesetaPacket) -> HResult {
+pub async fn move_meseta(user: &mut User, packet: MoveMesetaPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packets = character.inventory.move_meseta(packet);
     for packet in packets {
-        user.send_packet(&packet)?;
+        user.send_packet(&packet).await?;
     }
     Ok(Action::Nothing)
 }
 
-pub fn discard_inventory(user: &mut User, packet: DiscardItemRequestPacket) -> HResult {
+pub async fn discard_inventory(user: &mut User, packet: DiscardItemRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character.inventory.discard_inventory(packet)?;
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 
-pub fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestPacket) -> HResult {
+pub async fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character.inventory.discard_storage(packet)?;
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 
-pub fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
+pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character.inventory.move_storages(packet, &mut user.uuid)?;
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 
@@ -76,7 +76,8 @@ pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) 
                     Language::Japanese => name.jp_desc.clone(),
                 },
             };
-            user.send_packet(&protocol::Packet::LoadItemDescription(packet))?;
+            user.send_packet(&protocol::Packet::LoadItemDescription(packet))
+                .await?;
         }
         None => log::debug!("No item description for {:?}", packet.item),
     }

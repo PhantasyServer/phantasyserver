@@ -171,26 +171,31 @@ impl Party {
                 color: self.get_color(id),
                 ..Default::default()
             };
-            let _ = player.send_packet(&new_player_packet);
-            let _ = player.send_packet(&colors[0]);
-            let _ = player.send_packet(&color_packet);
+            let _ = player.try_send_packet(&new_player_packet);
+            let _ = player.try_send_packet(&colors[0]);
+            let _ = player.try_send_packet(&color_packet);
             colors.push(color_packet);
-            let _ = player.send_packet(&Packet::PartySetupFinish(party::PartySetupFinishPacket {
-                unk: 1,
-            }));
+            let _ =
+                player.try_send_packet(&Packet::PartySetupFinish(party::PartySetupFinishPacket {
+                    unk: 1,
+                }));
             i += 1;
         })
         .await;
         self.players
             .push((np_lock.get_user_id(), Arc::downgrade(&new_id)));
-        np_lock.send_packet(&Packet::PartyInit(party_init))?;
-        np_lock.send_packet(&Packet::PartySettings(self.settings.clone()))?;
+        np_lock.send_packet(&Packet::PartyInit(party_init)).await?;
+        np_lock
+            .send_packet(&Packet::PartySettings(self.settings.clone()))
+            .await?;
         for packet in colors {
-            np_lock.send_packet(&packet)?;
+            np_lock.send_packet(&packet).await?;
         }
-        np_lock.send_packet(&Packet::PartySetupFinish(party::PartySetupFinishPacket {
-            unk: 0,
-        }))?;
+        np_lock
+            .send_packet(&Packet::PartySetupFinish(party::PartySetupFinishPacket {
+                unk: 0,
+            }))
+            .await?;
         Ok(())
     }
     // called by block
@@ -200,7 +205,9 @@ impl Party {
     ) -> Result<(), Error> {
         let (target_party, inviter_name, inviter_id) = {
             let mut lock = inviter.lock().await;
-            let _ = lock.send_packet(&Packet::PartyInviteResult(Default::default()));
+            let _ = lock
+                .send_packet(&Packet::PartyInviteResult(Default::default()))
+                .await;
             let Some(character) = &lock.character else {
                 unreachable!("User should be in state >= `InGame`")
             };
@@ -235,7 +242,7 @@ impl Party {
             inviter_name,
             questname: party.questname.clone(),
         };
-        invitee.send_packet(&Packet::NewInvite(new_invite))?;
+        invitee.send_packet(&Packet::NewInvite(new_invite)).await?;
         invitee.party_invites.push(PartyInvite {
             id: party.id.id,
             party: Arc::downgrade(&target_party),
@@ -262,8 +269,8 @@ impl Party {
         if let Some(player) = removed_player.upgrade() {
             let mut rem_player_lock = player.lock().await;
             for (id, _) in self.players.iter() {
-                let _ = rem_player_lock.send_packet(&Packet::SetPartyColor(
-                    party::SetPartyColorPacket {
+                let _ = rem_player_lock
+                    .send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
                         target: ObjectHeader {
                             id: *id,
                             entity_type: EntityType::Player,
@@ -271,8 +278,8 @@ impl Party {
                         },
                         in_party: 0,
                         ..Default::default()
-                    },
-                ));
+                    }))
+                    .await;
             }
         }
         let removed_obj = ObjectHeader {
@@ -298,23 +305,24 @@ impl Party {
                 leader_changed = true;
             }
             if leader_changed {
-                let _ = player.send_packet(&Packet::NewLeader(party::NewLeaderPacket {
+                let _ = player.try_send_packet(&Packet::NewLeader(party::NewLeaderPacket {
                     leader: self.leader,
                 }));
             }
-            let _ = player.send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
+            let _ = player.try_send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
                 target: removed_obj,
                 in_party: 0,
                 ..Default::default()
             }));
             if self.players.len() == 1 {
-                let _ = player.send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
-                    target: removed_obj,
-                    in_party: 0,
-                    ..Default::default()
-                }));
+                let _ =
+                    player.try_send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
+                        target: removed_obj,
+                        in_party: 0,
+                        ..Default::default()
+                    }));
             }
-            let _ = player.send_packet(&remove_packet);
+            let _ = player.try_send_packet(&remove_packet);
         })
         .await;
 
@@ -336,7 +344,7 @@ impl Party {
             unk: settings.unk,
         };
         exec_users(&self.players, |_, mut user| {
-            let _ = user.send_packet(&Packet::PartySettings(self.settings.clone()));
+            let _ = user.try_send_packet(&Packet::PartySettings(self.settings.clone()));
         })
         .await;
         Ok(())
@@ -351,7 +359,9 @@ impl Party {
             .map(|ObjectHeader { id, .. }| id)
             .collect();
         if info_reqs.is_empty() {
-            player.send_packet(&Packet::PartyInfoStopper(Default::default()))?;
+            player
+                .send_packet(&Packet::PartyInfoStopper(Default::default()))
+                .await?;
             return Ok(());
         }
         let user_invites: Vec<_> = player
@@ -365,13 +375,15 @@ impl Party {
             )
             .collect();
         if user_invites.is_empty() {
-            player.send_packet(&Packet::PartyInfoStopper(Default::default()))?;
+            player
+                .send_packet(&Packet::PartyInfoStopper(Default::default()))
+                .await?;
             return Ok(());
         }
         let mut packet = party::PartyInfoPacket::default();
         for (party, time) in user_invites.iter() {
             if packet.num_of_infos >= 10 {
-                player.send_packet(&Packet::PartyInfo(packet))?;
+                player.send_packet(&Packet::PartyInfo(packet)).await?;
                 packet = Default::default()
             }
             let Some(party) = party.upgrade() else {
@@ -390,9 +402,11 @@ impl Party {
             packet.num_of_infos += 1;
         }
         if packet.num_of_infos != 0 {
-            player.send_packet(&Packet::PartyInfo(packet))?;
+            player.send_packet(&Packet::PartyInfo(packet)).await?;
         }
-        player.send_packet(&Packet::PartyInfoStopper(Default::default()))?;
+        player
+            .send_packet(&Packet::PartyInfoStopper(Default::default()))
+            .await?;
 
         Ok(())
     }
@@ -406,7 +420,7 @@ impl Party {
             .map(|ObjectHeader { id, .. }| id)
             .collect();
         if info_reqs.is_empty() {
-            player.send_packet(&Packet::PartyDetailsStopper)?;
+            player.send_packet(&Packet::PartyDetailsStopper).await?;
             return Ok(());
         }
         let user_invites: Vec<_> = player
@@ -416,13 +430,13 @@ impl Party {
             .map(|PartyInvite { party, .. }| party.clone())
             .collect();
         if user_invites.is_empty() {
-            player.send_packet(&Packet::PartyDetailsStopper)?;
+            player.send_packet(&Packet::PartyDetailsStopper).await?;
             return Ok(());
         }
         let mut packet = party::PartyDetailsPacket::default();
         for party in user_invites.iter() {
             if packet.num_of_details >= 0xC {
-                player.send_packet(&Packet::PartyDetails(packet))?;
+                player.send_packet(&Packet::PartyDetails(packet)).await?;
                 packet = Default::default()
             }
             let Some(party) = party.upgrade() else {
@@ -465,9 +479,9 @@ impl Party {
             packet.num_of_details += 1;
         }
         if packet.num_of_details != 0 {
-            player.send_packet(&Packet::PartyDetails(packet))?;
+            player.send_packet(&Packet::PartyDetails(packet)).await?;
         }
-        player.send_packet(&Packet::PartyDetailsStopper)?;
+        player.send_packet(&Packet::PartyDetailsStopper).await?;
 
         Ok(())
     }
@@ -502,7 +516,7 @@ impl Party {
         self.leader = leader;
         let packet = Packet::NewLeader(party::NewLeaderPacket { leader });
         exec_users(&self.players, |_, mut player| {
-            let _ = player.send_packet(&packet);
+            let _ = player.try_send_packet(&packet);
         })
         .await;
         Ok(())
@@ -512,7 +526,7 @@ impl Party {
         let players = self.players.clone();
         exec_users(&players, |_, mut player| {
             player.party = None;
-            let _ = player.send_packet(&Packet::PartyDisbandedMarker);
+            let _ = player.try_send_packet(&Packet::PartyDisbandedMarker);
         })
         .await;
         for (id, player) in players {
@@ -532,7 +546,7 @@ impl Party {
             .map(|(_, p)| p.clone())
             .ok_or(Error::InvalidInput("kick_player"))?;
         exec_users(&self.players, |_, mut player| {
-            let _ = player.send_packet(&Packet::KickedMember(party::KickedMemberPacket {
+            let _ = player.try_send_packet(&Packet::KickedMember(party::KickedMemberPacket {
                 member: ObjectHeader {
                     id: kick_id,
                     entity_type: EntityType::Player,
@@ -554,7 +568,7 @@ impl Party {
     // called by block
     pub async fn set_busy_state(&self, state: BusyState, sender_id: u32) {
         exec_users(&self.players, |_, mut player| {
-            let _ = player.send_packet(&Packet::NewBusyState(NewBusyStatePacket {
+            let _ = player.try_send_packet(&Packet::NewBusyState(NewBusyStatePacket {
                 object: ObjectHeader {
                     id: sender_id,
                     entity_type: EntityType::Player,
@@ -576,7 +590,7 @@ impl Party {
                     ..Default::default()
                 };
             }
-            let _ = player.send_packet(&packet);
+            let _ = player.try_send_packet(&packet);
         })
         .await;
     }
@@ -588,8 +602,8 @@ impl Party {
         let packet1 = Packet::SetPartyQuest(set_packet);
         let packet2 = Packet::SetQuestInfo(info_packet);
         exec_users(&self.players, |_, mut player| {
-            let _ = player.send_packet(&packet2);
-            let _ = player.send_packet(&packet1);
+            let _ = player.try_send_packet(&packet2);
+            let _ = player.try_send_packet(&packet1);
         })
         .await;
         self.quest = Some(quest)
@@ -607,7 +621,7 @@ impl Party {
             };
         }
         exec_users(&self.players, |_, mut player| {
-            let _ = player.send_packet(&packet);
+            let _ = player.try_send_packet(&packet);
         })
         .await;
     }
@@ -626,7 +640,7 @@ impl Party {
             unk3: data.unk3,
         });
         exec_users(&self.players, |_, mut player| {
-            let _ = player.send_packet(&packet);
+            let _ = player.try_send_packet(&packet);
         })
         .await;
     }
