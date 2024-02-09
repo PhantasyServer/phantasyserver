@@ -10,7 +10,7 @@ use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
     protocol::{login, Packet, PacketType},
-    Connection, PrivateKey,
+    Connection, PrivateKey, PublicKey,
 };
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -494,7 +494,12 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
 async fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
     log::debug!("Sending query information...");
     stream.set_nodelay(true)?;
-    let mut con = Connection::new_async(stream, PacketType::Classic, PrivateKey::None);
+    let mut con = Connection::<Packet>::new_async(
+        stream,
+        PacketType::Classic,
+        PrivateKey::None,
+        PublicKey::None,
+    );
     let mut ships = vec![];
     for server in servers.read().iter() {
         ships.push(login::ShipEntry {
@@ -551,7 +556,12 @@ async fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()>
     } else {
         (port - 12000) / 100
     } as u32;
-    let mut con = Connection::new_async(stream, PacketType::Classic, PrivateKey::None);
+    let mut con = Connection::<Packet>::new_async(
+        stream,
+        PacketType::Classic,
+        PrivateKey::None,
+        PublicKey::None,
+    );
     let servers = servers.read();
     let Some(server) = servers.iter().find(|x| x.id == id) else {
         con.write_packet_async(&Packet::LoginResponse(login::LoginResponsePacket {

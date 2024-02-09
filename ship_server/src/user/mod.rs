@@ -14,7 +14,7 @@ use pso2packetlib::{
         self as Pr, login::Language, models::Position, party::BusyState,
         spawn::CharacterSpawnPacket, Packet, PacketType,
     },
-    Connection,
+    Connection, PublicKey,
 };
 use std::{fmt::Display, net::Ipv4Addr, sync::Arc, time::Instant};
 
@@ -48,9 +48,14 @@ impl User {
     pub(crate) fn new(
         stream: tokio::net::TcpStream,
         blockdata: Arc<BlockData>,
-    ) -> Result<(User, ConnectionRead), Error> {
+    ) -> Result<(User, ConnectionRead<Packet>), Error> {
         stream.set_nodelay(true)?;
-        let mut con = Connection::new_async(stream, PacketType::Classic, blockdata.key.clone());
+        let mut con = Connection::new_async(
+            stream,
+            PacketType::Classic,
+            blockdata.key.clone(),
+            PublicKey::None,
+        );
         match con.write_packet(&Packet::ServerHello(Pr::server::ServerHelloPacket {
             unk1: 3,
             blockid: blockdata.block_id as u16,
