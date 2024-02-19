@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.36.0", features = ["full"] }
-pso2packetlib = { workspace = true, features = ["serde", "connection"] }
+pso2packetlib = { workspace = true, features = ["serde", "split_connection", "tokio"] }
 parking_lot = { version = "0.12.1", features = ["send_guard"] }
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite", "migrate"] }

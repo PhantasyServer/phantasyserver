@@ -5,10 +5,10 @@ use pso2packetlib::protocol::palette::{
     UpdateSubPalettePacket,
 };
 
-pub fn send_full_palette(user: &mut User) -> HResult {
+pub async fn send_full_palette(user: &mut User) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character.palette.send_full_palette();
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 pub async fn set_palette(mut user: MutexGuard<'_, User>, packet: SetPalettePacket) -> HResult {
@@ -28,16 +28,16 @@ pub async fn update_palette(
         let out_packet = character
             .palette
             .update_palette(&mut character.inventory, packet)?;
-        user.send_packet(&out_packet)?;
+        user.send_packet(&out_packet).await?;
     }
     send_palette_update(user).await?;
     Ok(Action::Nothing)
 }
 
-pub fn update_subpalette(user: &mut User, packet: UpdateSubPalettePacket) -> HResult {
+pub async fn update_subpalette(user: &mut User, packet: UpdateSubPalettePacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let out_packet = character.palette.update_subpalette(packet)?;
-    user.send_packet(&out_packet)?;
+    user.send_packet(&out_packet).await?;
     Ok(Action::Nothing)
 }
 
@@ -47,10 +47,10 @@ pub fn set_subpalette(user: &mut User, packet: SetSubPalettePacket) -> HResult {
     Ok(Action::Nothing)
 }
 
-pub fn set_default_pa(user: &mut User, packet: SetDefaultPAsPacket) -> HResult {
+pub async fn set_default_pa(user: &mut User, packet: SetDefaultPAsPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
     let packet = character.palette.set_default_pas(packet);
-    user.send_packet(&packet)?;
+    user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
 

@@ -137,7 +137,7 @@ impl Map {
                     },
                     removed_object: obj.data.object,
                 });
-                let _ = player.send_packet(&packet);
+                let _ = player.try_send_packet(&packet);
             }
         })
         .await;
@@ -156,7 +156,9 @@ impl Map {
 
     pub async fn init_add_player(&mut self, new_player: Arc<Mutex<User>>) -> Result<(), Error> {
         let mut np_lock = new_player.lock().await;
-        np_lock.send_packet(&Packet::LoadLevel(self.data.map_data.clone()))?;
+        np_lock
+            .send_packet(&Packet::LoadLevel(self.data.map_data.clone()))
+            .await?;
         drop(np_lock);
         self.add_player(new_player, self.data.init_map).await
     }
@@ -190,7 +192,8 @@ impl Map {
                 ..Default::default()
             },
             settings: map.clone(),
-        }))?;
+        }))
+        .await?;
         drop(lock);
         self.add_player(player, map.map_id).await
     }
@@ -226,11 +229,13 @@ impl Map {
         };
         self.data.map_data.receiver.id = np_id;
         self.data.map_data.receiver.entity_type = EntityType::Player;
-        np_lock.send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
-            player_id: np_id,
-            unk2: 4,
-            ..Default::default()
-        }))?;
+        np_lock
+            .send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
+                player_id: np_id,
+                unk2: 4,
+                ..Default::default()
+            }))
+            .await?;
         let pos = self
             .data
             .default_location
@@ -240,36 +245,40 @@ impl Map {
             .unwrap_or_default();
         np_lock.position = pos;
         let np_gm = np_lock.isgm as u32;
-        np_lock.spawn_character(CharacterSpawnPacket {
-            position: pos,
-            character: new_character.character.clone(),
-            is_me: CharacterSpawnType::Myself,
-            gm_flag: np_gm,
-            player_obj: ObjectHeader {
-                id: np_id,
-                entity_type: EntityType::Player,
-                ..Default::default()
-            },
-            ..Default::default()
-        })?;
-        Self::load_objects(&self.lua, &self.data, mapid, &mut np_lock)?;
-        for (character, position, isgm) in other_characters {
-            let player_id = character.player_id;
-            np_lock.spawn_character(CharacterSpawnPacket {
-                position,
-                is_me: CharacterSpawnType::Other,
-                gm_flag: isgm as u32,
+        np_lock
+            .spawn_character(CharacterSpawnPacket {
+                position: pos,
+                character: new_character.character.clone(),
+                is_me: CharacterSpawnType::Myself,
+                gm_flag: np_gm,
                 player_obj: ObjectHeader {
-                    id: player_id,
+                    id: np_id,
                     entity_type: EntityType::Player,
                     ..Default::default()
                 },
-                character,
                 ..Default::default()
-            })?;
+            })
+            .await?;
+        Self::load_objects(&self.lua, &self.data, mapid, &mut np_lock)?;
+        for (character, position, isgm) in other_characters {
+            let player_id = character.player_id;
+            np_lock
+                .spawn_character(CharacterSpawnPacket {
+                    position,
+                    is_me: CharacterSpawnType::Other,
+                    gm_flag: isgm as u32,
+                    player_obj: ObjectHeader {
+                        id: player_id,
+                        entity_type: EntityType::Player,
+                        ..Default::default()
+                    },
+                    character,
+                    ..Default::default()
+                })
+                .await?;
         }
         for equipment in other_equipment {
-            np_lock.send_packet(&equipment)?;
+            np_lock.send_packet(&equipment).await?;
         }
         let new_eqipment = (
             new_character.palette.send_change_palette(np_id),
@@ -279,13 +288,13 @@ impl Map {
             new_character.inventory.send_equiped(np_id),
         );
         let palette_packet = new_character.palette.send_palette();
-        np_lock.send_packet(&palette_packet)?;
-        np_lock.send_packet(&new_eqipment.0)?;
-        np_lock.send_packet(&new_eqipment.1)?;
+        np_lock.send_packet(&palette_packet).await?;
+        np_lock.send_packet(&new_eqipment.0).await?;
+        np_lock.send_packet(&new_eqipment.1).await?;
         // np_lock.send_packet(&new_eqipment.2)?;
         drop(np_lock);
         exec_users(&self.players, mapid, |_, _, mut player| {
-            let _ = player.spawn_character(CharacterSpawnPacket {
+            let _ = player.try_spawn_character(CharacterSpawnPacket {
                 position: pos,
                 is_me: CharacterSpawnType::Other,
                 gm_flag: np_gm,
@@ -297,9 +306,9 @@ impl Map {
                 character: new_character.character.clone(),
                 ..Default::default()
             });
-            let _ = player.send_packet(&new_eqipment.0);
-            let _ = player.send_packet(&new_eqipment.1);
-            let _ = player.send_packet(&new_eqipment.2);
+            let _ = player.try_send_packet(&new_eqipment.0);
+            let _ = player.try_send_packet(&new_eqipment.1);
+            let _ = player.try_send_packet(&new_eqipment.2);
         })
         .await;
         self.players
@@ -336,8 +345,8 @@ impl Map {
             )
         };
         exec_users(&self.players, mapid, |_, _, mut player| {
-            let _ = player.send_packet(&new_eqipment.0);
-            let _ = player.send_packet(&new_eqipment.1);
+            let _ = player.try_send_packet(&new_eqipment.0);
+            let _ = player.try_send_packet(&new_eqipment.1);
         })
         .await;
 
@@ -398,7 +407,7 @@ impl Map {
                 data.receiver.id = player.get_user_id();
             }
             if id != sender_id {
-                let _ = player.send_packet(&out_packet);
+                let _ = player.try_send_packet(&out_packet);
             }
         })
         .await;
@@ -417,7 +426,7 @@ impl Map {
             };
         }
         exec_users(&self.players, mapid, |_, _, mut player| {
-            let _ = player.send_packet(&packet);
+            let _ = player.try_send_packet(&packet);
         })
         .await;
     }
@@ -440,7 +449,7 @@ impl Map {
             unk3: data.unk3,
         });
         exec_users(&self.players, mapid, |_, _, mut player| {
-            let _ = player.send_packet(&packet);
+            let _ = player.try_send_packet(&packet);
         })
         .await;
     }
@@ -465,7 +474,7 @@ impl Map {
         exec_users(&self.players, mapid, |_, _, mut player| {
             if let Packet::RemoveObject(data) = &mut packet {
                 data.receiver.id = player.get_user_id();
-                let _ = player.send_packet(&packet);
+                let _ = player.try_send_packet(&packet);
             }
         })
         .await;
@@ -501,13 +510,13 @@ impl Map {
                 globals.raw_remove("call_type")?;
                 globals.raw_remove("size")?;
             }
-            user.send_packet(&Packet::ObjectSpawn(obj.data))?;
+            user.try_send_packet(&Packet::ObjectSpawn(obj.data))?;
         }
         for npc in map_data.npcs.iter().filter(|o| o.mapid == mapid).cloned() {
-            user.send_packet(&Packet::NPCSpawn(npc.data))?;
+            user.try_send_packet(&Packet::NPCSpawn(npc.data))?;
         }
         for event in map_data.events.iter().filter(|e| e.mapid == mapid).cloned() {
-            user.send_packet(&Packet::EventSpawn(event.data))?;
+            user.try_send_packet(&Packet::EventSpawn(event.data))?;
         }
         for tele in map_data
             .transporters
@@ -515,7 +524,7 @@ impl Map {
             .filter(|t| t.mapid == mapid)
             .cloned()
         {
-            user.send_packet(&Packet::TransporterSpawn(tele.data))?;
+            user.try_send_packet(&Packet::TransporterSpawn(tele.data))?;
         }
 
         Ok(())
@@ -631,7 +640,7 @@ impl Map {
                 .find(|p| p.0 == receiver)
                 .and_then(|p| p.2.upgrade())
             {
-                p.lock().await.send_packet(&packet)?;
+                p.lock().await.send_packet(&packet).await?;
             }
         }
         for (receiver, mapid) in scheduled_move {

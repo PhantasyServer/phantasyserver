@@ -25,7 +25,8 @@ pub async fn list_sa(user: &mut User) -> HResult {
         },
         character_id: user.char_id,
         uuids,
-    }))?;
+    }))
+    .await?;
     Ok(Action::Nothing)
 }
 
@@ -47,14 +48,16 @@ pub async fn change_sa(user: &mut User, packet: ChangeSymbolArtPacket) -> HResul
         if user.blockdata.sql.get_symbol_art(uuid).await?.is_none() {
             user.send_packet(&Packet::SymbolArtDataRequest(SymbolArtDataRequestPacket {
                 uuid,
-            }))?;
+            }))
+            .await?;
         }
     }
     user.blockdata
         .sql
         .set_symbol_art_list(uuids, user.player_id)
         .await?;
-    user.send_packet(&Packet::SymbolArtResult(Default::default()))?;
+    user.send_packet(&Packet::SymbolArtResult(Default::default()))
+        .await?;
     Ok(Action::Nothing)
 }
 
@@ -71,7 +74,8 @@ pub async fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPac
         user.send_packet(&Packet::SymbolArtClientData(SymbolArtClientDataPacket {
             uuid: packet.uuid,
             data: sa,
-        }))?;
+        }))
+        .await?;
     }
     Ok(Action::Nothing)
 }
