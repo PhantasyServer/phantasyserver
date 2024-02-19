@@ -20,7 +20,7 @@ serde = "1.0.196"
 memory-stats = "1.1.0"
 mlua = { version = "0.9.5", features = ["serialize", "vendored", "send", "async"] }
 parking_lot = {version = "0.12.1", features = ["send_guard"]}
-crc32fast = "1.3.2"
+crc32fast = "1.4.0"
 indicatif = "0.17.8"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 tokio = { version = "1.36.0", features = ["full"] }
