@@ -125,19 +125,17 @@ impl Sql {
                 // SAFETY: same as above
                 let password: &'static [u8] = unsafe { std::mem::transmute(password.as_bytes()) };
 
-                match tokio::task::spawn_blocking(move || -> Result<(), Error> {
-                    let hash = match PasswordHash::new(stored_password) {
-                        Ok(x) => x,
-                        Err(_) => return Err(Error::InvalidPassword(id)),
-                    };
-                    match Argon2::default().verify_password(password, &hash) {
-                        Ok(_) => Ok(()),
-                        Err(_) => Err(Error::InvalidPassword(id)),
-                    }
+                let login_result = tokio::task::spawn_blocking(move || {
+                    let hash = PasswordHash::new(stored_password)
+                        .map_err(|_| Error::InvalidPassword(id))?;
+                    Argon2::default()
+                        .verify_password(password, &hash)
+                        .map_err(|_| Error::InvalidPassword(id))
                 })
                 .await
-                .unwrap()
-                {
+                .unwrap();
+
+                match login_result {
                     Ok(_) => {}
                     Err(e) => {
                         self.put_login(id, ip, LoginResult::LoginError).await?;
