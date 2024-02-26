@@ -11,10 +11,10 @@ json = ["dep:serde_json"]
 ship = ["dep:tokio", "dep:p256", "dep:rand_core", "dep:sha2", "dep:aes-gcm", "rmp"]
 
 [dependencies]
-serde = { version = "1.0.196", features = ["derive"] }
+serde = { version = "1.0.197", features = ["derive"] }
 pso2packetlib = { workspace = true, features = ["serde", "item_attrs"] }
 rmp-serde = { version = "1.1.2", optional = true }
-serde_json = { version = "1.0.113", optional = true }
+serde_json = { version = "1.0.114", optional = true }
 thiserror = "1.0.57"
 tokio = { version = "1.36.0", optional = true, features = ["full"] }
 p256 = { version = "0.13.2", optional = true, features = ["ecdh"] }
