@@ -20,6 +20,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-22.04
     needs: test
+    if: github.ref == 'refs/heads/master'
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
@@ -47,6 +48,7 @@ jobs:
   crossbuild-windows:
     runs-on: ubuntu-22.04
     needs: test
+    if: github.ref == 'refs/heads/master'
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
@@ -76,6 +78,7 @@ jobs:
   build-windows:
     runs-on: windows-2022
     needs: test
+    if: github.ref == 'refs/heads/master'
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
