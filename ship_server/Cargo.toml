@@ -18,20 +18,20 @@ rmp-serde = "1.1.2"
 half = "2.4.0"
 serde = "1.0.197"
 memory-stats = "1.1.0"
-mlua = { version = "0.9.5", features = ["serialize", "vendored", "send", "async"] }
+mlua = { version = "0.9.6", features = ["serialize", "vendored", "send", "async"] }
 parking_lot = {version = "0.12.1", features = ["send_guard"]}
 crc32fast = "1.4.0"
 indicatif = "0.17.8"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 tokio = { version = "1.36.0", features = ["full"] }
 toml = "0.8.10"
-log = { version = "0.4.20", features = ["serde", "release_max_level_info", "std"] }
+log = { version = "0.4.21", features = ["serde", "release_max_level_info", "std"] }
 simplelog = "0.12.1"
 
 # luajit doesn't compile on musl or on arm
 [target.'cfg(any(target_env = "musl", target_arch = "arm"))'.dependencies.mlua]
-version = "0.9.4"
+version = "0.9.6"
 features = ["lua51"]
 [target.'cfg(not(any(target_env = "musl", target_arch = "arm")))'.dependencies.mlua]
-version = "0.9.4"
+version = "0.9.6"
 features = ["luajit"]
