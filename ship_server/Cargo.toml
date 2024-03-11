@@ -26,7 +26,7 @@ data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 tokio = { version = "1.36.0", features = ["full"] }
 toml = "0.8.10"
 log = { version = "0.4.21", features = ["serde", "release_max_level_info", "std"] }
-simplelog = "0.12.1"
+simplelog = "0.12.2"
 
 # luajit doesn't compile on musl or on arm
 [target.'cfg(any(target_env = "musl", target_arch = "arm"))'.dependencies.mlua]
