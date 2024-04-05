@@ -455,9 +455,7 @@ impl Map {
     }
 
     pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
-        let Some((pos, _)) = self.players.iter().enumerate().find(|(_, p)| p.0 == id) else {
-            return None;
-        };
+        let (pos, _) = self.players.iter().enumerate().find(|(_, p)| p.0 == id)?;
         let (_, mapid, rem_player) = self.players.swap_remove(pos);
         let mut packet = Packet::RemoveObject(protocol::objects::RemoveObjectPacket {
             receiver: ObjectHeader {
