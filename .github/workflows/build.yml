@@ -27,24 +27,30 @@ jobs:
     - name: Build
       if: ${{ success() }}
       run: cargo build --release
-    # TODO: Make some folder structure (e.g. bin/ data/)
+    - name: Compile data
+      if: ${{ success() }}
+      run: cargo run --bin=data_compiler data data_dir
     - name: Move build artifacts
       if: ${{ success() }}
       run: |
         mkdir output
         mv target/release/{pso2ship_server,master_ship,data_compiler} output
-        mv data output
-    - name: Pack build artifacts and extra data
-      if: ${{ success() }}
-      run: |
-        cd output
-        tar --zstd -cf pso2server.tar.zst pso2ship_server master_ship data_compiler data
-    - name: Upload artifact
+        mkdir -p data_compiled/quests
+        find data/maps -name "*.mp" | xargs -I {} cp {} data_compiled
+        find data/quests -name "*.mp" | xargs -I {} cp {} data_compiled/quests
+        mv data/*.* data_compiled
+    - name: Upload bin artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
-        name: x86_64-linux-pso2server.tar.zst
-        path: ./output/pso2server.tar.zst
+        name: x86_64-linux-pso2server
+        path: ./output/*
+    - name: Upload data artifact
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: data
+        path: ./data_compiled/*
   crossbuild-windows:
     runs-on: ubuntu-22.04
     needs: test
@@ -65,16 +71,15 @@ jobs:
       run: cargo build --target x86_64-pc-windows-gnu --release
     - name: Move build artifacts
       if: ${{ success() }}
-      run: mv target/x86_64-pc-windows-gnu/release/{pso2ship_server.exe,master_ship.exe,data_compiler.exe} .
-    - name: Pack build artifacts and extra data
-      if: ${{ success() }}
-      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe data
-    - name: Upload artifact
+      run: |
+        mkdir output
+        mv target/x86_64-pc-windows-gnu/release/{pso2ship_server.exe,master_ship.exe,data_compiler.exe} output
+    - name: Upload bin artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
-        name: x86_64-mingw-pso2server.7z
-        path: ./pso2server.7z
+        name: x86_64-mingw-pso2server
+        path: ./output/*
   build-windows:
     runs-on: windows-2022
     needs: test
@@ -88,15 +93,13 @@ jobs:
     - name: Move build artifacts
       if: ${{ success() }}
       run: |
-        move target/release/pso2ship_server.exe .
-        move target/release/master_ship.exe .
-        move target/release/data_compiler.exe .
-    - name: Pack build artifacts and extra data
-      if: ${{ success() }}
-      run: 7z a -mx9 pso2server.7z pso2ship_server.exe master_ship.exe data_compiler.exe data
-    - name: Upload artifact
+        mkdir output
+        move target/release/pso2ship_server.exe output
+        move target/release/master_ship.exe output
+        move target/release/data_compiler.exe output
+    - name: Upload bin artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
-        name: x86_64-windows-pso2server.7z
-        path: ./pso2server.7z
+        name: x86_64-windows-pso2server
+        path: ./output/*

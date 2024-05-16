@@ -1,0 +1,14 @@
+{
+  "names": [
+    {
+      "item_type": 3,
+      "id": 3,
+      "unk3": 0,
+      "subid": 356,
+      "en_name": "name_en",
+      "jp_name": "name_jp",
+      "en_desc": "desc_en",
+      "jp_desc": "desc_jp"
+    }
+  ]
+}

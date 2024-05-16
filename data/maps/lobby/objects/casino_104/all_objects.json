@@ -1,0 +1,10896 @@
+[
+{
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1169,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14628,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 53859,
+          "pos_y": 13926,
+          "pos_z": 50688
+        },
+        "unk1": 0,
+        "name": "oa_am_cardgame_dealer001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1168,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14880,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 53862,
+          "pos_y": 13926,
+          "pos_z": 17920
+        },
+        "unk1": 0,
+        "name": "oa_am_cardgame_dealer001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1167,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14880,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 53670,
+          "pos_y": 13926,
+          "pos_z": 16998
+        },
+        "unk1": 0,
+        "name": "oa_am_cardgame_dealer001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1166,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14880,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 53468,
+          "pos_y": 13926,
+          "pos_z": 17740
+        },
+        "unk1": 0,
+        "name": "oa_am_cardgame_dealer001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1165,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 53580,
+          "pos_y": 13721,
+          "pos_z": 0
+        },
+        "unk1": 0,
+        "name": "ob_0104_0020",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1164,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 1606,
+          "rot_z": 0,
+          "rot_w": 48128,
+          "pos_x": 0,
+          "pos_y": 0,
+          "pos_z": 0
+        },
+        "unk1": 0,
+        "name": "ob_0104_0006",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1163,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46456,
+          "rot_z": 0,
+          "rot_w": 15236,
+          "pos_x": 20282,
+          "pos_y": 0,
+          "pos_z": 53327
+        },
+        "unk1": 0,
+        "name": "ob_0104_0024",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1162,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13347,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 19200,
+          "pos_y": 18048,
+          "pos_z": 21632
+        },
+        "unk1": 0,
+        "name": "ob_0104_0001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1161,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46115,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 51968,
+          "pos_y": 18048,
+          "pos_z": 21632
+        },
+        "unk1": 0,
+        "name": "ob_0104_0001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1160,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 0,
+          "pos_y": 0,
+          "pos_z": 0
+        },
+        "unk1": 0,
+        "name": "ob_0104_0017",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1159,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 44435,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 18969,
+          "pos_y": 18048,
+          "pos_z": 54198
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1158,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1158,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1158,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 44435,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 18969,
+          "pos_y": 18048,
+          "pos_z": 54198
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093641984,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1157,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 44435,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 18636,
+          "pos_y": 18048,
+          "pos_z": 54214
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1156,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1156,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1156,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 44435,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 18636,
+          "pos_y": 18048,
+          "pos_z": 54214
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1155,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 11667,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 51417,
+          "pos_y": 18048,
+          "pos_z": 54208
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1154,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1154,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1154,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 11667,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 51417,
+          "pos_y": 18048,
+          "pos_z": 54208
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7667712,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1153,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 11667,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 51724,
+          "pos_y": 18048,
+          "pos_z": 54195
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1152,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1152,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1152,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 11667,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 51724,
+          "pos_y": 18048,
+          "pos_z": 54195
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7667712,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1151,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14486,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 54112,
+          "pos_y": 18048,
+          "pos_z": 52582
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1150,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7929858,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1150,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1150,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14486,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 54112,
+          "pos_y": 18048,
+          "pos_z": 52582
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7667712,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1149,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14989,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 54112,
+          "pos_y": 18048,
+          "pos_z": 19795
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1148,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1148,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1148,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14989,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 54112,
+          "pos_y": 18048,
+          "pos_z": 19795
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1147,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47757,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 21344,
+          "pos_y": 18048,
+          "pos_z": 19795
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1146,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1146,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1146,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47757,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 21344,
+          "pos_y": 18048,
+          "pos_z": 19795
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1145,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47254,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 21344,
+          "pos_y": 18048,
+          "pos_z": 52582
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1144,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1144,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1144,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47254,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 21344,
+          "pos_y": 18048,
+          "pos_z": 52582
+        },
+        "unk1": 0,
+        "name": "ob_0104_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1143,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46115,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 51660,
+          "pos_y": 13721,
+          "pos_z": 20556
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1142,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 11667,
+          "rot_z": 0,
+          "rot_w": 15352,
+          "pos_x": 18892,
+          "pos_y": 13721,
+          "pos_z": 20556
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1141,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 51660,
+          "pos_y": 13721,
+          "pos_z": 53324
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1140,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45454,
+          "rot_z": 0,
+          "rot_w": 15328,
+          "pos_x": 18892,
+          "pos_y": 13721,
+          "pos_z": 53318
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1139,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14936,
+          "rot_z": 0,
+          "rot_w": 14558,
+          "pos_x": 20960,
+          "pos_y": 16896,
+          "pos_z": 51724
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1138,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14558,
+          "rot_z": 0,
+          "rot_w": 14936,
+          "pos_x": 20953,
+          "pos_y": 16844,
+          "pos_z": 18982
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1137,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47704,
+          "rot_z": 0,
+          "rot_w": 14558,
+          "pos_x": 53740,
+          "pos_y": 16947,
+          "pos_z": 51712
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1136,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14989,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 53737,
+          "pos_y": 16896,
+          "pos_z": 18976
+        },
+        "unk1": 0,
+        "name": "ob_0104_0018",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1135,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 40463,
+          "rot_y": 12889,
+          "rot_z": 5353,
+          "rot_w": 15319,
+          "pos_x": 53260,
+          "pos_y": 17638,
+          "pos_z": 53676
+        },
+        "unk1": 0,
+        "name": "ob_0104_0015",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1134,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 42616,
+          "rot_y": 7919,
+          "rot_z": 46115,
+          "rot_w": 15289,
+          "pos_x": 14295,
+          "pos_y": 19974,
+          "pos_z": 54233
+        },
+        "unk1": 0,
+        "name": "ob_0104_0015",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1133,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 13540,
+          "rot_y": 15186,
+          "rot_z": 45895,
+          "rot_w": 12341,
+          "pos_x": 53836,
+          "pos_y": 19756,
+          "pos_z": 18662
+        },
+        "unk1": 0,
+        "name": "ob_0104_0015",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1132,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 10282,
+          "rot_y": 15235,
+          "rot_z": 12245,
+          "rot_w": 13592,
+          "pos_x": 19456,
+          "pos_y": 19603,
+          "pos_z": 51046
+        },
+        "unk1": 0,
+        "name": "ob_0104_0015",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7667712,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1131,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 45064,
+          "rot_y": 48041,
+          "rot_z": 10322,
+          "rot_w": 13339,
+          "pos_x": 52851,
+          "pos_y": 18483,
+          "pos_z": 21948
+        },
+        "unk1": 0,
+        "name": "ob_0104_0015",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1130,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 20275,
+          "pos_y": 18048,
+          "pos_z": 21643
+        },
+        "unk1": 0,
+        "name": "ob_0150_0001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1129,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 20147,
+          "pos_y": 18048,
+          "pos_z": 21587
+        },
+        "unk1": 0,
+        "name": "ob_0100_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7667712,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1128,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 0,
+          "pos_y": 18055,
+          "pos_z": 22337
+        },
+        "unk1": 0,
+        "name": "ob_0104_0016",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1239,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13417,
+          "rot_z": 0,
+          "rot_w": 48048,
+          "pos_x": 52957,
+          "pos_y": 17192,
+          "pos_z": 20848
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1238,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15280,
+          "rot_z": 0,
+          "rot_w": 13417,
+          "pos_x": 51314,
+          "pos_y": 15360,
+          "pos_z": 19232
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1237,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15230,
+          "rot_z": 0,
+          "rot_w": 13722,
+          "pos_x": 51577,
+          "pos_y": 15360,
+          "pos_z": 19039
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1236,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15171,
+          "rot_z": 0,
+          "rot_w": 14002,
+          "pos_x": 51808,
+          "pos_y": 15360,
+          "pos_z": 18807
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1235,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15103,
+          "rot_z": 0,
+          "rot_w": 14274,
+          "pos_x": 51999,
+          "pos_y": 15360,
+          "pos_z": 18548
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1234,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14914,
+          "rot_z": 0,
+          "rot_w": 14586,
+          "pos_x": 52247,
+          "pos_y": 15360,
+          "pos_z": 17298
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1233,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14809,
+          "rot_z": 0,
+          "rot_w": 14708,
+          "pos_x": 52272,
+          "pos_y": 15360,
+          "pos_z": 15633
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1232,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14702,
+          "rot_z": 0,
+          "rot_w": 14815,
+          "pos_x": 52272,
+          "pos_y": 15360,
+          "pos_z": 48419
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1231,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14586,
+          "rot_z": 0,
+          "rot_w": 14914,
+          "pos_x": 52247,
+          "pos_y": 15360,
+          "pos_z": 50060
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1230,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14273,
+          "rot_z": 0,
+          "rot_w": 15103,
+          "pos_x": 52000,
+          "pos_y": 15360,
+          "pos_z": 51314
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1229,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13986,
+          "rot_z": 0,
+          "rot_w": 15175,
+          "pos_x": 51807,
+          "pos_y": 15360,
+          "pos_z": 51577
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1228,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13705,
+          "rot_z": 0,
+          "rot_w": 15233,
+          "pos_x": 51575,
+          "pos_y": 15360,
+          "pos_z": 51808
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1227,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13416,
+          "rot_z": 0,
+          "rot_w": 15280,
+          "pos_x": 51316,
+          "pos_y": 15360,
+          "pos_z": 51999
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1226,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 12094,
+          "rot_z": 0,
+          "rot_w": 15346,
+          "pos_x": 50066,
+          "pos_y": 15360,
+          "pos_z": 52247
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          0,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1225,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 10500,
+          "rot_z": 0,
+          "rot_w": 15358,
+          "pos_x": 48401,
+          "pos_y": 15360,
+          "pos_z": 52272
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1224,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 43268,
+          "rot_z": 0,
+          "rot_w": 15358,
+          "pos_x": 15651,
+          "pos_y": 15360,
+          "pos_z": 52272
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1223,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 44862,
+          "rot_z": 0,
+          "rot_w": 15346,
+          "pos_x": 17292,
+          "pos_y": 15360,
+          "pos_z": 52247
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1222,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46184,
+          "rot_z": 0,
+          "rot_w": 15280,
+          "pos_x": 18546,
+          "pos_y": 15360,
+          "pos_z": 52000
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1221,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46490,
+          "rot_z": 0,
+          "rot_w": 15230,
+          "pos_x": 18809,
+          "pos_y": 15360,
+          "pos_z": 51807
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1220,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46770,
+          "rot_z": 0,
+          "rot_w": 15171,
+          "pos_x": 19040,
+          "pos_y": 15360,
+          "pos_z": 51575
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1219,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47041,
+          "rot_z": 0,
+          "rot_w": 15103,
+          "pos_x": 19231,
+          "pos_y": 15360,
+          "pos_z": 51316
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1218,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47354,
+          "rot_z": 0,
+          "rot_w": 14914,
+          "pos_x": 19479,
+          "pos_y": 15360,
+          "pos_z": 50066
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1217,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47476,
+          "rot_z": 0,
+          "rot_w": 14809,
+          "pos_x": 19504,
+          "pos_y": 15360,
+          "pos_z": 48401
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093640960,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1216,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47583,
+          "rot_z": 0,
+          "rot_w": 14702,
+          "pos_x": 19504,
+          "pos_y": 15360,
+          "pos_z": 15651
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          0,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1215,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47682,
+          "rot_z": 0,
+          "rot_w": 14586,
+          "pos_x": 19479,
+          "pos_y": 15360,
+          "pos_z": 17292
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1214,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47871,
+          "rot_z": 0,
+          "rot_w": 14274,
+          "pos_x": 19232,
+          "pos_y": 15360,
+          "pos_z": 18546
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1213,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47943,
+          "rot_z": 0,
+          "rot_w": 13986,
+          "pos_x": 19039,
+          "pos_y": 15360,
+          "pos_z": 18809
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1212,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48001,
+          "rot_z": 0,
+          "rot_w": 13705,
+          "pos_x": 18807,
+          "pos_y": 15360,
+          "pos_z": 19040
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1211,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48048,
+          "rot_z": 0,
+          "rot_w": 13417,
+          "pos_x": 18548,
+          "pos_y": 15360,
+          "pos_z": 19231
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1210,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15346,
+          "rot_z": 0,
+          "rot_w": 44862,
+          "pos_x": 17298,
+          "pos_y": 15360,
+          "pos_z": 19479
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1209,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15358,
+          "rot_z": 0,
+          "rot_w": 43268,
+          "pos_x": 15633,
+          "pos_y": 15360,
+          "pos_z": 19504
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1208,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15358,
+          "rot_z": 0,
+          "rot_w": 10503,
+          "pos_x": 48419,
+          "pos_y": 15360,
+          "pos_z": 19504
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1207,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15346,
+          "rot_z": 0,
+          "rot_w": 12095,
+          "pos_x": 50060,
+          "pos_y": 15360,
+          "pos_z": 19479
+        },
+        "unk1": 0,
+        "name": "ob_0104_0002",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1206,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15290,
+          "rot_z": 0,
+          "rot_w": 13348,
+          "pos_x": 52396,
+          "pos_y": 17996,
+          "pos_z": 22328
+        },
+        "unk1": 0,
+        "name": "ob_0102_0001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          33621528,
+          15795200,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1,
+          76,
+          1,
+          71,
+          1084227584,
+          22,
+          1224755456,
+          18432,
+          19,
+          0,
+          17920
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1185,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 52396,
+          "pos_y": 17996,
+          "pos_z": 22321
+        },
+        "unk1": 0,
+        "name": "oa_transfer_machine",
+        "unk2": [
+          17,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          68120,
+          788480,
+          2,
+          0,
+          0,
+          0,
+          939524096,
+          1182813619,
+          58,
+          0,
+          55,
+          1,
+          57,
+          1,
+          60,
+          0,
+          67,
+          1,
+          75,
+          0,
+          68,
+          30,
+          66,
+          2,
+          71,
+          0,
+          74,
+          1,
+          71,
+          1073741824
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1184,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48058,
+          "rot_z": 0,
+          "rot_w": 13348,
+          "pos_x": 19564,
+          "pos_y": 18073,
+          "pos_z": 22297
+        },
+        "unk1": 0,
+        "name": "oa_transfer_machine",
+        "unk2": [
+          17,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          68120,
+          0,
+          2,
+          0,
+          0,
+          0,
+          939524096,
+          3,
+          58,
+          0,
+          55,
+          1,
+          57,
+          1,
+          60,
+          0,
+          67,
+          1,
+          75,
+          0,
+          68,
+          4294967295,
+          66,
+          1,
+          71,
+          0,
+          74,
+          1,
+          71,
+          1077936128
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1183,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52684,
+          "pos_y": 18048,
+          "pos_z": 21952
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1182,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          7929858,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1182,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1182,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52684,
+          "pos_y": 18048,
+          "pos_z": 21952
+        },
+        "unk1": 0,
+        "name": "ob_0180_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          4093641984,
+          32766,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1181,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52633,
+          "pos_y": 18048,
+          "pos_z": 21976
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1180,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1180,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1180,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52633,
+          "pos_y": 18048,
+          "pos_z": 21976
+        },
+        "unk1": 0,
+        "name": "ob_0180_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1179,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52576,
+          "pos_y": 18048,
+          "pos_z": 22000
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1178,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1178,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1178,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52576,
+          "pos_y": 18048,
+          "pos_z": 22000
+        },
+        "unk1": 0,
+        "name": "ob_0180_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1177,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52521,
+          "pos_y": 18048,
+          "pos_z": 22022
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1176,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1176,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1176,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52521,
+          "pos_y": 18048,
+          "pos_z": 22022
+        },
+        "unk1": 0,
+        "name": "ob_0180_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1303,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13688,
+          "rot_z": 0,
+          "rot_w": 15236,
+          "pos_x": 20416,
+          "pos_y": 16512,
+          "pos_z": 20646
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1302,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13621,
+          "rot_z": 0,
+          "rot_w": 15248,
+          "pos_x": 20307,
+          "pos_y": 16512,
+          "pos_z": 20688
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1301,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13382,
+          "rot_z": 0,
+          "rot_w": 15285,
+          "pos_x": 20019,
+          "pos_y": 16512,
+          "pos_z": 20784
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1300,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13245,
+          "rot_z": 0,
+          "rot_w": 15299,
+          "pos_x": 19897,
+          "pos_y": 16512,
+          "pos_z": 20819
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1299,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14115,
+          "rot_z": 0,
+          "rot_w": 15144,
+          "pos_x": 20617,
+          "pos_y": 15482,
+          "pos_z": 20217
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1298,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14019,
+          "rot_z": 0,
+          "rot_w": 15168,
+          "pos_x": 20579,
+          "pos_y": 15482,
+          "pos_z": 20313
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1297,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13921,
+          "rot_z": 0,
+          "rot_w": 15190,
+          "pos_x": 20534,
+          "pos_y": 15482,
+          "pos_z": 20409
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1296,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13722,
+          "rot_z": 0,
+          "rot_w": 15230,
+          "pos_x": 20364,
+          "pos_y": 15482,
+          "pos_z": 20556
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          6488065,
+          2,
+          0,
+          0,
+          0,
+          256,
+          7602288,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1295,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13245,
+          "rot_z": 0,
+          "rot_w": 15299,
+          "pos_x": 19782,
+          "pos_y": 15482,
+          "pos_z": 20755
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1294,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13451,
+          "rot_z": 0,
+          "rot_w": 15275,
+          "pos_x": 20006,
+          "pos_y": 15482,
+          "pos_z": 20691
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          6488065,
+          2,
+          0,
+          0,
+          0,
+          256,
+          7602288,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1293,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13382,
+          "rot_z": 0,
+          "rot_w": 15285,
+          "pos_x": 19897,
+          "pos_y": 15482,
+          "pos_z": 20723
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1292,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13654,
+          "rot_z": 0,
+          "rot_w": 15242,
+          "pos_x": 20262,
+          "pos_y": 15482,
+          "pos_z": 20598
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1291,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48079,
+          "rot_z": 0,
+          "rot_w": 13037,
+          "pos_x": 53440,
+          "pos_y": 15177,
+          "pos_z": 49778
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          504,
+          68,
+          4,
+          72,
+          132615,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1290,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47936,
+          "rot_z": 0,
+          "rot_w": 14019,
+          "pos_x": 53412,
+          "pos_y": 15177,
+          "pos_z": 50129
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          503,
+          68,
+          3,
+          72,
+          132614,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1289,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47648,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 53397,
+          "pos_y": 15177,
+          "pos_z": 50412
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          502,
+          68,
+          2,
+          72,
+          132613,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1288,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47254,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 53400,
+          "pos_y": 15177,
+          "pos_z": 50695
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          501,
+          68,
+          1,
+          72,
+          132612,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1287,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46590,
+          "rot_z": 0,
+          "rot_w": 15210,
+          "pos_x": 53419,
+          "pos_y": 15177,
+          "pos_z": 50936
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          500,
+          68,
+          0,
+          72,
+          132611,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1286,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48079,
+          "rot_z": 0,
+          "rot_w": 13037,
+          "pos_x": 53639,
+          "pos_y": 15177,
+          "pos_z": 48205
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          404,
+          68,
+          4,
+          72,
+          132609,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1285,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47896,
+          "rot_z": 0,
+          "rot_w": 14179,
+          "pos_x": 53612,
+          "pos_y": 15177,
+          "pos_z": 48907
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          7929857,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          403,
+          68,
+          3,
+          72,
+          132608,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1284,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47648,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 53597,
+          "pos_y": 15177,
+          "pos_z": 49548
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          7929857,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          402,
+          68,
+          2,
+          72,
+          132607,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1283,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47254,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 53600,
+          "pos_y": 15177,
+          "pos_z": 50114
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          401,
+          68,
+          1,
+          72,
+          132606,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1282,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46623,
+          "rot_z": 0,
+          "rot_w": 15204,
+          "pos_x": 53618,
+          "pos_y": 15177,
+          "pos_z": 50386
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          400,
+          68,
+          0,
+          72,
+          132605,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1281,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48096,
+          "rot_z": 0,
+          "rot_w": 12686,
+          "pos_x": 53830,
+          "pos_y": 15177,
+          "pos_z": 50133
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          304,
+          68,
+          4,
+          72,
+          132603,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1280,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47936,
+          "rot_z": 0,
+          "rot_w": 14019,
+          "pos_x": 53802,
+          "pos_y": 15177,
+          "pos_z": 50330
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          303,
+          68,
+          3,
+          72,
+          132602,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1279,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47648,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 53788,
+          "pos_y": 15177,
+          "pos_z": 50589
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          302,
+          68,
+          2,
+          72,
+          132601,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1278,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47254,
+          "rot_z": 0,
+          "rot_w": 14989,
+          "pos_x": 53790,
+          "pos_y": 15177,
+          "pos_z": 50872
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          301,
+          68,
+          1,
+          72,
+          132600,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1277,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46623,
+          "rot_z": 0,
+          "rot_w": 15204,
+          "pos_x": 53809,
+          "pos_y": 15177,
+          "pos_z": 51113
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          300,
+          68,
+          0,
+          72,
+          132599,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1276,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 53809,
+          "pos_y": 15177,
+          "pos_z": 18345
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          204,
+          68,
+          4,
+          72,
+          132597,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1275,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47704,
+          "rot_z": 0,
+          "rot_w": 14558,
+          "pos_x": 53790,
+          "pos_y": 15177,
+          "pos_z": 18104
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          203,
+          68,
+          3,
+          72,
+          132596,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1274,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47396,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 53788,
+          "pos_y": 15177,
+          "pos_z": 17821
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          7929857,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          202,
+          68,
+          2,
+          72,
+          132595,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1273,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46947,
+          "rot_z": 0,
+          "rot_w": 15128,
+          "pos_x": 53802,
+          "pos_y": 15177,
+          "pos_z": 17562
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          201,
+          68,
+          1,
+          72,
+          132594,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1272,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45454,
+          "rot_z": 0,
+          "rot_w": 15328,
+          "pos_x": 53830,
+          "pos_y": 15177,
+          "pos_z": 17365
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          7929857,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          200,
+          68,
+          0,
+          72,
+          132593,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1271,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48004,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 53618,
+          "pos_y": 15177,
+          "pos_z": 17618
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          104,
+          68,
+          4,
+          72,
+          132591,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1270,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47757,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 53600,
+          "pos_y": 15177,
+          "pos_z": 17346
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          103,
+          68,
+          3,
+          72,
+          132590,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1269,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47396,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 53597,
+          "pos_y": 15177,
+          "pos_z": 16780
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          102,
+          68,
+          2,
+          72,
+          132589,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1268,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46787,
+          "rot_z": 0,
+          "rot_w": 15168,
+          "pos_x": 53612,
+          "pos_y": 15177,
+          "pos_z": 16139
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          101,
+          68,
+          1,
+          72,
+          132588,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1267,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45804,
+          "rot_z": 0,
+          "rot_w": 15311,
+          "pos_x": 53639,
+          "pos_y": 15177,
+          "pos_z": 15437
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          100,
+          68,
+          0,
+          72,
+          132587,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1266,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48004,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 53419,
+          "pos_y": 15177,
+          "pos_z": 18168
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          4,
+          68,
+          4,
+          72,
+          132585,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1265,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47757,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 53400,
+          "pos_y": 15177,
+          "pos_z": 17927
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          7929857,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          3,
+          68,
+          3,
+          72,
+          132584,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1264,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47396,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 53397,
+          "pos_y": 15177,
+          "pos_z": 17644
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          2,
+          68,
+          2,
+          72,
+          132583,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1263,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46787,
+          "rot_z": 0,
+          "rot_w": 15168,
+          "pos_x": 53412,
+          "pos_y": 15177,
+          "pos_z": 17361
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          1,
+          68,
+          1,
+          72,
+          132582,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1262,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45454,
+          "rot_z": 0,
+          "rot_w": 15328,
+          "pos_x": 53440,
+          "pos_y": 15177,
+          "pos_z": 17010
+        },
+        "unk1": 0,
+        "name": "ob_0104_0021",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          2072,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          77,
+          0,
+          68,
+          0,
+          72,
+          132581,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1261,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14019,
+          "rot_z": 0,
+          "rot_w": 47936,
+          "pos_x": 53491,
+          "pos_y": 17192,
+          "pos_z": 20504
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1260,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13655,
+          "rot_z": 0,
+          "rot_w": 48010,
+          "pos_x": 53032,
+          "pos_y": 15482,
+          "pos_z": 20598
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1259,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13176,
+          "rot_z": 0,
+          "rot_w": 48071,
+          "pos_x": 52697,
+          "pos_y": 17192,
+          "pos_z": 20923
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1258,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13588,
+          "rot_z": 0,
+          "rot_w": 48022,
+          "pos_x": 53094,
+          "pos_y": 16512,
+          "pos_z": 20682
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1257,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13655,
+          "rot_z": 0,
+          "rot_w": 48010,
+          "pos_x": 53255,
+          "pos_y": 17192,
+          "pos_z": 20739
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1256,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14051,
+          "rot_z": 0,
+          "rot_w": 47928,
+          "pos_x": 53537,
+          "pos_y": 17192,
+          "pos_z": 20415
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          6488065,
+          2,
+          0,
+          0,
+          0,
+          256,
+          7602288,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1255,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13176,
+          "rot_z": 0,
+          "rot_w": 48071,
+          "pos_x": 52555,
+          "pos_y": 15482,
+          "pos_z": 20754
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1254,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14083,
+          "rot_z": 0,
+          "rot_w": 47920,
+          "pos_x": 53439,
+          "pos_y": 16512,
+          "pos_z": 20348
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          6488065,
+          2,
+          0,
+          0,
+          0,
+          256,
+          7602288,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1253,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13451,
+          "rot_z": 0,
+          "rot_w": 48043,
+          "pos_x": 52773,
+          "pos_y": 15482,
+          "pos_z": 20689
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1252,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13756,
+          "rot_z": 0,
+          "rot_w": 47991,
+          "pos_x": 53274,
+          "pos_y": 16512,
+          "pos_z": 20593
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1251,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13986,
+          "rot_z": 0,
+          "rot_w": 47943,
+          "pos_x": 53344,
+          "pos_y": 15482,
+          "pos_z": 20315
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1250,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13348,
+          "rot_z": 0,
+          "rot_w": 48058,
+          "pos_x": 52833,
+          "pos_y": 17192,
+          "pos_z": 20886
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1249,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14083,
+          "rot_z": 0,
+          "rot_w": 47920,
+          "pos_x": 53386,
+          "pos_y": 15482,
+          "pos_z": 20212
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1248,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13348,
+          "rot_z": 0,
+          "rot_w": 48058,
+          "pos_x": 52663,
+          "pos_y": 15482,
+          "pos_z": 20725
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1247,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13382,
+          "rot_z": 0,
+          "rot_w": 48053,
+          "pos_x": 52806,
+          "pos_y": 16512,
+          "pos_z": 20780
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1246,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13689,
+          "rot_z": 0,
+          "rot_w": 48004,
+          "pos_x": 53200,
+          "pos_y": 16512,
+          "pos_z": 20639
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1245,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13722,
+          "rot_z": 0,
+          "rot_w": 47998,
+          "pos_x": 53132,
+          "pos_y": 15482,
+          "pos_z": 20555
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1244,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13921,
+          "rot_z": 0,
+          "rot_w": 47958,
+          "pos_x": 53303,
+          "pos_y": 15482,
+          "pos_z": 20411
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1243,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13313,
+          "rot_z": 0,
+          "rot_w": 48062,
+          "pos_x": 52683,
+          "pos_y": 16512,
+          "pos_z": 20815
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          808465153,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1242,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13722,
+          "rot_z": 0,
+          "rot_w": 47998,
+          "pos_x": 53311,
+          "pos_y": 17192,
+          "pos_z": 20694
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1241,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13954,
+          "rot_z": 0,
+          "rot_w": 47950,
+          "pos_x": 53445,
+          "pos_y": 17192,
+          "pos_z": 20561
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1240,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13986,
+          "rot_z": 0,
+          "rot_w": 47943,
+          "pos_x": 53394,
+          "pos_y": 16512,
+          "pos_z": 20456
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1340,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46456,
+          "rot_z": 0,
+          "rot_w": 15236,
+          "pos_x": 20160,
+          "pos_y": 16844,
+          "pos_z": 53472
+        },
+        "unk1": 0,
+        "name": "oa_0104_0025_2",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          82,
+          2,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1339,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46456,
+          "rot_z": 0,
+          "rot_w": 15236,
+          "pos_x": 20064,
+          "pos_y": 17843,
+          "pos_z": 53536
+        },
+        "unk1": 0,
+        "name": "oa_0104_0025_1",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          82,
+          1,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1338,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46456,
+          "rot_z": 0,
+          "rot_w": 15236,
+          "pos_x": 20000,
+          "pos_y": 18496,
+          "pos_z": 53616
+        },
+        "unk1": 0,
+        "name": "oa_0104_0025_0",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          32512,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          82,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1337,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15190,
+          "rot_z": 0,
+          "rot_w": 46689,
+          "pos_x": 53302,
+          "pos_y": 15482,
+          "pos_z": 53177
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1336,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15230,
+          "rot_z": 0,
+          "rot_w": 46490,
+          "pos_x": 53132,
+          "pos_y": 15482,
+          "pos_z": 53324
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          808465153,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1335,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15230,
+          "rot_z": 0,
+          "rot_w": 46490,
+          "pos_x": 53308,
+          "pos_y": 17192,
+          "pos_z": 53462
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1334,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15144,
+          "rot_z": 0,
+          "rot_w": 46883,
+          "pos_x": 53539,
+          "pos_y": 17192,
+          "pos_z": 53184
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1333,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15168,
+          "rot_z": 0,
+          "rot_w": 46787,
+          "pos_x": 53347,
+          "pos_y": 15482,
+          "pos_z": 53081
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1332,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15175,
+          "rot_z": 0,
+          "rot_w": 46754,
+          "pos_x": 53388,
+          "pos_y": 16512,
+          "pos_z": 53241
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1331,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15160,
+          "rot_z": 0,
+          "rot_w": 46819,
+          "pos_x": 53433,
+          "pos_y": 16512,
+          "pos_z": 53132
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1330,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15294,
+          "rot_z": 0,
+          "rot_w": 46081,
+          "pos_x": 52697,
+          "pos_y": 17192,
+          "pos_z": 53689
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1329,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15182,
+          "rot_z": 0,
+          "rot_w": 46721,
+          "pos_x": 53443,
+          "pos_y": 17192,
+          "pos_z": 53331
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1328,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15275,
+          "rot_z": 0,
+          "rot_w": 46219,
+          "pos_x": 52774,
+          "pos_y": 15482,
+          "pos_z": 53459
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          15795201,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1327,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15248,
+          "rot_z": 0,
+          "rot_w": 46389,
+          "pos_x": 53075,
+          "pos_y": 16512,
+          "pos_z": 53456
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1326,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15242,
+          "rot_z": 0,
+          "rot_w": 46422,
+          "pos_x": 53254,
+          "pos_y": 17192,
+          "pos_z": 53510
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1325,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15299,
+          "rot_z": 0,
+          "rot_w": 46013,
+          "pos_x": 52665,
+          "pos_y": 16512,
+          "pos_z": 53587
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1324,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15285,
+          "rot_z": 0,
+          "rot_w": 46150,
+          "pos_x": 52787,
+          "pos_y": 16512,
+          "pos_z": 53552
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1323,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 46456,
+          "pos_x": 53184,
+          "pos_y": 16512,
+          "pos_z": 53414
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1322,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15144,
+          "rot_z": 0,
+          "rot_w": 46883,
+          "pos_x": 53385,
+          "pos_y": 15482,
+          "pos_z": 52985
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1321,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15290,
+          "rot_z": 0,
+          "rot_w": 46115,
+          "pos_x": 52825,
+          "pos_y": 17192,
+          "pos_z": 53654
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1320,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15299,
+          "rot_z": 0,
+          "rot_w": 46013,
+          "pos_x": 52550,
+          "pos_y": 15482,
+          "pos_z": 53523
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1319,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15168,
+          "rot_z": 0,
+          "rot_w": 46787,
+          "pos_x": 53491,
+          "pos_y": 17192,
+          "pos_z": 53276
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1318,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15217,
+          "rot_z": 0,
+          "rot_w": 46556,
+          "pos_x": 53267,
+          "pos_y": 16512,
+          "pos_z": 53369
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1317,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15285,
+          "rot_z": 0,
+          "rot_w": 46150,
+          "pos_x": 52665,
+          "pos_y": 15482,
+          "pos_z": 53491
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1,
+          2,
+          0,
+          0,
+          0,
+          256,
+          0,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1316,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15242,
+          "rot_z": 0,
+          "rot_w": 46422,
+          "pos_x": 53030,
+          "pos_y": 15482,
+          "pos_z": 53366
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1315,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15280,
+          "rot_z": 0,
+          "rot_w": 46184,
+          "pos_x": 52953,
+          "pos_y": 17192,
+          "pos_z": 53619
+        },
+        "unk1": 0,
+        "name": "ob_0104_0000",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          6488065,
+          2,
+          0,
+          0,
+          0,
+          256,
+          7602288,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          0,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1314,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14115,
+          "rot_z": 0,
+          "rot_w": 15144,
+          "pos_x": 20771,
+          "pos_y": 17192,
+          "pos_z": 20416
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1313,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14019,
+          "rot_z": 0,
+          "rot_w": 15168,
+          "pos_x": 20723,
+          "pos_y": 17192,
+          "pos_z": 20508
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1312,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13953,
+          "rot_z": 0,
+          "rot_w": 15182,
+          "pos_x": 20675,
+          "pos_y": 17192,
+          "pos_z": 20563
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1311,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13722,
+          "rot_z": 0,
+          "rot_w": 15230,
+          "pos_x": 20540,
+          "pos_y": 17192,
+          "pos_z": 20694
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1310,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13654,
+          "rot_z": 0,
+          "rot_w": 15242,
+          "pos_x": 20486,
+          "pos_y": 17192,
+          "pos_z": 20742
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1309,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13416,
+          "rot_z": 0,
+          "rot_w": 15280,
+          "pos_x": 20185,
+          "pos_y": 17192,
+          "pos_z": 20851
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1308,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13347,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 20057,
+          "pos_y": 17192,
+          "pos_z": 20886
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1311745,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1307,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13313,
+          "rot_z": 0,
+          "rot_w": 15294,
+          "pos_x": 19929,
+          "pos_y": 17192,
+          "pos_z": 20921
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          7208961,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6357024,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1306,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14051,
+          "rot_z": 0,
+          "rot_w": 15160,
+          "pos_x": 20665,
+          "pos_y": 16512,
+          "pos_z": 20364
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1305,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13986,
+          "rot_z": 0,
+          "rot_w": 15175,
+          "pos_x": 20620,
+          "pos_y": 16512,
+          "pos_z": 20473
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          6488065,
+          2,
+          0,
+          0,
+          0,
+          256,
+          7602288,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1304,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13788,
+          "rot_z": 0,
+          "rot_w": 15217,
+          "pos_x": 20499,
+          "pos_y": 16512,
+          "pos_z": 20601
+        },
+        "unk1": 0,
+        "name": "ob_0104_0023",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1560,
+          1953528065,
+          2,
+          0,
+          0,
+          0,
+          1811939584,
+          1701079414,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          65,
+          1,
+          56,
+          0,
+          59,
+          1,
+          9,
+          0,
+          0,
+          0
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1175,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52467,
+          "pos_y": 18048,
+          "pos_z": 22046
+        },
+        "unk1": 0,
+        "name": "oa_sit_point",
+        "unk2": [
+          42,
+          1174,
+          0,
+          6,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          15795202,
+          2,
+          0,
+          0,
+          0,
+          256,
+          4,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          66,
+          1,
+          68,
+          1,
+          9,
+          0,
+          0,
+          0,
+          0,
+          1174,
+          0,
+          6
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1174,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 52467,
+          "pos_y": 18048,
+          "pos_z": 22046
+        },
+        "unk1": 0,
+        "name": "ob_0180_0014",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          1280,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1173,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14880,
+          "rot_z": 0,
+          "rot_w": 47396,
+          "pos_x": 0,
+          "pos_y": 0,
+          "pos_z": 0
+        },
+        "unk1": 0,
+        "name": "ob_0104_0006",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1172,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14628,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 0,
+          "pos_y": 0,
+          "pos_z": 0
+        },
+        "unk1": 0,
+        "name": "ob_0104_0027",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1171,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14628,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 53472,
+          "pos_y": 13926,
+          "pos_z": 50508
+        },
+        "unk1": 0,
+        "name": "oa_am_cardgame_dealer001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    },
+    {
+      "mapid": 104,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 1170,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14628,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 53670,
+          "pos_y": 13926,
+          "pos_z": 49750
+        },
+        "unk1": 0,
+        "name": "oa_am_cardgame_dealer001",
+        "unk2": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "flags": 4,
+        "data": [
+          1304,
+          1377280,
+          2,
+          0,
+          0,
+          0,
+          256,
+          6,
+          58,
+          4294967295,
+          55,
+          1,
+          57,
+          1,
+          56,
+          0,
+          59,
+          1
+        ]
+      },
+      "lua_data": null
+    }
+]

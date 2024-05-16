@@ -11,7 +11,7 @@ byteorder = "1.5.0"
 rand = "0.8.5"
 rsa = "0.9.6"
 pso2packetlib = { workspace = true, default-features = false, features = ["serde", "split_connection", "vita_enc", "base_enc", "ppac", "item_attrs", "tokio"] }
-sqlx = { version = "0.7.4", default-features = false, features = ["runtime-tokio", "sqlite", "migrate"] }
+sqlx = { version = "0.7.4", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "any"] }
 thiserror = "1.0.58"
 serde_json = "1.0.115"
 rmp-serde = "1.1.2" 
