@@ -37,7 +37,7 @@ impl Map {
     pub fn new<T: AsRef<std::path::Path>>(path: T, map_obj_id: &AtomicU32) -> Result<Self, Error> {
         let data = MapData::load_from_mp_file(path.as_ref())?;
         let mut map = Self::new_from_data(data, map_obj_id)?;
-        map.load_path = path.as_ref().to_owned();
+        path.as_ref().clone_into(&mut map.load_path);
         Ok(map)
     }
     pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {

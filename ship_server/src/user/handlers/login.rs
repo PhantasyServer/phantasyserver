@@ -325,7 +325,7 @@ pub async fn newname_request(
         .sql
         .get_character(user.player_id, packet.char_id)
         .await?;
-    char.character.name = packet.name.clone();
+    char.character.name.clone_from(&packet.name);
     user.blockdata.sql.update_character(&char).await?;
     let packet_out = login::CharacterNewNamePacket {
         status: login::NewNameStatus::Success,
