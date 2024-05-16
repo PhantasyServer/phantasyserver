@@ -101,6 +101,8 @@ pub enum Error {
     RMPDecodeError(#[from] rmp_serde::decode::Error),
     #[error("UTF-8 error: {0}")]
     UTF8Error(#[from] std::str::Utf8Error),
+    #[error("Client connection error: {0}")]
+    ConnError(#[from] pso2packetlib::connection::ConnectionError),
 }
 
 static IS_RUNNING: AtomicBool = AtomicBool::new(true);
@@ -491,7 +493,7 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
     }
 }
 
-async fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
+async fn send_query(stream: TcpStream, servers: Ships) -> Result<(), Error> {
     log::debug!("Sending query information...");
     stream.set_nodelay(true)?;
     let mut con = Connection::<Packet>::new_async(
@@ -518,7 +520,7 @@ async fn send_query(stream: TcpStream, servers: Ships) -> io::Result<()> {
     Ok(())
 }
 
-pub async fn make_block_balance(server_statuses: Ships) -> io::Result<()> {
+pub async fn make_block_balance(server_statuses: Ships) -> Result<(), Error> {
     let mut listeners = vec![];
     for i in 0..10 {
         //pc balance
@@ -547,7 +549,7 @@ async fn block_listener(listener: TcpListener, server_statuses: Ships) {
     }
 }
 
-async fn send_block_balance(stream: TcpStream, servers: Ships) -> io::Result<()> {
+async fn send_block_balance(stream: TcpStream, servers: Ships) -> Result<(), Error> {
     log::debug!("Sending block balance...");
     stream.set_nodelay(true)?;
     let port = stream.local_addr()?.port();

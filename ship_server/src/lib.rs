@@ -90,6 +90,10 @@ pub enum Error {
     RSAError(#[from] rsa::Error),
     #[error("PKCS8 error: {0}")]
     PKCS8Error(#[from] rsa::pkcs8::Error),
+    #[error("Client connection error: {0}")]
+    ConnError(#[from] pso2packetlib::connection::ConnectionError),
+    #[error("Packet error: {0}")]
+    PacketError(#[from] pso2packetlib::protocol::PacketError),
 }
 
 #[derive(Clone)]
@@ -177,7 +181,7 @@ pub async fn run() -> Result<(), Error> {
     log::info!("Loaded keypair");
     let (data_pc, data_vita) = create_attr_files()?;
     let quests = Arc::new(Quests::load(&settings.quest_dir));
-    let mut item_data = ItemParameters::load_from_mp_file("data/names.mp")?;
+    let mut item_data = ItemParameters::load_from_mp_file("data/item_names.mp")?;
     item_data.pc_attrs = data_pc;
     item_data.vita_attrs = data_vita;
     let item_data = Arc::new(RwLock::new(item_data));
@@ -290,7 +294,7 @@ async fn make_block_balance(
 async fn send_block_balance(
     stream: tokio::net::TcpStream,
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
-) -> io::Result<()> {
+) -> Result<(), Error> {
     stream.set_nodelay(true)?;
     let local_addr = stream.local_addr()?.ip();
     log::debug!("Block balancing {local_addr}...");

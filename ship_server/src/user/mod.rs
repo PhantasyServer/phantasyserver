@@ -9,7 +9,7 @@ use crate::{
 };
 use data_structs::flags::Flags;
 use pso2packetlib::{
-    connection::{ConnectionRead, ConnectionWrite},
+    connection::{ConnectionError, ConnectionRead, ConnectionWrite},
     protocol::{
         self as Pr, login::Language, models::Position, party::BusyState,
         spawn::CharacterSpawnPacket, Packet, PacketType,
@@ -62,7 +62,7 @@ impl User {
             unk2: 68833280,
         })) {
             Ok(_) => {}
-            Err(x) if x.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(ConnectionError::Io(x)) if x.kind() == std::io::ErrorKind::WouldBlock => {}
             Err(x) => return Err(x.into()),
         }
         let (read, write) = con.into_split()?;
@@ -121,7 +121,7 @@ impl User {
     pub fn try_send_packet(&mut self, packet: &Packet) -> Result<(), Error> {
         match self.connection.write_packet(packet) {
             Ok(_) => {}
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(ConnectionError::Io(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {}
             Err(e) => return Err(e.into()),
         };
         Ok(())

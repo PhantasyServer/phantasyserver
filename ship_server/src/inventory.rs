@@ -75,7 +75,7 @@ impl Inventory {
         packets.push(Packet::LoadPlayerInventory(LoadPlayerInventoryPacket {
             object: ObjectHeader {
                 id: player_id,
-                entity_type: pso2packetlib::protocol::EntityType::Player,
+                entity_type: pso2packetlib::protocol::ObjectType::Player,
                 ..Default::default()
             },
             name,
@@ -158,7 +158,7 @@ impl Inventory {
         }
         equiped_items.player = ObjectHeader {
             id: player_id,
-            entity_type: pso2packetlib::protocol::EntityType::Player,
+            entity_type: pso2packetlib::protocol::ObjectType::Player,
             ..Default::default()
         };
         Packet::LoadEquiped(equiped_items)

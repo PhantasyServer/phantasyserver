@@ -100,7 +100,7 @@ pub async fn on_successful_login(user: &mut User) -> HResult {
         blockname: user.blockdata.block_name.clone(),
         player: ObjectHeader {
             id,
-            entity_type: protocol::EntityType::Player,
+            entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
         ..Default::default()
@@ -200,7 +200,7 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
         blockname: user.blockdata.block_name.clone(),
         player: ObjectHeader {
             id,
-            entity_type: protocol::EntityType::Player,
+            entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
         ..Default::default()
@@ -271,7 +271,7 @@ pub async fn character_create1(user: &mut User) -> HResult {
 
 pub async fn character_create2(user: &mut User) -> HResult {
     user.send_packet(&Packet::CreateCharacter2Response(
-        login::CreateCharacter2ResponsePacket { unk: 1 },
+        login::CreateCharacter2ResponsePacket { referral_flag: 1 },
     ))
     .await?;
     Ok(Action::Nothing)

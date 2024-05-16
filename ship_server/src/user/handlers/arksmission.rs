@@ -7,7 +7,7 @@ pub async fn mission_list(user: &mut User) -> HResult {
         mission_type: 5,
         start_date: 0,
         end_date: 0,
-        unk4: 6040309,
+        id: 6040309,
         unk5: 4,
         completion_date: 1615045153,
         unk7: 0,

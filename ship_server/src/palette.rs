@@ -52,7 +52,7 @@ impl Palette {
         Packet::ChangeWeaponPalette(ChangeWeaponPalettePacket {
             player: ObjectHeader {
                 id: playerid,
-                entity_type: pso2packetlib::protocol::EntityType::Player,
+                entity_type: pso2packetlib::protocol::ObjectType::Player,
                 ..Default::default()
             },
             cur_palette: self.cur_palette,
@@ -64,7 +64,7 @@ impl Palette {
         Packet::EquipedWeapon(EquipedWeaponPacket {
             player: ObjectHeader {
                 id: playerid,
-                entity_type: pso2packetlib::protocol::EntityType::Player,
+                entity_type: pso2packetlib::protocol::ObjectType::Player,
                 ..Default::default()
             },
             item: inv.get_inv_item(uuid).unwrap_or_default(),

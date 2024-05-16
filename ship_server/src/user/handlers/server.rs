@@ -127,12 +127,12 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     user.send_packet(&Packet::LoadPAs(protocol::objects::LoadPAsPacket {
         receiver: protocol::ObjectHeader {
             id: user.player_id,
-            entity_type: protocol::EntityType::Player,
+            entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
         target: protocol::ObjectHeader {
             id: user.player_id,
-            entity_type: protocol::EntityType::Player,
+            entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
         levels: vec![1; 0xee],

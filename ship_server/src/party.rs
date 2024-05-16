@@ -8,7 +8,7 @@ use crate::{
 use pso2packetlib::protocol::{
     party::{self, BusyState, ChatStatusPacket, Color, NewBusyStatePacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
-    EntityType, ObjectHeader, Packet,
+    ObjectType, ObjectHeader, Packet,
 };
 use std::{
     sync::{Arc, Weak},
@@ -36,7 +36,7 @@ impl Party {
         Self {
             id: ObjectHeader {
                 id: partyid,
-                entity_type: EntityType::Party,
+                entity_type: ObjectType::Party,
                 ..Default::default()
             },
             leader: Default::default(),
@@ -85,7 +85,7 @@ impl Party {
         let color = self.add_color(np_lock.get_user_id());
         let new_player_obj = ObjectHeader {
             id: np_lock.get_user_id(),
-            entity_type: EntityType::Player,
+            entity_type: ObjectType::Player,
             ..Default::default()
         };
         if self.players.is_empty() {
@@ -146,7 +146,7 @@ impl Party {
         exec_users(&self.players, |id, mut player| {
             let other_player_obj = ObjectHeader {
                 id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             };
             let color_packet = Packet::SetPartyColor(party::SetPartyColorPacket {
@@ -235,7 +235,7 @@ impl Party {
             party_object: party.id,
             inviter: ObjectHeader {
                 id: inviter_id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
             name: party.settings.name.clone(),
@@ -273,7 +273,7 @@ impl Party {
                     .send_packet(&Packet::SetPartyColor(party::SetPartyColorPacket {
                         target: ObjectHeader {
                             id: *id,
-                            entity_type: EntityType::Player,
+                            entity_type: ObjectType::Player,
                             ..Default::default()
                         },
                         in_party: 0,
@@ -284,14 +284,14 @@ impl Party {
         }
         let removed_obj = ObjectHeader {
             id,
-            entity_type: EntityType::Player,
+            entity_type: ObjectType::Player,
             ..Default::default()
         };
         let mut remove_packet = Packet::RemoveMember(party::RemoveMemberPacket {
             removed_member: removed_obj,
             receiver: ObjectHeader {
                 id: 0,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
         });
@@ -463,7 +463,7 @@ impl Party {
                     nickname: player.nickname.clone(),
                     id: ObjectHeader {
                         id: player.get_user_id(),
-                        entity_type: EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     class: char.character.classes.main_class,
@@ -549,7 +549,7 @@ impl Party {
             let _ = player.try_send_packet(&Packet::KickedMember(party::KickedMemberPacket {
                 member: ObjectHeader {
                     id: kick_id,
-                    entity_type: EntityType::Player,
+                    entity_type: ObjectType::Player,
                     ..Default::default()
                 },
             }));
@@ -571,7 +571,7 @@ impl Party {
             let _ = player.try_send_packet(&Packet::NewBusyState(NewBusyStatePacket {
                 object: ObjectHeader {
                     id: sender_id,
-                    entity_type: EntityType::Player,
+                    entity_type: ObjectType::Player,
                     ..Default::default()
                 },
                 state,
@@ -586,7 +586,7 @@ impl Party {
             if let Packet::ChatStatus(ref mut packet) = packet {
                 packet.object = ObjectHeader {
                     id: sender_id,
-                    entity_type: EntityType::Player,
+                    entity_type: ObjectType::Player,
                     ..Default::default()
                 };
             }
@@ -616,7 +616,7 @@ impl Party {
         if let Packet::ChatMessage(ref mut data) = packet {
             data.object = ObjectHeader {
                 id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             };
         }
@@ -630,7 +630,7 @@ impl Party {
         let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
             object: ObjectHeader {
                 id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
             uuid: data.uuid,

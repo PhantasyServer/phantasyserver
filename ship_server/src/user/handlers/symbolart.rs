@@ -2,7 +2,7 @@ use super::HResult;
 use crate::{mutex::MutexGuard, Action, User};
 use pso2packetlib::protocol::{
     self,
-    chat::ChatArea,
+    chat::MessageChannel,
     symbolart::{
         ChangeSymbolArtPacket, SendSymbolArtPacket, SymbolArtClientDataPacket,
         SymbolArtClientDataRequestPacket, SymbolArtDataPacket, SymbolArtDataRequestPacket,
@@ -20,7 +20,7 @@ pub async fn list_sa(user: &mut User) -> HResult {
     user.send_packet(&Packet::SymbolArtList(SymbolArtListPacket {
         object: ObjectHeader {
             id: user.player_id,
-            entity_type: protocol::EntityType::Player,
+            entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
         character_id: user.char_id,
@@ -85,14 +85,19 @@ pub async fn send_sa(user: MutexGuard<'_, User>, packet: SendSymbolArtPacket) ->
     let map = user.get_current_map();
     let party = user.get_current_party();
     drop(user);
-    if ChatArea::Map == packet.area {
-        if let Some(map) = map {
-            map.lock().await.send_sa(packet, id).await;
+    match packet.area {
+        MessageChannel::Map => {
+            if let Some(map) = map {
+                map.lock().await.send_sa(packet, id).await;
+            }
         }
-    } else if ChatArea::Party == packet.area {
-        if let Some(party) = party {
-            party.read().await.send_sa(packet, id).await;
+
+        MessageChannel::Party => {
+            if let Some(party) = party {
+                party.read().await.send_sa(packet, id).await;
+            }
         }
+        _ => {}
     }
 
     Ok(Action::Nothing)

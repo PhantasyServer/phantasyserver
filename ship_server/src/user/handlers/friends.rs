@@ -9,10 +9,7 @@ pub async fn get_friends(user: &mut User, _: FriendListRequestPacket) -> HResult
         PacketHeader {
             id: 0x18,
             subid: 0x17,
-            flag: Flags {
-                packed: true,
-                ..Default::default()
-            },
+            flag: Flags::PACKED,
         },
         vec![0, 0, 0, 0, 96, 57, 0, 0],
     ));

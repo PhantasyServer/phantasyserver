@@ -6,7 +6,7 @@ use crate::{
     Action, BlockData, BlockInfo, Error,
 };
 use data_structs::inventory::ItemParameters;
-use pso2packetlib::PrivateKey;
+use pso2packetlib::{connection::ConnectionError, PrivateKey};
 use std::{
     io,
     sync::{
@@ -112,8 +112,8 @@ async fn new_conn_handler(
                             let lock = client.lock().await;
                             crate::user::packet_handler(lock, a).await
                         },
-                        Err(e) if matches!(e.kind(), io::ErrorKind::Interrupted) => Ok(Action::Nothing),
-                        Err(e)
+                        Err(ConnectionError::Io(e)) if matches!(e.kind(), io::ErrorKind::Interrupted) => Ok(Action::Nothing),
+                        Err(ConnectionError::Io(e))
                             if matches!(
                                 e.kind(),
                                 io::ErrorKind::ConnectionAborted | io::ErrorKind::ConnectionReset

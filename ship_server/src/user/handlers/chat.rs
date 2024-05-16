@@ -2,7 +2,9 @@ use super::HResult;
 use crate::{create_attr_files, mutex::MutexGuard, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
-use pso2packetlib::protocol::{chat::ChatArea, flag::FlagType, items::ItemId, Packet};
+use pso2packetlib::protocol::{
+    chat::MessageChannel, flag::FlagType, items::ItemId, ObjectType, Packet,
+};
 
 pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResult {
     let Packet::ChatMessage(ref data) = packet else {
@@ -41,17 +43,17 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
                     receiver: pso2packetlib::protocol::ObjectHeader {
                         id: user.player_id,
-                        entity_type: pso2packetlib::protocol::EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     target: pso2packetlib::protocol::ObjectHeader {
                         id: 1,
-                        entity_type: pso2packetlib::protocol::EntityType::Object,
+                        entity_type: ObjectType::Object,
                         ..Default::default()
                     },
                     object3: pso2packetlib::protocol::ObjectHeader {
                         id: 1,
-                        entity_type: pso2packetlib::protocol::EntityType::Object,
+                        entity_type: ObjectType::Object,
                         ..Default::default()
                     },
                     attribute: format!("Start({name})").into(),
@@ -69,17 +71,17 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
                     receiver: pso2packetlib::protocol::ObjectHeader {
                         id: user.player_id,
-                        entity_type: pso2packetlib::protocol::EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     target: pso2packetlib::protocol::ObjectHeader {
                         id: 1,
-                        entity_type: pso2packetlib::protocol::EntityType::Object,
+                        entity_type: ObjectType::Object,
                         ..Default::default()
                     },
                     object3: pso2packetlib::protocol::ObjectHeader {
                         id: user.player_id,
-                        entity_type: pso2packetlib::protocol::EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     attribute: name.into(),
@@ -156,20 +158,23 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
         }
         return Ok(Action::Nothing);
     }
-    if ChatArea::Map == data.area {
-        let id = user.player_id;
-        let map = user.get_current_map();
-        drop(user);
-        if let Some(map) = map {
-            map.lock().await.send_message(packet, id).await;
+    let id = user.player_id;
+    match data.channel {
+        MessageChannel::Map => {
+            let map = user.get_current_map();
+            drop(user);
+            if let Some(map) = map {
+                map.lock().await.send_message(packet, id).await;
+            }
         }
-    } else if ChatArea::Party == data.area {
-        let id = user.player_id;
-        let party = user.get_current_party();
-        drop(user);
-        if let Some(party) = party {
-            party.read().await.send_message(packet, id).await;
+        MessageChannel::Party => {
+            let party = user.get_current_party();
+            drop(user);
+            if let Some(party) = party {
+                party.read().await.send_message(packet, id).await;
+            }
         }
+        _ => {}
     }
     Ok(Action::Nothing)
 }

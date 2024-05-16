@@ -13,7 +13,7 @@ use pso2packetlib::protocol::{
     server::MapTransferPacket,
     spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
-    EntityType, ObjectHeader, Packet, PacketType,
+    ObjectHeader, ObjectType, Packet, PacketType,
 };
 use std::sync::{
     atomic::{AtomicU32, Ordering},
@@ -53,7 +53,7 @@ impl Map {
         };
         let map_obj = ObjectHeader {
             id: map_obj_id.fetch_add(1, Ordering::Relaxed),
-            entity_type: EntityType::Map,
+            entity_type: ObjectType::Map,
             ..Default::default()
         };
         map.data.map_data.map_object = map_obj;
@@ -64,7 +64,7 @@ impl Map {
                 settngs.map_id,
                 ObjectHeader {
                     id: map_obj_id.fetch_add(1, Ordering::Relaxed),
-                    entity_type: EntityType::Map,
+                    entity_type: ObjectType::Map,
                     ..Default::default()
                 },
             ))
@@ -132,7 +132,7 @@ impl Map {
                 let packet = Packet::RemoveObject(RemoveObjectPacket {
                     receiver: ObjectHeader {
                         id: player.get_user_id(),
-                        entity_type: EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     removed_object: obj.data.object,
@@ -188,7 +188,7 @@ impl Map {
             map: *map_obj,
             target: ObjectHeader {
                 id: pid,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
             settings: map.clone(),
@@ -228,7 +228,7 @@ impl Map {
             unreachable!("User should be in state >= `PreInGame`")
         };
         self.data.map_data.receiver.id = np_id;
-        self.data.map_data.receiver.entity_type = EntityType::Player;
+        self.data.map_data.receiver.entity_type = ObjectType::Player;
         np_lock
             .send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
                 player_id: np_id,
@@ -249,11 +249,11 @@ impl Map {
             .spawn_character(CharacterSpawnPacket {
                 position: pos,
                 character: new_character.character.clone(),
-                is_me: CharacterSpawnType::Myself,
+                spawn_type: CharacterSpawnType::Myself,
                 gm_flag: np_gm,
                 player_obj: ObjectHeader {
                     id: np_id,
-                    entity_type: EntityType::Player,
+                    entity_type: ObjectType::Player,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -265,11 +265,11 @@ impl Map {
             np_lock
                 .spawn_character(CharacterSpawnPacket {
                     position,
-                    is_me: CharacterSpawnType::Other,
+                    spawn_type: CharacterSpawnType::Other,
                     gm_flag: isgm as u32,
                     player_obj: ObjectHeader {
                         id: player_id,
-                        entity_type: EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     character,
@@ -296,11 +296,11 @@ impl Map {
         exec_users(&self.players, mapid, |_, _, mut player| {
             let _ = player.try_spawn_character(CharacterSpawnPacket {
                 position: pos,
-                is_me: CharacterSpawnType::Other,
+                spawn_type: CharacterSpawnType::Other,
                 gm_flag: np_gm,
                 player_obj: ObjectHeader {
                     id: new_character.character.player_id,
-                    entity_type: EntityType::Player,
+                    entity_type: ObjectType::Player,
                     ..Default::default()
                 },
                 character: new_character.character.clone(),
@@ -371,7 +371,7 @@ impl Map {
                     performer: data.performer,
                     receiver: ObjectHeader {
                         id: 0,
-                        entity_type: EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                     unk3: data.unk3,
@@ -392,7 +392,7 @@ impl Map {
                     unk2: data.unk2,
                     receiver: ObjectHeader {
                         id: 0,
-                        entity_type: EntityType::Player,
+                        entity_type: ObjectType::Player,
                         ..Default::default()
                     },
                 };
@@ -421,7 +421,7 @@ impl Map {
         if let Packet::ChatMessage(ref mut data) = packet {
             data.object = ObjectHeader {
                 id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             };
         }
@@ -439,7 +439,7 @@ impl Map {
         let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
             object: ObjectHeader {
                 id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
             uuid: data.uuid,
@@ -460,12 +460,12 @@ impl Map {
         let mut packet = Packet::RemoveObject(protocol::objects::RemoveObjectPacket {
             receiver: ObjectHeader {
                 id: 0,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
             removed_object: ObjectHeader {
                 id,
-                entity_type: EntityType::Player,
+                entity_type: ObjectType::Player,
                 ..Default::default()
             },
         });

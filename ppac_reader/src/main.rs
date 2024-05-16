@@ -101,20 +101,20 @@ fn main() {
                 populated.push(mapid);
                 mapid = p.settings.map_id;
             }
-            Packet::CharacterSpawnNGS(p) => {
-                if let Some(ref mut map) = map_data {
-                    let mut exists = false;
-                    for (id, _) in &map.default_location {
-                        if *id == mapid {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if !exists {
-                        map.default_location.push((mapid, p.position));
-                    }
-                }
-            }
+            // Packet::CharacterSpawnNGS(p) => {
+            //     if let Some(ref mut map) = map_data {
+            //         let mut exists = false;
+            //         for (id, _) in &map.default_location {
+            //             if *id == mapid {
+            //                 exists = true;
+            //                 break;
+            //             }
+            //         }
+            //         if !exists {
+            //             map.default_location.push((mapid, p.position));
+            //         }
+            //     }
+            // }
             Packet::ObjectSpawn(p) => {
                 if let Some(ref mut data) = map_data {
                     if populated.contains(&mapid) {
