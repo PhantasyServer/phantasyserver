@@ -36,3 +36,32 @@ pub async fn action(user: MutexGuard<'_, User>, packet: objects::InteractPacket)
     }
     Ok(Action::Nothing)
 }
+
+pub async fn change_class(
+    mut user: MutexGuard<'_, User>,
+    packet: objects::ChangeClassRequestPacket,
+) -> HResult {
+    let Some(char) = user.character.as_mut() else {
+        unreachable!("Character should be already setup");
+    };
+    char.character.classes.main_class = packet.main_class;
+    char.character.classes.sub_class = packet.sub_class;
+
+    let packet = Packet::ChangeClass(objects::ChangeClassPacket {
+        new_info: char.character.classes.clone(),
+        receiver: user.create_object_header(),
+        player: user.create_object_header(),
+        unk3: Default::default(),
+    });
+    user.send_packet(&packet).await?;
+    let packet = Packet::Unk042C(objects::Unk042CPacket {
+        unk1: user.create_object_header(),
+        unk2: user.create_object_header(),
+        unk3: 0x20,
+        unk4: 0x1,
+        ..Default::default()
+    });
+    user.send_packet(&packet).await?;
+
+    Ok(Action::Nothing)
+}

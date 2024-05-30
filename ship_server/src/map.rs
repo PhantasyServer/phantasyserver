@@ -293,6 +293,7 @@ impl Map {
         np_lock.send_packet(&new_eqipment.1).await?;
         // np_lock.send_packet(&new_eqipment.2)?;
         drop(np_lock);
+
         exec_users(&self.players, mapid, |_, _, mut player| {
             let _ = player.try_spawn_character(CharacterSpawnPacket {
                 position: pos,

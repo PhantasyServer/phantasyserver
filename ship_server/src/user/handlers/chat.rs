@@ -3,7 +3,7 @@ use crate::{create_attr_files, mutex::MutexGuard, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
 use pso2packetlib::protocol::{
-    chat::MessageChannel, flag::FlagType, items::ItemId, ObjectType, Packet,
+    chat::MessageChannel, flag::FlagType, items::ItemId, playerstatus, ObjectType, Packet,
 };
 
 pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResult {
@@ -114,7 +114,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 }
             }
             "!reload_items" => {
-                let (pc, vita) = {
+                let (pc, vita, item_attrs) = {
                     tokio::task::spawn_blocking(create_attr_files)
                         .await
                         .unwrap()?
@@ -122,6 +122,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let mut attrs = user.blockdata.item_attrs.write().await;
                 attrs.pc_attrs = pc;
                 attrs.vita_attrs = vita;
+                attrs.attrs = item_attrs;
                 drop(attrs);
                 user.send_item_attrs().await?;
                 user.send_system_msg("Done!").await?;
@@ -153,6 +154,70 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     .inventory
                     .add_default_item(&mut user.uuid, item_id);
                 user.send_packet(&packet).await?;
+            }
+            "!change_lvl" => {
+                let Some(level) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No level provided").await?;
+                    return Ok(Action::Nothing);
+                };
+                let Some(exp) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No EXP provided").await?;
+                    return Ok(Action::Nothing);
+                };
+                let Some(char) = user.character.as_mut() else {
+                    user.send_system_msg("No character loaded").await?;
+                    return Ok(Action::Nothing);
+                };
+                let stats = char.character.get_level_mut();
+                let diff = (exp as i64 - stats.exp as i64).abs();
+                stats.level1 = level;
+                stats.exp = exp;
+                let stats = char.character.get_level();
+                let stats2 = char.character.get_sublevel();
+                let userexp = playerstatus::EXPReceiver {
+                    unk1: 1,
+                    unk2: 1,
+                    gained: diff as _,
+                    total: stats.exp as _,
+                    level2: stats.level2,
+                    level: stats.level1,
+                    gained_sub: 0,
+                    total_sub: stats2.exp as _,
+                    level2_sub: stats2.level2,
+                    level_sub: stats2.level1,
+                    class: char.character.classes.main_class,
+                    subclass: char.character.classes.sub_class,
+                    object: user.create_object_header(),
+                    ..Default::default()
+                };
+                let packet = Packet::GainedEXP(playerstatus::GainedEXPPacket {
+                    sender: Default::default(),
+                    receivers: vec![userexp],
+                });
+                user.send_packet(&packet).await?;
+            }
+            "!calc_stats" => {
+                let Some(char) = user.character.as_ref().map(|x| &x.character) else {
+                    user.send_system_msg("No character loaded").await?;
+                    return Ok(Action::Nothing);
+                };
+                let player_stats = &user.blockdata.player_stats;
+                let mut stats = player_stats.stats[char.classes.main_class as usize]
+                    [char.get_level().level1 as usize - 1]
+                    .clone();
+                let modifier_offset = char.look.race as usize * 2 + char.look.gender as usize;
+                let modifiers = &player_stats.modifiers[modifier_offset];
+
+                stats.hp += (stats.hp * 0.01 * modifiers.hp as f32).floor();
+                stats.mel_pow += (stats.mel_pow * 0.01 * modifiers.mel_pow as f32).floor();
+                stats.rng_pow += (stats.rng_pow * 0.01 * modifiers.rng_pow as f32).floor();
+                stats.tec_pow += (stats.tec_pow * 0.01 * modifiers.tec_pow as f32).floor();
+                stats.dex += (stats.dex * 0.01 * modifiers.dex as f32).floor();
+                stats.mel_def += (stats.mel_def * 0.01 * modifiers.mel_def as f32).floor();
+                stats.rng_def += (stats.rng_def * 0.01 * modifiers.rng_def as f32).floor();
+                stats.tec_def += (stats.tec_def * 0.01 * modifiers.tec_def as f32).floor();
+
+                user.send_system_msg(&format!("Stats: {stats:?}",)).await?;
             }
             _ => user.send_system_msg("Unknown command").await?,
         }

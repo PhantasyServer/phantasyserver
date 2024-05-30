@@ -1,0 +1,82 @@
+{
+  "human_male": {
+    "hp": 5,
+    "mel_pow": 4,
+    "rng_pow": 3,
+    "tec_pow": 0,
+    "dex": 5,
+    "mel_def": 5,
+    "rng_def": 0,
+    "tec_def": 0
+  },
+  "human_female": {
+    "hp": 4,
+    "mel_pow": 0,
+    "rng_pow": 3,
+    "tec_pow": 4,
+    "dex": 6,
+    "mel_def": 0,
+    "rng_def": 0,
+    "tec_def": 5
+  },
+  "newman_male": {
+    "hp": -5,
+    "mel_pow": 0,
+    "rng_pow": 2,
+    "tec_pow": 8,
+    "dex": 4,
+    "mel_def": 0,
+    "rng_def": 5,
+    "tec_def": 0
+  },
+  "newman_female": {
+    "hp": -6,
+    "mel_pow": 0,
+    "rng_pow": 2,
+    "tec_pow": 10,
+    "dex": 4,
+    "mel_def": 0,
+    "rng_def": 0,
+    "tec_def": 5
+  },
+  "cast_male": {
+    "hp": 7,
+    "mel_pow": 5,
+    "rng_pow": 4,
+    "tec_pow": -4,
+    "dex": 7,
+    "mel_def": 5,
+    "rng_def": 0,
+    "tec_def": -5
+  },
+  "cast_female": {
+    "hp": 6,
+    "mel_pow": 4,
+    "rng_pow": 5,
+    "tec_pow": -4,
+    "dex": 7,
+    "mel_def": 0,
+    "rng_def": 5,
+    "tec_def": -5
+  },
+  "deuman_male": {
+    "hp": -4,
+    "mel_pow": 7,
+    "rng_pow": 4,
+    "tec_pow": 5,
+    "dex": 5,
+    "mel_def": 0,
+    "rng_def": 0,
+    "tec_def": 0
+  },
+  "deuman_female": {
+    "hp": -5,
+    "mel_pow": 6,
+    "rng_pow": 5,
+    "tec_pow": 5,
+    "dex": 6,
+    "mel_def": 0,
+    "rng_def": 0,
+    "tec_def": 0
+  }
+}

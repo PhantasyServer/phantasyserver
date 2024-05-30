@@ -7,6 +7,7 @@ pub mod map;
 #[cfg(feature = "ship")]
 pub mod master_ship;
 pub mod quest;
+pub mod stats;
 
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;

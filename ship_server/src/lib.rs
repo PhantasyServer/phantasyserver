@@ -19,9 +19,7 @@ mod sql;
 mod user;
 
 use data_structs::{
-    inventory::ItemParameters,
-    master_ship::{self, ShipInfo},
-    SerDeFile,
+    inventory::ItemParameters, master_ship::{self, ShipInfo}, stats::PlayerStats, SerDeFile
 };
 use ice::{IceFileInfo, IceWriter};
 use master_conn::MasterConnection;
@@ -106,6 +104,7 @@ struct BlockInfo {
     players: u32,
     lobby_map: String,
     quests: Arc<Quests>,
+    player_stats: Arc<PlayerStats>,
 }
 
 struct BlockData {
@@ -120,6 +119,7 @@ struct BlockData {
     latest_mapid: AtomicU32,
     latest_partyid: AtomicU32,
     quests: Arc<Quests>,
+    player_stats: Arc<PlayerStats>,
 }
 
 #[derive(Default, Clone)]
@@ -179,12 +179,14 @@ pub async fn run() -> Result<(), Error> {
         }
     };
     log::info!("Loaded keypair");
-    let (data_pc, data_vita) = create_attr_files()?;
+    let (data_pc, data_vita, attrs) = create_attr_files()?;
     let quests = Arc::new(Quests::load(&settings.quest_dir));
     let mut item_data = ItemParameters::load_from_mp_file("data/item_names.mp")?;
     item_data.pc_attrs = data_pc;
     item_data.vita_attrs = data_vita;
+    item_data.attrs = attrs;
     let item_data = Arc::new(RwLock::new(item_data));
+    let player_stats = Arc::new(PlayerStats::load_from_mp_file("data/player_stats.mp")?);
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
     log::info!("Connecting to master ship...");
     let master_conn = MasterConnection::new(
@@ -247,6 +249,7 @@ pub async fn run() -> Result<(), Error> {
             players: 0,
             lobby_map: block.lobby_map,
             quests: quests.clone(),
+            player_stats: player_stats.clone(),
         };
         blockstatus_lock.push(new_block.clone());
         let server_statuses = server_statuses.clone();
@@ -325,7 +328,7 @@ async fn send_block_balance(
     Ok(())
 }
 
-fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>), Error> {
+fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>, item_attrs::ItemAttributesPC), Error> {
     log::info!("Creating item attributes");
     log::debug!("Loading item attributes...");
     let attrs_str = std::fs::read_to_string("data/item_attrs.json")?;
@@ -336,6 +339,7 @@ fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>), Error> {
     log::debug!("Creating PC item attributes...");
     let outdata_pc = Cursor::new(vec![]);
     let attrs: item_attrs::ItemAttributesPC = attrs.into();
+    let pc_attrs = attrs.clone();
     let mut attrs_data_pc = Cursor::new(vec![]);
     attrs.write_attrs(&mut attrs_data_pc)?;
     attrs_data_pc.set_position(0);
@@ -367,5 +371,5 @@ fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>), Error> {
     let outdata_vita = ice_writer.into_inner()?.into_inner();
 
     log::info!("Created item attributes");
-    Ok((outdata_pc, outdata_vita))
+    Ok((outdata_pc, outdata_vita, pc_attrs))
 }

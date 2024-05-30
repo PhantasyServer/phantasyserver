@@ -1,4 +1,10 @@
-use data_structs::{inventory::ItemParameters, map::MapData, quest::QuestData, SerDeFile as _};
+use data_structs::{
+    inventory::ItemParameters,
+    map::MapData,
+    quest::QuestData,
+    stats::{ClassStatsStored, PlayerStats, RaceModifierStored},
+    SerDeFile as _,
+};
 use std::{
     env,
     error::Error,
@@ -46,6 +52,13 @@ fn main() {
                 data.save_to_json_file(&filename).unwrap();
             }
         }
+        "class_level" => {
+            if filename.extension().unwrap() == "json" {
+                let data =
+                    data_structs::stats::ClassStatsStored::load_from_json_file(&filename).unwrap();
+                println!("{data:?}");
+            }
+        }
         "data_dir" => {
             // parse maps
             let mut map_dir = filename.to_path_buf();
@@ -65,6 +78,11 @@ fn main() {
                 names_file.set_extension("mp");
                 data.save_to_mp_file(&names_file).unwrap();
             }
+
+            // parse player stats
+            let mut player_stats_dir = filename.to_path_buf();
+            player_stats_dir.push("class_stats");
+            parse_player_stats(&player_stats_dir).unwrap();
         }
         _ => panic!("Invalid type"),
     }
@@ -170,6 +188,46 @@ fn parse_quest(path: &Path) -> Result<(), Box<dyn Error>> {
     data_file.pop();
     data_file.set_extension("mp");
     data.save_to_mp_file(data_file)?;
+    Ok(())
+}
+
+fn parse_player_stats(path: &Path) -> Result<(), Box<dyn Error>> {
+    let mut data = PlayerStats::default();
+
+    // load level modifiers
+    let mut level_mod_path = path.to_path_buf();
+    level_mod_path.push("level_modifiers.json");
+    if level_mod_path.is_file() {
+        let mod_data = RaceModifierStored::load_from_json_file(&level_mod_path)?;
+        data.modifiers.push(mod_data.human_male);
+        data.modifiers.push(mod_data.human_female);
+        data.modifiers.push(mod_data.newman_male);
+        data.modifiers.push(mod_data.newman_female);
+        data.modifiers.push(mod_data.cast_male);
+        data.modifiers.push(mod_data.cast_female);
+        data.modifiers.push(mod_data.deuman_male);
+        data.modifiers.push(mod_data.deuman_female);
+    }
+
+    // load class stats
+    let mut max_class = 0;
+    traverse_data_dir(path, &mut |p| {
+        if path.file_name().unwrap().to_string_lossy() == "level_modifiers.json" {
+            return Ok(());
+        }
+        let stats = ClassStatsStored::load_from_json_file(p)?;
+        let class_int = stats.class as usize;
+        if class_int >= max_class {
+            max_class = class_int;
+            data.stats.resize(class_int + 1, Default::default());
+        }
+        data.stats[class_int] = stats.stats;
+        Ok(())
+    })?;
+
+    let mut out_path = path.to_owned();
+    out_path.set_file_name("player_stats.mp");
+    data.save_to_mp_file(out_path)?;
     Ok(())
 }
 

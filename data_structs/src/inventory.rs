@@ -1,4 +1,4 @@
-use pso2packetlib::protocol::items::{Item, ItemId, StorageInfo};
+use pso2packetlib::protocol::{items::{Item, ItemId, StorageInfo}, models::item_attrs::ItemAttributesPC};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -18,6 +18,8 @@ pub struct ItemParameters {
     pub pc_attrs: Vec<u8>,
     #[serde(skip)]
     pub vita_attrs: Vec<u8>,
+    #[serde(skip)]
+    pub attrs: ItemAttributesPC,
     pub names: Vec<ItemName>,
 }
 

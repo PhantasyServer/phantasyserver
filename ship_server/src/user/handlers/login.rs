@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{sql::CharData, user::UserState, Action, Error, User};
+use crate::{user::UserState, Action, Error, User};
 use data_structs::master_ship::SetNicknameResult;
 use pso2packetlib::protocol::{
     self,
@@ -338,27 +338,18 @@ pub async fn newname_request(
 }
 
 pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket) -> HResult {
-    user.char_id = user
+    let char_id = user
         .blockdata
         .sql
         .put_character(user.player_id, &packet.character)
         .await?;
-    let mut character = packet.character;
-    character.character_id = user.char_id;
-    character.player_id = user.player_id;
-    let mut char_data = CharData {
-        character,
-        ..Default::default()
-    };
-    //TODO: add class defaults
-    char_data.inventory.storages = user
-        .blockdata
-        .sql
-        .get_account_storage(user.player_id)
-        .await?;
-    user.character = Some(char_data);
-    user.send_packet(&Packet::LoadingScreenTransition).await?;
-    user.state = UserState::PreInGame;
+    user.send_packet(&Packet::CharacterCreateResponse(
+        login::CharacterCreateResponsePacket {
+            status: login::CharacterCreationStatus::Success,
+            char_id,
+        },
+    ))
+    .await?;
     Ok(Action::Nothing)
 }
 

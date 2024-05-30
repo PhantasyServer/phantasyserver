@@ -46,6 +46,7 @@ pub async fn init_block(
         latest_mapid,
         latest_partyid: AtomicU32::new(0),
         quests: this_block.quests,
+        player_stats: this_block.player_stats,
     });
 
     let mut clients = vec![];

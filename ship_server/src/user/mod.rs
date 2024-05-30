@@ -12,7 +12,7 @@ use pso2packetlib::{
     connection::{ConnectionError, ConnectionRead, ConnectionWrite},
     protocol::{
         self as Pr, login::Language, models::Position, party::BusyState,
-        spawn::CharacterSpawnPacket, Packet, PacketType,
+        spawn::CharacterSpawnPacket, ObjectHeader, Packet, PacketType,
     },
     Connection, PublicKey,
 };
@@ -149,6 +149,14 @@ impl User {
     pub const fn get_map_id(&self) -> u32 {
         self.mapid
     }
+    pub const fn create_object_header(&self) -> ObjectHeader {
+        ObjectHeader {
+            id: self.player_id,
+            unk: 0,
+            entity_type: Pr::ObjectType::Player,
+            map_id: 0,
+        }
+    }
     pub async fn send_item_attrs(&mut self) -> Result<(), Error> {
         let blockdata = self.blockdata.clone();
         let item_attrs = blockdata.item_attrs.read().await;
@@ -238,6 +246,9 @@ pub async fn packet_handler(
         (US::InGame, P::Movement(data)) => H::object::movement(user_guard, data).await,
         (US::InGame, P::MovementAction(..)) => User::send_position(user_guard, match_unit.1).await,
         (US::InGame, P::Interact(data)) => H::object::action(user_guard, data).await,
+        (US::InGame, P::ChangeClassRequest(data)) => {
+            H::object::change_class(user_guard, data).await
+        }
         (US::InGame, P::ActionUpdate(..)) => User::send_position(user_guard, match_unit.1).await,
         (US::InGame, P::MovementEnd(ref data)) => {
             user.position = data.cur_pos;

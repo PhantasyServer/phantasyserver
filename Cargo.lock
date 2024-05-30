@@ -1268,9 +1268,9 @@ dependencies = [
 
 [[package]]
 name = "pso2packetlib"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "360e5e1ca90c1815c8b8c180904066de79ca0f4578234cc725691cb555f1d1fe"
+checksum = "7999a3bc0f8ec6f2b18e19e4794ca3b649fb2eb1c0f8a2b183f2b0eb53900943"
 dependencies = [
  "aes",
  "bitflags 2.5.0",
@@ -1291,9 +1291,9 @@ dependencies = [
 
 [[package]]
 name = "pso2packetlib_impl"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "878e3b2d59a916eccc3e47befcacc1a3745bb35aef2bb1d9cf391b8d45c5ae77"
+checksum = "7d2ca31ff32e5585061cb38fdb126a56178ac06ad266867750edaf15c21f94fd"
 dependencies = [
  "proc-macro2",
  "quote",
