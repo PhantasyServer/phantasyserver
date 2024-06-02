@@ -114,6 +114,11 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
         &*user.blockdata.item_attrs.read().await,
         user.text_lang,
     );
+    let palette = character.palette.send_palette();
+    let default_pa_packet = character.palette.send_default_pa();
+    let equiped = character.inventory.send_equiped(user.player_id);
+    let change_palette = character.palette.send_change_palette(user.player_id);
+
     let char_flags = character.flags.to_char_flags();
     for packet in inventory_packets {
         user.send_packet(&packet).await?;
@@ -139,6 +144,11 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
         ..Default::default()
     }))
     .await?;
+
+    user.send_packet(&palette).await?;
+    user.send_packet(&default_pa_packet).await?;
+    user.send_packet(&equiped).await?;
+    user.send_packet(&change_palette).await?;
     // unlock controls?
     user.send_packet(&Packet::UnlockControls).await?;
     user.send_packet(&Packet::FinishLoading).await?;

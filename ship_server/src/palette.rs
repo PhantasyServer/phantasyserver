@@ -41,6 +41,11 @@ impl Palette {
             default_pa: self.default_pas.clone(),
         })
     }
+    pub fn send_default_pa(&self) -> Packet {
+        Packet::NewDefaultPAs(NewDefaultPAsPacket {
+            default: self.default_pas.clone(),
+        })
+    }
     pub fn set_palette(&mut self, packet: SetPalettePacket) -> Result<(), Error> {
         if packet.palette > 5 {
             return Err(Error::InvalidInput("set_palette"));

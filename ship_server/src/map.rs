@@ -287,11 +287,6 @@ impl Map {
                 .send_cur_weapon(np_id, &new_character.inventory),
             new_character.inventory.send_equiped(np_id),
         );
-        let palette_packet = new_character.palette.send_palette();
-        np_lock.send_packet(&palette_packet).await?;
-        np_lock.send_packet(&new_eqipment.0).await?;
-        np_lock.send_packet(&new_eqipment.1).await?;
-        // np_lock.send_packet(&new_eqipment.2)?;
         drop(np_lock);
 
         exec_users(&self.players, mapid, |_, _, mut player| {
