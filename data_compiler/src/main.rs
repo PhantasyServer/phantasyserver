@@ -2,7 +2,7 @@ use data_structs::{
     inventory::ItemParameters,
     map::MapData,
     quest::QuestData,
-    stats::{ClassStatsStored, PlayerStats, RaceModifierStored},
+    stats::{AllEnemyStats, ClassStatsStored, EnemyBaseStats, NamedEnemyStats, PlayerStats, RaceModifierStored},
     SerDeFile as _,
 };
 use std::{
@@ -83,6 +83,13 @@ fn main() {
             let mut player_stats_dir = filename.to_path_buf();
             player_stats_dir.push("class_stats");
             parse_player_stats(&player_stats_dir).unwrap();
+
+            // parse enemy stats
+            let mut base_enemy_stats_dir = filename.to_path_buf();
+            let mut enemy_stats_dir = filename.to_path_buf();
+            base_enemy_stats_dir.push("base_enemy_stats.json");
+            enemy_stats_dir.push("enemies");
+            parse_enemy_stats(&base_enemy_stats_dir, &enemy_stats_dir).unwrap();
         }
         _ => panic!("Invalid type"),
     }
@@ -227,6 +234,27 @@ fn parse_player_stats(path: &Path) -> Result<(), Box<dyn Error>> {
 
     let mut out_path = path.to_owned();
     out_path.set_file_name("player_stats.mp");
+    data.save_to_mp_file(out_path)?;
+    Ok(())
+}
+
+fn parse_enemy_stats(base_stats_path: &Path, stats_path: &Path) -> Result<(), Box<dyn Error>> {
+    let mut data = AllEnemyStats::default();
+
+    // load base stats
+    if base_stats_path.is_file() {
+        data.base = EnemyBaseStats::load_from_json_file(base_stats_path)?;
+    }
+
+    // load class stats
+    traverse_data_dir(stats_path, &mut |p| {
+        let stats = NamedEnemyStats::load_from_json_file(p)?;
+        data.enemies.insert(stats.name, stats.stats);
+        Ok(())
+    })?;
+
+    let mut out_path = base_stats_path.to_owned();
+    out_path.set_file_name("enemy_stats.mp");
     data.save_to_mp_file(out_path)?;
     Ok(())
 }

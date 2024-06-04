@@ -4,7 +4,7 @@ if call_type == "on_questwork" then
         data.skit_name = "skit_set_questwork_57"
 		local packet = {}
 		packet.SkitItemAddResponse = data
-        send(player,packet)
-        move_player(player, 150)
+        send(sender,packet)
+        move_player(sender, 150)
     end
 end

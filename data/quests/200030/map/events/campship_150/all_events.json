@@ -1,0 +1,57 @@
+[
+    {
+      "mapid": 150,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 18,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 301
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 0,
+          "pos_y": 0,
+          "pos_z": 20160
+        },
+        "unk1": 0,
+        "name": "EventCollision",
+        "unk3": 1,
+        "unk4": [
+          3,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          16,
+          0,
+          0,
+          0
+        ],
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1097859072,
+        "unk9": 1097859072,
+        "unk10": 1101004800,
+        "unk11": 0,
+        "unk12": 0,
+        "unk13": 0,
+        "unk14": 0,
+        "flags": 260,
+        "data": [
+          0,
+          1077936128,
+          3245342720
+        ]
+      },
+      "lua_data": null
+    }
+]

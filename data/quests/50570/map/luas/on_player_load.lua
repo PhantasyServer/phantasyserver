@@ -6,6 +6,6 @@ if call_type == "on_player_load" then
         cutscene_data.unk7 = 2
         local packet = {}
         packet.StartCutscene = cutscene_data
-        send(player,packet)
+        send(sender,packet)
     end
 end
