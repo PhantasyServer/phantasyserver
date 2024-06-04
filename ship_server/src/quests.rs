@@ -21,8 +21,7 @@ pub struct Quests {
 }
 
 impl Quests {
-    pub fn load(dir: &str) -> Self {
-        let quests = load_quests(dir);
+    pub fn load(quests: Vec<QuestData>) -> Self {
         let mut amount = AvailableQuestsPacket::default();
         for quest in &quests {
             match quest.definition.quest_type {
@@ -369,50 +368,3 @@ impl PartyQuest {
     }
 }
 
-fn load_quests(dir: &str) -> Vec<QuestData> {
-    let mut quests = vec![];
-    log::info!("Loading quests...");
-    load_quests_recursive(dir, &mut quests);
-    log::info!("Loaded quests");
-    quests
-}
-
-fn load_quests_recursive<P: AsRef<std::path::Path>>(path: P, quests: &mut Vec<QuestData>) {
-    let dir = std::fs::read_dir(&path);
-    if dir.is_err() {
-        log::warn!(
-            "Failed to read path {}: {}",
-            path.as_ref().display(),
-            dir.unwrap_err()
-        );
-        return;
-    }
-    let dir = dir.unwrap();
-    for entry in dir {
-        if entry.is_err() {
-            log::warn!("Failed to read entry: {}", entry.unwrap_err());
-            continue;
-        }
-        let entry = entry.unwrap().path();
-        if entry.is_dir() {
-            load_quests_recursive(entry, quests);
-        } else if entry.is_file() {
-            log::debug!("Reading quest: {} ...", entry.display());
-            let file = match std::fs::read(&entry) {
-                Ok(f) => f,
-                Err(e) => {
-                    log::warn!("Failed to read file {}: {e}", entry.display());
-                    continue;
-                }
-            };
-            let quest = match rmp_serde::from_slice(&file) {
-                Ok(q) => q,
-                Err(e) => {
-                    log::warn!("Failed to deserialize quest {}: {e}", entry.display());
-                    continue;
-                }
-            };
-            quests.push(quest);
-        }
-    }
-}

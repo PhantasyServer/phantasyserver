@@ -2,13 +2,12 @@ use crate::{
     mutex::{Mutex, MutexGuard},
     Error, User,
 };
-use data_structs::{map::MapData, SerDeFile as _};
+use data_structs::map::MapData;
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
     self,
     flag::SkitItemAddRequestPacket,
     models::Position,
-    objects::RemoveObjectPacket,
     playerstatus::SetPlayerIDPacket,
     server::MapTransferPacket,
     spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
@@ -30,16 +29,9 @@ pub struct Map {
     map_objs: Vec<(MapId, ObjectHeader)>,
     data: MapData,
     players: Vec<(PlayerId, MapId, Weak<Mutex<User>>)>,
-    load_path: std::path::PathBuf,
     to_move: Vec<(PlayerId, MapId)>,
 }
 impl Map {
-    pub fn new<T: AsRef<std::path::Path>>(path: T, map_obj_id: &AtomicU32) -> Result<Self, Error> {
-        let data = MapData::load_from_mp_file(path.as_ref())?;
-        let mut map = Self::new_from_data(data, map_obj_id)?;
-        path.as_ref().clone_into(&mut map.load_path);
-        Ok(map)
-    }
     pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
         // will be increased as needed
         let lua_libs = StdLib::NONE;
@@ -48,7 +40,6 @@ impl Map {
             map_objs: vec![],
             data,
             players: vec![],
-            load_path: Default::default(),
             to_move: vec![],
         };
         let map_obj = ObjectHeader {
@@ -120,34 +111,6 @@ impl Map {
                 .into(),
             );
         }
-        Ok(())
-    }
-    pub async fn reload_objs(&mut self) -> Result<(), Error> {
-        if !self.load_path.exists() {
-            return Ok(());
-        }
-        let map = MapData::load_from_mp_file(&self.load_path)?;
-        exec_users(&self.players, 0, |_, _, mut player| {
-            for obj in self.data.objects.iter() {
-                let packet = Packet::RemoveObject(RemoveObjectPacket {
-                    receiver: ObjectHeader {
-                        id: player.get_user_id(),
-                        entity_type: ObjectType::Player,
-                        ..Default::default()
-                    },
-                    removed_object: obj.data.object,
-                });
-                let _ = player.try_send_packet(&packet);
-            }
-        })
-        .await;
-        self.data.objects = map.objects;
-        self.data.luas = map.luas;
-        self.init_lua()?;
-        exec_users(&self.players, 0, |_, mapid, mut player| {
-            let _ = Self::load_objects(&self.lua, &self.data, mapid, &mut player);
-        })
-        .await;
         Ok(())
     }
     pub fn name_to_id(&self, name: &str) -> Option<u32> {

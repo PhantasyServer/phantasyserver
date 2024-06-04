@@ -26,13 +26,6 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 };
                 user.send_system_msg(&mem_data_msg).await?;
             }
-            "!reload_map" => {
-                let Some(map) = user.get_current_map() else {
-                    unreachable!("User should be in state >= `InGame`")
-                };
-                drop(user);
-                map.lock().await.reload_objs().await?;
-            }
             "!start_con" => {
                 let name = args.next();
                 if name.is_none() {
@@ -201,7 +194,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     user.send_system_msg("No character loaded").await?;
                     return Ok(Action::Nothing);
                 };
-                let player_stats = &user.blockdata.player_stats;
+                let player_stats = &user.blockdata.server_data.player_stats;
                 let mut stats = player_stats.stats[char.classes.main_class as usize]
                     [char.get_level().level1 as usize - 1]
                     .clone();

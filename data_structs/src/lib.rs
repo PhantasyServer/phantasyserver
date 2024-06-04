@@ -9,6 +9,7 @@ pub mod master_ship;
 pub mod quest;
 pub mod stats;
 
+use std::collections::HashMap;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
@@ -73,3 +74,13 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     }
 }
 impl<T: Serialize + DeserializeOwned> SerDeFile for T {}
+
+#[derive(Serialize, serde::Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct ServerData {
+    pub maps: HashMap<String, map::MapData>,
+    pub quests: Vec<quest::QuestData>,
+    pub item_params: inventory::ItemParameters,
+    pub player_stats: stats::PlayerStats,
+    pub enemy_stats: stats::AllEnemyStats,
+}

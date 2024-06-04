@@ -2,8 +2,11 @@ use data_structs::{
     inventory::ItemParameters,
     map::MapData,
     quest::QuestData,
-    stats::{AllEnemyStats, ClassStatsStored, EnemyBaseStats, NamedEnemyStats, PlayerStats, RaceModifierStored},
-    SerDeFile as _,
+    stats::{
+        AllEnemyStats, ClassStatsStored, EnemyBaseStats, NamedEnemyStats, PlayerStats,
+        RaceModifierStored,
+    },
+    SerDeFile as _, ServerData,
 };
 use std::{
     env,
@@ -60,42 +63,48 @@ fn main() {
             }
         }
         "data_dir" => {
+            let mut server_data = ServerData::default();
+
             // parse maps
             let mut map_dir = filename.to_path_buf();
             map_dir.push("maps");
-            find_data_dir(&map_dir, parse_map).unwrap();
+            find_data_dir(&map_dir, parse_map, &mut server_data).unwrap();
 
             // parse quests
             let mut quest_dir = filename.to_path_buf();
             quest_dir.push("quests");
-            find_data_dir(&quest_dir, parse_quest).unwrap();
+            find_data_dir(&quest_dir, parse_quest, &mut server_data).unwrap();
 
             // parse item names
             let mut names_file = filename.to_path_buf();
             names_file.push("item_names.json");
             if names_file.is_file() {
                 let data = ItemParameters::load_from_json_file(&names_file).unwrap();
-                names_file.set_extension("mp");
-                data.save_to_mp_file(&names_file).unwrap();
+                server_data.item_params = data;
             }
 
             // parse player stats
             let mut player_stats_dir = filename.to_path_buf();
             player_stats_dir.push("class_stats");
-            parse_player_stats(&player_stats_dir).unwrap();
+            server_data.player_stats = parse_player_stats(&player_stats_dir).unwrap();
 
             // parse enemy stats
             let mut base_enemy_stats_dir = filename.to_path_buf();
             let mut enemy_stats_dir = filename.to_path_buf();
             base_enemy_stats_dir.push("base_enemy_stats.json");
             enemy_stats_dir.push("enemies");
-            parse_enemy_stats(&base_enemy_stats_dir, &enemy_stats_dir).unwrap();
+            server_data.enemy_stats =
+                parse_enemy_stats(&base_enemy_stats_dir, &enemy_stats_dir).unwrap();
+
+            let mut out_filename = filename.to_path_buf();
+            out_filename.push("com_data.mp");
+            server_data.save_to_mp_file(out_filename).unwrap();
         }
         _ => panic!("Invalid type"),
     }
 }
 
-fn parse_map(path: &Path) -> Result<(), Box<dyn Error>> {
+fn parse_map(path: &Path, srv_data: &mut ServerData) -> Result<(), Box<dyn Error>> {
     let mut data_file = path.to_path_buf();
     data_file.push("data.json");
     let mut data = MapData::load_from_json_file(&data_file)?;
@@ -103,8 +112,8 @@ fn parse_map(path: &Path) -> Result<(), Box<dyn Error>> {
     collect_map_data(path, &mut data)?;
 
     data_file.pop();
-    data_file.set_extension("mp");
-    data.save_to_mp_file(data_file)?;
+    let map_name = data_file.file_stem().unwrap().to_string_lossy().to_string();
+    srv_data.maps.insert(map_name, data);
     Ok(())
 }
 
@@ -167,7 +176,7 @@ fn collect_map_data(map_path: &Path, map: &mut MapData) -> Result<(), Box<dyn Er
     Ok(())
 }
 
-fn parse_quest(path: &Path) -> Result<(), Box<dyn Error>> {
+fn parse_quest(path: &Path, srv_data: &mut ServerData) -> Result<(), Box<dyn Error>> {
     let mut data_file = path.to_path_buf();
     data_file.push("data.json");
     let mut data = QuestData::load_from_json_file(&data_file)?;
@@ -192,13 +201,11 @@ fn parse_quest(path: &Path) -> Result<(), Box<dyn Error>> {
         })?;
     }
 
-    data_file.pop();
-    data_file.set_extension("mp");
-    data.save_to_mp_file(data_file)?;
+    srv_data.quests.push(data);
     Ok(())
 }
 
-fn parse_player_stats(path: &Path) -> Result<(), Box<dyn Error>> {
+fn parse_player_stats(path: &Path) -> Result<PlayerStats, Box<dyn Error>> {
     let mut data = PlayerStats::default();
 
     // load level modifiers
@@ -232,13 +239,13 @@ fn parse_player_stats(path: &Path) -> Result<(), Box<dyn Error>> {
         Ok(())
     })?;
 
-    let mut out_path = path.to_owned();
-    out_path.set_file_name("player_stats.mp");
-    data.save_to_mp_file(out_path)?;
-    Ok(())
+    Ok(data)
 }
 
-fn parse_enemy_stats(base_stats_path: &Path, stats_path: &Path) -> Result<(), Box<dyn Error>> {
+fn parse_enemy_stats(
+    base_stats_path: &Path,
+    stats_path: &Path,
+) -> Result<AllEnemyStats, Box<dyn Error>> {
     let mut data = AllEnemyStats::default();
 
     // load base stats
@@ -253,27 +260,28 @@ fn parse_enemy_stats(base_stats_path: &Path, stats_path: &Path) -> Result<(), Bo
         Ok(())
     })?;
 
-    let mut out_path = base_stats_path.to_owned();
-    out_path.set_file_name("enemy_stats.mp");
-    data.save_to_mp_file(out_path)?;
-    Ok(())
+    Ok(data)
 }
 
-fn find_data_dir<P, F>(path: P, callback: F) -> Result<(), Box<dyn Error>>
+fn find_data_dir<P, F>(
+    path: P,
+    callback: F,
+    srv_data: &mut ServerData,
+) -> Result<(), Box<dyn Error>>
 where
     P: AsRef<Path>,
-    F: Fn(&Path) -> Result<(), Box<dyn Error>> + Copy,
+    F: Fn(&Path, &mut ServerData) -> Result<(), Box<dyn Error>> + Copy,
 {
     // find data.json
     if fs::read_dir(&path)?.any(|p| p.unwrap().file_name().to_str().unwrap() == "data.json") {
-        return callback(path.as_ref());
+        return callback(path.as_ref(), srv_data);
     }
 
     let dir = fs::read_dir(path)?;
     for entry in dir {
         let entry = entry?.path();
         if entry.is_dir() {
-            find_data_dir(entry, callback)?;
+            find_data_dir(entry, callback, srv_data)?;
         }
     }
     Ok(())

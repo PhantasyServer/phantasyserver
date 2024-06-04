@@ -10,7 +10,7 @@ pub struct Settings {
     pub balance_port: u16,
     pub master_ship: String,
     pub master_ship_psk: String,
-    pub quest_dir: String,
+    pub data_file: String,
     pub log_dir: String,
     pub file_log_level: log::LevelFilter,
     pub console_log_level: log::LevelFilter,
@@ -43,7 +43,7 @@ impl Default for Settings {
             blocks: vec![BlockSettings::default()],
             master_ship: String::from("localhost:15000"),
             master_ship_psk: String::from("master_ship_psk"),
-            quest_dir: String::from("data/quests"),
+            data_file: String::from("data/com_data.mp"),
             log_dir: String::from("logs"),
             file_log_level: log::LevelFilter::Info,
             console_log_level: log::LevelFilter::Debug,
@@ -56,7 +56,7 @@ impl Default for BlockSettings {
             port: None,
             name: "Block 1".to_string(),
             max_players: 32,
-            lobby_map: "data/lobby.mp".to_string(),
+            lobby_map: "lobby".to_string(),
         }
     }
 }

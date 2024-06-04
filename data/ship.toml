@@ -13,8 +13,8 @@ master_ship = "localhost:15000"
 # PSK to authenticate with master ship
 master_ship_psk = "master_ship_psk"
 
-# Location of the quest directory
-quest_dir = "quests"
+# Location of the compiled server data file
+data_file = "data/com_data.mp"
 
 # Location of the logs directory
 log_dir = "logs"
@@ -36,12 +36,12 @@ name = "Block 1"
 # Max number of players
 max_players = 32
 
-# Location of the lobby map (in messagepack format)
-lobby_map = "lobby.mp"
+# Name of the lobby map
+lobby_map = "lobby"
 
 [[blocks]]
 
 #port = 13002
 name = "Block 2"
 max_players = 32
-lobby_map = "lobby.mp"
+lobby_map = "lobby"

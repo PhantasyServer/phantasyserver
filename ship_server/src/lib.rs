@@ -19,7 +19,9 @@ mod sql;
 mod user;
 
 use data_structs::{
-    inventory::ItemParameters, master_ship::{self, ShipInfo}, stats::PlayerStats, SerDeFile
+    inventory::ItemParameters,
+    master_ship::{self, ShipInfo},
+    SerDeFile, ServerData,
 };
 use ice::{IceFileInfo, IceWriter};
 use master_conn::MasterConnection;
@@ -64,6 +66,8 @@ pub enum Error {
     MSInvalidPSK,
     #[error("User sent unexpected packet while being in state: {0}")]
     UserInvalidState(UserState),
+    #[error("Map with name {0} doesn't exist")]
+    NoMapFound(String),
 
     // passthrough errors
     #[error("SQL error: {0}")]
@@ -103,8 +107,8 @@ struct BlockInfo {
     max_players: u32,
     players: u32,
     lobby_map: String,
+    server_data: Arc<ServerData>,
     quests: Arc<Quests>,
-    player_stats: Arc<PlayerStats>,
 }
 
 struct BlockData {
@@ -118,8 +122,8 @@ struct BlockData {
     key: PrivateKey,
     latest_mapid: AtomicU32,
     latest_partyid: AtomicU32,
+    server_data: Arc<ServerData>,
     quests: Arc<Quests>,
-    player_stats: Arc<PlayerStats>,
 }
 
 #[derive(Default, Clone)]
@@ -180,13 +184,14 @@ pub async fn run() -> Result<(), Error> {
     };
     log::info!("Loaded keypair");
     let (data_pc, data_vita, attrs) = create_attr_files()?;
-    let quests = Arc::new(Quests::load(&settings.quest_dir));
-    let mut item_data = ItemParameters::load_from_mp_file("data/item_names.mp")?;
+    let mut server_data = ServerData::load_from_mp_file(settings.data_file)?;
+    let quests = Arc::new(Quests::load(std::mem::take(&mut server_data.quests)));
+    let server_data = Arc::new(server_data);
+    let mut item_data = server_data.item_params.clone();
     item_data.pc_attrs = data_pc;
     item_data.vita_attrs = data_vita;
     item_data.attrs = attrs;
     let item_data = Arc::new(RwLock::new(item_data));
-    let player_stats = Arc::new(PlayerStats::load_from_mp_file("data/player_stats.mp")?);
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
     log::info!("Connecting to master ship...");
     let master_conn = MasterConnection::new(
@@ -248,8 +253,8 @@ pub async fn run() -> Result<(), Error> {
             max_players: block.max_players,
             players: 0,
             lobby_map: block.lobby_map,
+            server_data: server_data.clone(),
             quests: quests.clone(),
-            player_stats: player_stats.clone(),
         };
         blockstatus_lock.push(new_block.clone());
         let server_statuses = server_statuses.clone();

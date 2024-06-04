@@ -36,8 +36,6 @@ jobs:
         mkdir output
         mv target/release/{pso2ship_server,master_ship,data_compiler} output
         mkdir -p data_compiled/quests
-        find data/maps -name "*.mp" | xargs -I {} cp {} data_compiled
-        find data/quests -name "*.mp" | xargs -I {} cp {} data_compiled/quests
         mv data/*.* data_compiled
     - name: Upload bin artifact
       if: ${{ success() }}

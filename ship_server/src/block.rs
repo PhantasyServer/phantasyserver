@@ -30,8 +30,12 @@ pub async fn init_block(
 
     let latest_mapid = AtomicU32::new(0);
 
-    let lobby = Arc::new(Mutex::new(map::Map::new(
-        this_block.lobby_map,
+    let Some(lobby) = this_block.server_data.maps.get(&this_block.lobby_map) else {
+        return Err(Error::NoMapFound(this_block.lobby_map.clone()));
+    };
+
+    let lobby = Arc::new(Mutex::new(map::Map::new_from_data(
+        lobby.clone(),
         &latest_mapid,
     )?));
 
@@ -45,8 +49,8 @@ pub async fn init_block(
         key,
         latest_mapid,
         latest_partyid: AtomicU32::new(0),
+        server_data: this_block.server_data,
         quests: this_block.quests,
-        player_stats: this_block.player_stats,
     });
 
     let mut clients = vec![];
