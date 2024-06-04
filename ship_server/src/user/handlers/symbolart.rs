@@ -12,6 +12,9 @@ use pso2packetlib::protocol::{
 };
 
 pub async fn list_sa(user: &mut User) -> HResult {
+    let Some(char_id) = user.character.as_ref().map(|c| c.character.character_id) else {
+        unreachable!("User should be in state >= `PreInGame`")
+    };
     let uuids = user
         .blockdata
         .sql
@@ -23,7 +26,7 @@ pub async fn list_sa(user: &mut User) -> HResult {
             entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
-        character_id: user.char_id,
+        character_id: char_id,
         uuids,
     }))
     .await?;

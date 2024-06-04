@@ -219,6 +219,26 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
 
                 user.send_system_msg(&format!("Stats: {stats:?}",)).await?;
             }
+            "!force_quest" => {
+                let Some(quest_id) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No quest id provided").await?;
+                    return Ok(Action::Nothing);
+                };
+                let Some(diff) = args.next().and_then(|a| a.parse().ok()) else {
+                    user.send_system_msg("No difficulty provided").await?;
+                    return Ok(Action::Nothing);
+                };
+                let packet = pso2packetlib::protocol::questlist::AcceptQuestPacket {
+                    quest_obj: pso2packetlib::protocol::ObjectHeader {
+                        id: quest_id,
+                        entity_type: ObjectType::Quest,
+                        ..Default::default()
+                    },
+                    diff,
+                    ..Default::default()
+                };
+                super::quest::set_quest(user, packet).await?;
+            }
             _ => user.send_system_msg("Unknown command").await?,
         }
         return Ok(Action::Nothing);

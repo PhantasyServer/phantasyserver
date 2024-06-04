@@ -354,11 +354,10 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
 }
 
 pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HResult {
-    user.char_id = packet.char_id;
     let char = user
         .blockdata
         .sql
-        .get_character(user.player_id, user.char_id)
+        .get_character(user.player_id, packet.char_id)
         .await?;
     user.character = Some(char);
     user.send_packet(&Packet::LoadingScreenTransition).await?;
