@@ -29,7 +29,7 @@ jobs:
       run: cargo build --release
     - name: Compile data
       if: ${{ success() }}
-      run: cargo run --bin=data_compiler data data_dir
+      run: cargo run --bin=data_compiler data 
     - name: Move build artifacts
       if: ${{ success() }}
       run: |
