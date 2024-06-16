@@ -6,4 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+byteorder = "1.5.0"
+crc32fast = "1.4.2"
 data_structs = { path = "../data_structs", features = ["rmp", "json"] }
+pso2packetlib = { workspace = true, features = ["serde", "item_attrs"] }

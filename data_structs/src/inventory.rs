@@ -14,11 +14,8 @@ pub struct ItemName {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ItemParameters {
-    #[serde(skip)]
     pub pc_attrs: Vec<u8>,
-    #[serde(skip)]
     pub vita_attrs: Vec<u8>,
-    #[serde(skip)]
     pub attrs: ItemAttributesPC,
     pub names: Vec<ItemName>,
 }

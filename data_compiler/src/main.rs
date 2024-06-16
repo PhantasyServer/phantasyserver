@@ -1,5 +1,6 @@
+mod ice;
 use data_structs::{
-    inventory::ItemParameters,
+    inventory::ItemName,
     map::MapData,
     quest::QuestData,
     stats::{
@@ -8,12 +9,16 @@ use data_structs::{
     },
     SerDeFile as _, ServerData,
 };
+use pso2packetlib::protocol::models::item_attrs;
 use std::{
     env,
     error::Error,
     fs,
+    io::Cursor,
     path::{Path, PathBuf},
 };
+
+use crate::ice::{IceFileInfo, IceWriter};
 
 fn main() {
     let mut args = env::args();
@@ -40,8 +45,16 @@ fn main() {
     let mut names_file = filename.to_path_buf();
     names_file.push("item_names.json");
     if names_file.is_file() {
-        let data = ItemParameters::load_from_json_file(&names_file).unwrap();
-        server_data.item_params = data;
+        let data = Vec::<ItemName>::load_from_json_file(&names_file).unwrap();
+        server_data.item_params.names = data;
+    }
+
+    // parse item attributes
+    println!("Parsing item attributes...");
+    let mut attrs_file = filename.to_path_buf();
+    attrs_file.push("item_attrs.json");
+    if attrs_file.is_file() {
+        create_attr_files(&attrs_file, &mut server_data).unwrap();
     }
 
     // parse player stats
@@ -288,5 +301,47 @@ where
             callback(&entry)?;
         }
     }
+    Ok(())
+}
+
+fn create_attr_files(
+    path: &Path,
+    srv_data: &mut ServerData,
+) -> Result<(), Box<dyn Error>> {
+    let attrs = item_attrs::ItemAttributes::load_from_json_file(path)?;
+
+    // PC attributes
+    let outdata_pc = Cursor::new(vec![]);
+    let attrs: item_attrs::ItemAttributesPC = attrs.into();
+    srv_data.item_params.attrs = attrs.clone();
+    let mut attrs_data_pc = Cursor::new(vec![]);
+    attrs.write_attrs(&mut attrs_data_pc)?;
+    attrs_data_pc.set_position(0);
+    let mut ice_writer = IceWriter::new(outdata_pc)?;
+    ice_writer.load_group(ice::Group::Group2);
+    ice_writer.new_file(IceFileInfo {
+        filename: "item_parameter.bin".into(),
+        file_extension: "bin".into(),
+        ..Default::default()
+    })?;
+    std::io::copy(&mut attrs_data_pc, &mut ice_writer)?;
+    srv_data.item_params.pc_attrs = ice_writer.into_inner()?.into_inner();
+
+    // Vita attributes
+    let outdata_vita = Cursor::new(vec![]);
+    let attrs: item_attrs::ItemAttributesVita = attrs.into();
+    let mut attrs_data_vita = Cursor::new(vec![]);
+    attrs.write_attrs(&mut attrs_data_vita)?;
+    attrs_data_vita.set_position(0);
+    let mut ice_writer = IceWriter::new(outdata_vita)?;
+    ice_writer.load_group(ice::Group::Group2);
+    ice_writer.new_file(IceFileInfo {
+        filename: "item_parameter.bin".into(),
+        file_extension: "bin".into(),
+        ..Default::default()
+    })?;
+    std::io::copy(&mut attrs_data_vita, &mut ice_writer)?;
+    srv_data.item_params.vita_attrs = ice_writer.into_inner()?.into_inner();
+
     Ok(())
 }

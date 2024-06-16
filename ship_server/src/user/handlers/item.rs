@@ -59,10 +59,8 @@ pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -
 }
 
 pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) -> HResult {
-    let names_ref = user.blockdata.item_attrs.clone();
+    let names_ref = &user.blockdata.server_data.item_params;
     match names_ref
-        .read()
-        .await
         .names
         .iter()
         .find(|x| x.id == packet.item)

@@ -7,13 +7,6 @@ pub enum Group {
     Group2,
 }
 
-#[derive(Debug)]
-pub struct IceFile {
-    pub filename: String,
-    pub file_ext: Option<String>,
-    pub data: Vec<u8>,
-}
-
 #[derive(Debug, Default)]
 #[repr(C)]
 pub struct IceFlags {
@@ -95,15 +88,9 @@ fn write_header(writer: &mut impl Write) -> Result<(), std::io::Error> {
 }
 
 #[derive(Debug, Default)]
-pub struct IceGroupInfo {
-    pub fullsize: u32,
-    pub filecount: u32,
-}
-#[derive(Debug, Default)]
 pub struct IceFileInfo {
     pub filename: String,
     pub file_extension: String,
-    pub file_size: u32,
     pub data: Vec<u8>,
 }
 

@@ -340,7 +340,10 @@ dependencies = [
 name = "data_compiler"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
+ "crc32fast",
  "data_structs",
+ "pso2packetlib",
 ]
 
 [[package]]
@@ -1428,8 +1431,6 @@ dependencies = [
 name = "pso2ship_server"
 version = "0.1.0"
 dependencies = [
- "byteorder",
- "crc32fast",
  "data_structs",
  "half",
  "indicatif",

@@ -5,7 +5,6 @@ use crate::{
     user::{User, UserState},
     Action, BlockData, BlockInfo, Error,
 };
-use data_structs::inventory::ItemParameters;
 use pso2packetlib::{connection::ConnectionError, PrivateKey};
 use std::{
     io,
@@ -23,7 +22,6 @@ pub async fn init_block(
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
     this_block: BlockInfo,
     sql: Arc<sql::Sql>,
-    item_attrs: Arc<RwLock<ItemParameters>>,
     key: PrivateKey,
 ) -> Result<(), Error> {
     let listener = TcpListener::bind(("0.0.0.0", this_block.port)).await?;
@@ -42,7 +40,6 @@ pub async fn init_block(
     let block_data = Arc::new(BlockData {
         sql,
         blocks,
-        item_attrs,
         block_id: this_block.id,
         block_name: this_block.name,
         lobby,

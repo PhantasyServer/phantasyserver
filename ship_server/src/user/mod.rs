@@ -157,7 +157,7 @@ impl User {
     }
     pub async fn send_item_attrs(&mut self) -> Result<(), Error> {
         let blockdata = self.blockdata.clone();
-        let item_attrs = blockdata.item_attrs.read().await;
+        let item_attrs = &blockdata.server_data.item_params;
         let data = match self.packet_type {
             PacketType::Vita => &item_attrs.vita_attrs,
             _ => &item_attrs.pc_attrs,

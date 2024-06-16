@@ -5,7 +5,6 @@
 #![allow(dead_code)]
 
 mod block;
-mod ice;
 mod inventory;
 mod invites;
 mod map;
@@ -19,15 +18,13 @@ mod sql;
 mod user;
 
 use data_structs::{
-    inventory::ItemParameters,
     master_ship::{self, ShipInfo},
     SerDeFile, ServerData,
 };
-use ice::{IceFileInfo, IceWriter};
 use master_conn::MasterConnection;
 use mutex::{Mutex, RwLock};
 use pso2packetlib::{
-    protocol::{login, models::item_attrs, Packet, PacketType},
+    protocol::{login, Packet, PacketType},
     Connection, PrivateKey, PublicKey,
 };
 use quests::Quests;
@@ -35,7 +32,7 @@ use rand::Rng;
 use rsa::traits::PublicKeyParts;
 use settings::Settings;
 use std::{
-    io::{self, Cursor},
+    io,
     net::Ipv4Addr,
     sync::{atomic::AtomicU32, Arc},
 };
@@ -112,8 +109,6 @@ struct BlockData {
     block_id: u32,
     block_name: String,
     blocks: Arc<RwLock<Vec<BlockInfo>>>,
-    //TODO: remove rwlock after testing is done (waaay in the future)
-    item_attrs: Arc<RwLock<ItemParameters>>,
     lobby: Arc<Mutex<map::Map>>,
     key: PrivateKey,
     latest_mapid: AtomicU32,
@@ -163,15 +158,11 @@ pub async fn run() -> Result<(), Error> {
 
     log::info!("Starting server...");
     let key = settings.load_key()?;
-    let (data_pc, data_vita, attrs) = create_attr_files()?;
+    log::info!("Loading server data...");
     let mut server_data = ServerData::load_from_mp_file(settings.data_file)?;
+    log::info!("Loaded server data");
     let quests = Arc::new(Quests::load(std::mem::take(&mut server_data.quests)));
     let server_data = Arc::new(server_data);
-    let mut item_data = server_data.item_params.clone();
-    item_data.pc_attrs = data_pc;
-    item_data.vita_attrs = data_vita;
-    item_data.attrs = attrs;
-    let item_data = Arc::new(RwLock::new(item_data));
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
     log::info!("Connecting to master ship...");
     let master_conn = MasterConnection::new(
@@ -239,11 +230,10 @@ pub async fn run() -> Result<(), Error> {
         blockstatus_lock.push(new_block.clone());
         let server_statuses = server_statuses.clone();
         let sql = sql.clone();
-        let item_data = item_data.clone();
         let key = PrivateKey::Key(key.clone());
         log::debug!("Started block {}", block.name);
         blocks.push(tokio::spawn(async move {
-            match block::init_block(server_statuses, new_block, sql, item_data, key).await {
+            match block::init_block(server_statuses, new_block, sql, key).await {
                 Ok(_) => {}
                 Err(e) => log::error!("Block \"{}\" failed: {e}", block.name),
             }
@@ -311,51 +301,4 @@ async fn send_block_balance(
     con.write_packet_async(&Packet::BlockBalance(packet))
         .await?;
     Ok(())
-}
-
-// TODO: move to data complier
-fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>, item_attrs::ItemAttributesPC), Error> {
-    log::info!("Creating item attributes");
-    log::debug!("Loading item attributes...");
-    let attrs_str = std::fs::read_to_string("data/item_attrs.json")?;
-    log::debug!("Parsing item attributes...");
-    let attrs: item_attrs::ItemAttributes = serde_json::from_str(&attrs_str)?;
-
-    // PC attributes
-    log::debug!("Creating PC item attributes...");
-    let outdata_pc = Cursor::new(vec![]);
-    let attrs: item_attrs::ItemAttributesPC = attrs.into();
-    let pc_attrs = attrs.clone();
-    let mut attrs_data_pc = Cursor::new(vec![]);
-    attrs.write_attrs(&mut attrs_data_pc)?;
-    attrs_data_pc.set_position(0);
-    let mut ice_writer = IceWriter::new(outdata_pc)?;
-    ice_writer.load_group(ice::Group::Group2);
-    ice_writer.new_file(IceFileInfo {
-        filename: "item_parameter.bin".into(),
-        file_extension: "bin".into(),
-        ..Default::default()
-    })?;
-    std::io::copy(&mut attrs_data_pc, &mut ice_writer)?;
-    let outdata_pc = ice_writer.into_inner()?.into_inner();
-
-    // Vita attributes
-    log::debug!("Creating Vita item attributes...");
-    let outdata_vita = Cursor::new(vec![]);
-    let attrs: item_attrs::ItemAttributesVita = attrs.into();
-    let mut attrs_data_vita = Cursor::new(vec![]);
-    attrs.write_attrs(&mut attrs_data_vita)?;
-    attrs_data_vita.set_position(0);
-    let mut ice_writer = IceWriter::new(outdata_vita)?;
-    ice_writer.load_group(ice::Group::Group2);
-    ice_writer.new_file(IceFileInfo {
-        filename: "item_parameter.bin".into(),
-        file_extension: "bin".into(),
-        ..Default::default()
-    })?;
-    std::io::copy(&mut attrs_data_vita, &mut ice_writer)?;
-    let outdata_vita = ice_writer.into_inner()?.into_inner();
-
-    log::info!("Created item attributes");
-    Ok((outdata_pc, outdata_vita, pc_attrs))
 }

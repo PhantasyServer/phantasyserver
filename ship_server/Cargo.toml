@@ -7,7 +7,6 @@ default-run = "pso2ship_server"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byteorder = "1.5.0"
 rand = "0.8.5"
 rsa = "0.9.6"
 pso2packetlib = { workspace = true, default-features = false, features = ["serde", "split_connection", "vita_enc", "base_enc", "ppac", "item_attrs", "tokio"] }
@@ -20,7 +19,6 @@ serde = "1.0.203"
 memory-stats = "1.1.0"
 mlua = { version = "0.9.8", features = ["serialize", "vendored", "send", "async"] }
 parking_lot = {version = "0.12.3", features = ["send_guard"]}
-crc32fast = "1.4.2"
 indicatif = "0.17.8"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 tokio = { version = "1.38.0", features = ["full"] }

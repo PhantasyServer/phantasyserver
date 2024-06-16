@@ -111,7 +111,7 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     let inventory_packets = character.inventory.send(
         user.player_id,
         character.character.name.clone(),
-        &*user.blockdata.item_attrs.read().await,
+        &user.blockdata.server_data.item_params,
         user.text_lang,
     );
     let palette = character.palette.send_palette();

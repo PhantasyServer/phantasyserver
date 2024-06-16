@@ -51,7 +51,7 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     #[cfg(feature = "rmp")]
     fn load_from_mp_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let data = std::fs::File::open(path)?;
-        let names = rmp_serde::from_read(&data)?;
+        let names = Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
         Ok(names)
     }
     #[cfg(feature = "json")]
@@ -62,8 +62,9 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     }
     #[cfg(feature = "rmp")]
     fn save_to_mp_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
-        let mut file = std::fs::File::create(path)?;
-        std::io::Write::write_all(&mut file, &rmp_serde::to_vec(self)?)?;
+        let file = std::fs::File::create(path)?;
+        self.serialize(&mut rmp_serde::Serializer::new(file).with_human_readable())?;
+        // std::io::Write::write_all(&mut file, &rmp_serde::to_vec(self)?)?;
         Ok(())
     }
     #[cfg(feature = "json")]

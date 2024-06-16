@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{create_attr_files, mutex::MutexGuard, user::User, Action};
+use crate::{mutex::MutexGuard, user::User, Action};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
 use pso2packetlib::protocol::{
@@ -105,20 +105,6 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     ))
                     .await?;
                 }
-            }
-            "!reload_items" => {
-                let (pc, vita, item_attrs) = {
-                    tokio::task::spawn_blocking(create_attr_files)
-                        .await
-                        .unwrap()?
-                };
-                let mut attrs = user.blockdata.item_attrs.write().await;
-                attrs.pc_attrs = pc;
-                attrs.vita_attrs = vita;
-                attrs.attrs = item_attrs;
-                drop(attrs);
-                user.send_item_attrs().await?;
-                user.send_system_msg("Done!").await?;
             }
             "!set_acc_flag" => set_flag_parse(&mut user, FlagType::Account, &mut args).await?,
             "!set_char_flag" => set_flag_parse(&mut user, FlagType::Character, &mut args).await?,
