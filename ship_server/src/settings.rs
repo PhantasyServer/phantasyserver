@@ -1,4 +1,8 @@
 use crate::Error;
+use rsa::{
+    pkcs8::{DecodePrivateKey, EncodePrivateKey},
+    RsaPrivateKey,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -6,7 +10,10 @@ use serde::{Deserialize, Serialize};
 pub struct Settings {
     pub server_name: String,
     pub db_name: String,
+    pub min_ship_id: u32,
+    pub max_ship_id: u32,
     pub blocks: Vec<BlockSettings>,
+    pub key_file: Option<String>,
     pub balance_port: u16,
     pub master_ship: String,
     pub master_ship_psk: String,
@@ -32,6 +39,32 @@ impl Settings {
             Err(_) => Self::create_default(path).await,
         }
     }
+    pub fn load_key(&self) -> Result<RsaPrivateKey, Error> {
+        log::info!("Loading keypair");
+        let key = match &self.key_file {
+            Some(keyfile_path) => match std::fs::metadata(keyfile_path) {
+                Ok(..) => RsaPrivateKey::read_pkcs8_pem_file(keyfile_path)?,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    log::warn!("Keyfile doesn't exist, creating...");
+                    let key = RsaPrivateKey::new(&mut rand::thread_rng(), 1024)?;
+                    key.write_pkcs8_pem_file(keyfile_path, rsa::pkcs8::LineEnding::default())?;
+                    log::info!("Keyfile created.");
+                    key
+                }
+                Err(e) => {
+                    log::error!("Failed to load keypair: {e}");
+                    return Err(e.into());
+                }
+            },
+            None => {
+                let key = RsaPrivateKey::new(&mut rand::thread_rng(), 1024)?;
+                log::info!("Keyfile created.");
+                key
+            }
+        };
+        log::info!("Loaded keypair");
+        Ok(key)
+    }
 }
 
 impl Default for Settings {
@@ -40,7 +73,10 @@ impl Default for Settings {
             server_name: String::from("phantasyserver"),
             db_name: String::from("ship.db"),
             balance_port: 12000,
+            min_ship_id: 1,
+            max_ship_id: 10,
             blocks: vec![BlockSettings::default()],
+            key_file: None,
             master_ship: String::from("localhost:15000"),
             master_ship_psk: String::from("master_ship_psk"),
             data_file: String::from("data/com_data.mp"),

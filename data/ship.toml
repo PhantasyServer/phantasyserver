@@ -7,6 +7,13 @@ db_name = "ship.db"
 # Port of the block balancer
 balance_port = 12000
 
+# Minimum and maximum usable ship IDs.
+min_ship_id = 1
+max_ship_id = 10
+
+# Location of the RSA key file (if omitted key is generated in memory).
+key_file = "keypair.pem"
+
 # Address of the master ship
 master_ship = "localhost:15000"
 

@@ -32,11 +32,7 @@ use pso2packetlib::{
 };
 use quests::Quests;
 use rand::Rng;
-use rsa::{
-    pkcs8::{DecodePrivateKey, EncodePrivateKey},
-    traits::PublicKeyParts,
-    RsaPrivateKey,
-};
+use rsa::traits::PublicKeyParts;
 use settings::Settings;
 use std::{
     io::{self, Cursor},
@@ -166,23 +162,7 @@ pub async fn run() -> Result<(), Error> {
     }
 
     log::info!("Starting server...");
-    log::info!("Loading keypair");
-    let key = match std::fs::metadata("keypair.pem") {
-        Ok(..) => RsaPrivateKey::read_pkcs8_pem_file("keypair.pem")?,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            log::warn!("No keyfile found, creating...");
-            let mut rand_gen = rand::thread_rng();
-            let key = RsaPrivateKey::new(&mut rand_gen, 1024)?;
-            key.write_pkcs8_pem_file("keypair.pem", rsa::pkcs8::LineEnding::default())?;
-            log::info!("Keyfile created.");
-            key
-        }
-        Err(e) => {
-            log::error!("Failed to load keypair: {e}");
-            return Err(e.into());
-        }
-    };
-    log::info!("Loaded keypair");
+    let key = settings.load_key()?;
     let (data_pc, data_vita, attrs) = create_attr_files()?;
     let mut server_data = ServerData::load_from_mp_file(settings.data_file)?;
     let quests = Arc::new(Quests::load(std::mem::take(&mut server_data.quests)));
@@ -198,14 +178,14 @@ pub async fn run() -> Result<(), Error> {
         tokio::net::lookup_host(settings.master_ship)
             .await?
             .next()
-            .expect("No ips found for master ship"),
+            .expect("No IPs found for master ship"),
         settings.master_ship_psk.as_bytes(),
     )
     .await?;
     log::info!("Connected to master ship");
     let total_max_players = settings.blocks.iter().map(|b| b.max_players).sum();
     log::info!("Registering ship");
-    for id in 2..10 {
+    for id in settings.min_ship_id..=settings.max_ship_id {
         log::debug!("Requested ship id: {id}");
         let resp = MasterConnection::register_ship(
             &master_conn,
@@ -226,7 +206,7 @@ pub async fn run() -> Result<(), Error> {
         match resp {
             master_ship::RegisterShipResult::Success => break,
             master_ship::RegisterShipResult::AlreadyTaken => {
-                if id != 9 {
+                if id < settings.max_ship_id {
                     continue;
                 }
                 log::error!("No stots left");
@@ -333,6 +313,7 @@ async fn send_block_balance(
     Ok(())
 }
 
+// TODO: move to data complier
 fn create_attr_files() -> Result<(Vec<u8>, Vec<u8>, item_attrs::ItemAttributesPC), Error> {
     log::info!("Creating item attributes");
     log::debug!("Loading item attributes...");

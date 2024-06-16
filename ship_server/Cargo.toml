@@ -24,7 +24,7 @@ crc32fast = "1.4.2"
 indicatif = "0.17.8"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
 tokio = { version = "1.38.0", features = ["full"] }
-toml = "0.8.13"
+toml = "0.8.14"
 log = { version = "0.4.21", features = ["serde", "release_max_level_info", "std"] }
 simplelog = "0.12.2"
 
