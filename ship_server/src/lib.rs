@@ -4,6 +4,7 @@
 #![allow(clippy::await_holding_lock)]
 #![allow(dead_code)]
 
+mod battle_stats;
 mod block;
 mod inventory;
 mod invites;

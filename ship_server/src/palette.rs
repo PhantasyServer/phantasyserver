@@ -1,6 +1,6 @@
 use crate::{inventory::Inventory, Error};
 use pso2packetlib::protocol::{
-    items::{ChangeWeaponPalettePacket, EquipedWeaponPacket},
+    items::{ChangeWeaponPalettePacket, EquipedWeaponPacket, Item},
     palette::{
         FullPaletteInfoPacket, LoadPalettePacket, NewDefaultPAsPacket, SetDefaultPAsPacket,
         SetPalettePacket, SetSubPalettePacket, SubPalette, UpdatePalettePacket,
@@ -114,5 +114,9 @@ impl Palette {
         Packet::NewDefaultPAs(NewDefaultPAsPacket {
             default: self.default_pas.clone(),
         })
+    }
+    pub fn get_current_item(&self, inv: &Inventory) -> Result<Item, Error> {
+        let uuid = self.palettes[self.cur_palette as usize].uuid;
+        inv.get_inv_item(uuid)
     }
 }

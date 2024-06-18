@@ -1,13 +1,9 @@
 mod ice;
 use data_structs::{
-    inventory::ItemName,
-    map::MapData,
-    quest::QuestData,
-    stats::{
-        AllEnemyStats, ClassStatsStored, EnemyBaseStats, NamedEnemyStats, PlayerStats,
-        RaceModifierStored,
-    },
-    SerDeFile as _, ServerData,
+    inventory::ItemName, map::MapData, name_to_id, quest::QuestData, stats::{
+        AllEnemyStats, AttackStats, AttackStatsReadable, ClassStatsStored, EnemyBaseStats,
+        NamedEnemyStats, PlayerStats, RaceModifierStored,
+    }, SerDeFile as _, ServerData
 };
 use pso2packetlib::protocol::models::item_attrs;
 use std::{
@@ -70,6 +66,12 @@ fn main() {
     base_enemy_stats_dir.push("base_enemy_stats.json");
     enemy_stats_dir.push("enemies");
     server_data.enemy_stats = parse_enemy_stats(&base_enemy_stats_dir, &enemy_stats_dir).unwrap();
+
+    // parse attack stats
+    println!("Parsing attack stats...");
+    let mut attack_stats_dir = filename.to_path_buf();
+    attack_stats_dir.push("attack_stats");
+    server_data.attack_stats = parse_attack_stats(&attack_stats_dir).unwrap();
 
     println!("Saving data...");
     let mut out_filename = filename.to_path_buf();
@@ -264,6 +266,28 @@ fn parse_enemy_stats(
     Ok(data)
 }
 
+fn parse_attack_stats(stats_path: &Path) -> Result<Vec<AttackStats>, Box<dyn Error>> {
+    let mut data = vec![];
+
+    // load stats
+    traverse_data_dir(stats_path, &mut |p| {
+        println!("\tParsing attack stats data {}...", p.display());
+        let stats = Vec::<AttackStatsReadable>::load_from_json_file(p)?;
+        for stat in stats {
+            data.push(AttackStats {
+                attack_id: name_to_id(&stat.attack_name),
+                damage_id: name_to_id(&stat.damage_name),
+                attack_type: stat.attack_type,
+                defense_type: stat.defense_type,
+                damage: stat.damage.into(),
+            })
+        }
+        Ok(())
+    })?;
+
+    Ok(data)
+}
+
 fn find_data_dir<P, F>(
     path: P,
     callback: F,
@@ -304,10 +328,7 @@ where
     Ok(())
 }
 
-fn create_attr_files(
-    path: &Path,
-    srv_data: &mut ServerData,
-) -> Result<(), Box<dyn Error>> {
+fn create_attr_files(path: &Path, srv_data: &mut ServerData) -> Result<(), Box<dyn Error>> {
     let attrs = item_attrs::ItemAttributes::load_from_json_file(path)?;
 
     // PC attributes
@@ -345,3 +366,4 @@ fn create_attr_files(
 
     Ok(())
 }
+

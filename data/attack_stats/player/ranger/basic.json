@@ -1,0 +1,13 @@
+[
+  {
+    "attack_name": "Rifle:A1",
+    "damage_name": "Rifle:A1a",
+    "attack_type": "Rng",
+    "defense_type": "Rng",
+    "damage": {
+      "Generic": {
+        "mul": 1.3
+      }
+    }
+  }
+]

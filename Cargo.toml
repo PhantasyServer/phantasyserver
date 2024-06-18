@@ -5,7 +5,7 @@ resolver = "2"
 
 [workspace.dependencies]
 # pso2packetlib = { path = "../pso2packetlib", default-features = false }
-pso2packetlib = { version = "0.2.0", default-features = false }
+pso2packetlib = { version = "0.3.0", default-features = false }
 
 [profile.release]
 lto = true

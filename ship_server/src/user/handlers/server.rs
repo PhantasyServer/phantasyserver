@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, Error, User};
+use crate::{battle_stats::PlayerStats, mutex::MutexGuard, Action, Error, User};
 use pso2packetlib::protocol::{
     self,
     flag::{FlagType, SetFlagPacket},
@@ -124,6 +124,7 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
         user.send_packet(&packet).await?;
     }
     if user.firstload {
+        user.battle_stats = PlayerStats::build(user)?;
         let flags = user.accountflags.to_account_flags();
         user.send_packet(&flags).await?;
         user.send_packet(&char_flags).await?;

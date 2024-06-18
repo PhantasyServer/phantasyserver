@@ -84,4 +84,11 @@ pub struct ServerData {
     pub item_params: inventory::ItemParameters,
     pub player_stats: stats::PlayerStats,
     pub enemy_stats: stats::AllEnemyStats,
+    pub attack_stats: Vec<stats::AttackStats>,
+}
+
+pub fn name_to_id(name: &str) -> u32 {
+    name.chars().fold(0u32, |acc, c| {
+        acc ^ ((acc << 6).overflowing_add((acc >> 2).overflowing_sub(0x61c88647 - c as u32).0)).0
+    })
 }

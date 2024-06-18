@@ -176,27 +176,8 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 user.send_packet(&packet).await?;
             }
             "!calc_stats" => {
-                let Some(char) = user.character.as_ref().map(|x| &x.character) else {
-                    user.send_system_msg("No character loaded").await?;
-                    return Ok(Action::Nothing);
-                };
-                let player_stats = &user.blockdata.server_data.player_stats;
-                let mut stats = player_stats.stats[char.classes.main_class as usize]
-                    [char.get_level().level1 as usize - 1]
-                    .clone();
-                let modifier_offset = char.look.race as usize * 2 + char.look.gender as usize;
-                let modifiers = &player_stats.modifiers[modifier_offset];
-
-                stats.hp += (stats.hp * 0.01 * modifiers.hp as f32).floor();
-                stats.mel_pow += (stats.mel_pow * 0.01 * modifiers.mel_pow as f32).floor();
-                stats.rng_pow += (stats.rng_pow * 0.01 * modifiers.rng_pow as f32).floor();
-                stats.tec_pow += (stats.tec_pow * 0.01 * modifiers.tec_pow as f32).floor();
-                stats.dex += (stats.dex * 0.01 * modifiers.dex as f32).floor();
-                stats.mel_def += (stats.mel_def * 0.01 * modifiers.mel_def as f32).floor();
-                stats.rng_def += (stats.rng_def * 0.01 * modifiers.rng_def as f32).floor();
-                stats.tec_def += (stats.tec_def * 0.01 * modifiers.tec_def as f32).floor();
-
-                user.send_system_msg(&format!("Stats: {stats:?}",)).await?;
+                let msg = format!("Stats: {:?}", user.battle_stats);
+                user.send_system_msg(&msg).await?;
             }
             "!force_quest" => {
                 let Some(quest_id) = args.next().and_then(|a| a.parse().ok()) else {

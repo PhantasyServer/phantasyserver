@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use pso2packetlib::protocol::models::character::Class;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
@@ -117,4 +117,65 @@ pub struct NamedEnemyStats {
 pub struct AllEnemyStats {
     pub base: EnemyBaseStats,
     pub enemies: HashMap<String, EnemyStats>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct AttackStatsReadable {
+    pub attack_name: String,
+    pub damage_name: String,
+    pub attack_type: AttackType,
+    pub defense_type: AttackType,
+    pub damage: DamageTypeReadable,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct AttackStats {
+    pub attack_id: u32,
+    pub damage_id: u32,
+    pub attack_type: AttackType,
+    pub defense_type: AttackType,
+    pub damage: DamageType,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub enum AttackType {
+    #[default]
+    Mel,
+    Rng,
+    Tec,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DamageTypeReadable {
+    Generic { mul: f32 },
+    PA { name: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DamageType{
+    Generic(f32),
+    PA(u32),
+}
+
+impl Default for DamageTypeReadable {
+    fn default() -> Self {
+        Self::Generic { mul: 1.0 }
+    }
+}
+
+impl Default for DamageType {
+    fn default() -> Self {
+        Self::Generic(1.0)
+    }
+}
+
+impl From<DamageTypeReadable> for DamageType {
+    fn from(value: DamageTypeReadable) -> Self {
+        match value {
+            DamageTypeReadable::Generic { mul } => Self::Generic(mul),
+            DamageTypeReadable::PA { name } => Self::PA(super::name_to_id(&name)),
+        }
+    }
 }

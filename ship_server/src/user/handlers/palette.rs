@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, User};
+use crate::{battle_stats::PlayerStats, mutex::MutexGuard, Action, User};
 use pso2packetlib::protocol::palette::{
     SetDefaultPAsPacket, SetPalettePacket, SetSubPalettePacket, UpdatePalettePacket,
     UpdateSubPalettePacket,
@@ -54,9 +54,10 @@ pub async fn set_default_pa(user: &mut User, packet: SetDefaultPAsPacket) -> HRe
     Ok(Action::Nothing)
 }
 
-async fn send_palette_update(user: MutexGuard<'_, User>) -> Result<(), crate::Error> {
+async fn send_palette_update(mut user: MutexGuard<'_, User>) -> Result<(), crate::Error> {
     let id = user.player_id;
     let map = user.map.clone();
+    user.battle_stats = PlayerStats::build(&user)?;
     drop(user);
     if let Some(map) = map {
         map.lock().await.send_palette_change(id).await?;

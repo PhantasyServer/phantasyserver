@@ -416,20 +416,20 @@ impl Map {
     pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
         let (pos, _) = self.players.iter().enumerate().find(|(_, p)| p.0 == id)?;
         let (_, mapid, rem_player) = self.players.swap_remove(pos);
-        let mut packet = Packet::RemoveObject(protocol::objects::RemoveObjectPacket {
+        let mut packet = Packet::DespawnPlayer(protocol::objects::DespawnPlayerPacket {
             receiver: ObjectHeader {
                 id: 0,
                 entity_type: ObjectType::Player,
                 ..Default::default()
             },
-            removed_object: ObjectHeader {
+            removed_player: ObjectHeader {
                 id,
                 entity_type: ObjectType::Player,
                 ..Default::default()
             },
         });
         exec_users(&self.players, mapid, |_, _, mut player| {
-            if let Packet::RemoveObject(data) = &mut packet {
+            if let Packet::DespawnPlayer(data) = &mut packet {
                 data.receiver.id = player.get_user_id();
                 let _ = player.try_send_packet(&packet);
             }

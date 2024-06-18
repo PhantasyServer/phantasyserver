@@ -1,0 +1,35 @@
+ [
+  {
+    "attack_name": "Unarmed:AA1Damage",
+    "damage_name": "Unarmed:AA1DamageA",
+    "attack_type": "Mel",
+    "defense_type": "Mel",
+    "damage": {
+      "Generic": {
+        "mul": 3.64
+      }
+    }
+  },
+  {
+    "attack_name": "Unarmed:AA2Damage",
+    "damage_name": "Unarmed:AA2DamageA",
+    "attack_type": "Mel",
+    "defense_type": "Mel",
+    "damage": {
+      "Generic": {
+        "mul": 5.0
+      }
+    }
+  },
+  {
+    "attack_name": "Unarmed:AA3Damage",
+    "damage_name": "Unarmed:AA3DamageA",
+    "attack_type": "Mel",
+    "defense_type": "Mel",
+    "damage": {
+      "Generic": {
+        "mul": 4.92
+      }
+    }
+  }
+]

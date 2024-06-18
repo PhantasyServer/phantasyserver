@@ -1,11 +1,6 @@
 pub(crate) mod handlers;
 use crate::{
-    invites::PartyInvite,
-    map::Map,
-    mutex::{Mutex, MutexGuard, RwLock},
-    party::{self, Party},
-    sql::CharData,
-    Action, BlockData, Error,
+    battle_stats::PlayerStats, invites::PartyInvite, map::Map, mutex::{Mutex, MutexGuard, RwLock}, party::{self, Party}, sql::CharData, Action, BlockData, Error
 };
 use data_structs::flags::Flags;
 use pso2packetlib::{
@@ -41,6 +36,7 @@ pub struct User {
     pub isgm: bool,
     uuid: u64,
     pub state: UserState,
+    battle_stats: PlayerStats,
 }
 
 impl User {
@@ -88,6 +84,7 @@ impl User {
                 isgm: false,
                 uuid: 0,
                 state: UserState::LoggingIn,
+                battle_stats: Default::default(),
             },
             read,
         ))
@@ -154,6 +151,9 @@ impl User {
             entity_type: Pr::ObjectType::Player,
             map_id: 0,
         }
+    }
+    pub fn get_blockdata(&self) -> &BlockData {
+        &self.blockdata
     }
     pub async fn send_item_attrs(&mut self) -> Result<(), Error> {
         let blockdata = self.blockdata.clone();
