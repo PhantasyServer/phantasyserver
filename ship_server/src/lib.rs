@@ -62,6 +62,10 @@ pub enum Error {
     UserInvalidState(UserState),
     #[error("Map with name {0} doesn't exist")]
     NoMapFound(String),
+    #[error("Item ({0}, {1}) not found in item attributes")]
+    NoItemInAttrs(u16, u16),
+    #[error("No clothes with model {0} found in item attributes")]
+    NoClothes(u16),
 
     // passthrough errors
     #[error("SQL error: {0}")]

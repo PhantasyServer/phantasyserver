@@ -82,7 +82,7 @@ impl User {
                 firstload: true,
                 accountflags: Default::default(),
                 isgm: false,
-                uuid: 0,
+                uuid: 1,
                 state: UserState::LoggingIn,
                 battle_stats: Default::default(),
             },

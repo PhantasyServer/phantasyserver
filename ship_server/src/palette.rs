@@ -91,7 +91,7 @@ impl Palette {
         self.palettes = packet.palettes;
         let item = self.palettes[self.cur_palette as usize].uuid;
         if item != 0 {
-            inv.equip_item(item)?;
+            inv.equip_item(item, 9)?;
         }
         Ok(self.send_palette())
     }
@@ -115,8 +115,13 @@ impl Palette {
             default: self.default_pas.clone(),
         })
     }
-    pub fn get_current_item(&self, inv: &Inventory) -> Result<Item, Error> {
+    pub fn get_current_item(&self, inv: &Inventory) -> Result<Option<Item>, Error> {
         let uuid = self.palettes[self.cur_palette as usize].uuid;
-        inv.get_inv_item(uuid)
+
+        if uuid != 0 {
+            Ok(Some(inv.get_inv_item(uuid)?))
+        } else {
+            Ok(None)
+        }
     }
 }

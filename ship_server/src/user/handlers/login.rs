@@ -3,7 +3,9 @@ use crate::{user::UserState, Action, Error, User};
 use data_structs::master_ship::SetNicknameResult;
 use pso2packetlib::protocol::{
     self,
+    items::Item,
     login::{self, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket},
+    models::character::Race,
     ObjectHeader, Packet, PacketType,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -338,10 +340,43 @@ pub async fn newname_request(
 }
 
 pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket) -> HResult {
+    let mut char_data = crate::sql::CharData {
+        character: packet.character.clone(),
+        ..Default::default()
+    };
+    if !matches!(char_data.character.look.race, Race::Cast) {
+        let clothes = user
+            .blockdata
+            .server_data
+            .item_params
+            .attrs
+            .human_costumes
+            .iter()
+            .find(|a| a.model == char_data.character.look.costume_id)
+            .cloned()
+            .ok_or(Error::NoClothes(char_data.character.look.costume_id))?;
+        let uuid = user.uuid;
+        user.uuid += 1;
+        let item = Item {
+            uuid,
+            id: protocol::items::ItemId {
+                item_type: 2,
+                id: clothes.id,
+                unk3: 0,
+                subid: clothes.subid,
+            },
+            data: protocol::items::ItemType::Clothing(protocol::items::ClothingItem {
+                color: char_data.character.look.main_color.clone(),
+                ..Default::default()
+            }),
+        };
+        char_data.inventory.add_item(item);
+        char_data.inventory.equip_item(uuid, 3)?;
+    }
     let char_id = user
         .blockdata
         .sql
-        .put_character(user.player_id, &packet.character)
+        .put_character(user.player_id, char_data)
         .await?;
     user.send_packet(&Packet::CharacterCreateResponse(
         login::CharacterCreateResponsePacket {

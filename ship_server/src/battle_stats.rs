@@ -50,20 +50,21 @@ impl PlayerStats {
         resulting_stats.base_tec_def =
             (stats.tec_def + (stats.tec_def * 0.01 * modifiers.tec_def as f32).floor()) as _;
 
-        let equiped_item = char.palette.get_current_item(&char.inventory)?.id;
-        let weapon_stats = block_data
-            .server_data
-            .item_params
-            .attrs
-            .weapons
-            .iter()
-            .find(|a| a.id == equiped_item.id && a.subid == equiped_item.subid)
-            .cloned()
-            .unwrap_or_default();
-        resulting_stats.weapon_mel_pwr = weapon_stats.melee_dmg as _;
-        resulting_stats.weapon_rng_pwr = weapon_stats.range_dmg as _;
-        resulting_stats.weapon_tec_pwr = weapon_stats.gender_force_dmg.force_dmg as _;
-
+        if let Some(equiped_item) = char.palette.get_current_item(&char.inventory)? {
+            let ids = equiped_item.id;
+            let weapon_stats = block_data
+                .server_data
+                .item_params
+                .attrs
+                .weapons
+                .iter()
+                .find(|a| a.id == ids.id && a.subid == ids.subid)
+                .cloned()
+                .ok_or(Error::NoItemInAttrs(ids.id, ids.subid))?;
+            resulting_stats.weapon_mel_pwr = weapon_stats.melee_dmg as _;
+            resulting_stats.weapon_rng_pwr = weapon_stats.range_dmg as _;
+            resulting_stats.weapon_tec_pwr = weapon_stats.gender_force_dmg.force_dmg as _;
+        }
         Ok(resulting_stats)
     }
 }

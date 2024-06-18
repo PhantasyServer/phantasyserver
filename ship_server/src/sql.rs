@@ -442,14 +442,9 @@ impl Sql {
             .await?;
         Ok(())
     }
-    pub async fn put_character(&self, id: u32, char: &Character) -> Result<u32, Error> {
-        let char_data = CharData {
-            character: char.clone(),
-            ..Default::default()
-        };
-
+    pub async fn put_character(&self, id: u32, char: CharData) -> Result<u32, Error> {
         let mut transaction = self.connection.begin().await?;
-        let data = rmp_serde::to_vec(&char_data)?;
+        let data = rmp_serde::to_vec(&char)?;
         let char_id = sqlx::query("insert into Characters (Data) values (?) returning Id")
             .bind(&data)
             .fetch_one(&mut *transaction)

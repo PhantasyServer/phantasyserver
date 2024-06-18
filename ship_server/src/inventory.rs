@@ -30,10 +30,10 @@ pub struct Inventory {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PlayerInventory {
-    pub(crate) meseta: u64,
-    pub(crate) max_capacity: u32,
-    pub(crate) items: Vec<Item>,
-    equiped: Vec<u64>,
+    meseta: u64,
+    max_capacity: u32,
+    items: Vec<Item>,
+    equiped: Vec<(u32, u64)>,
 }
 
 enum ChangeItemResult {
@@ -147,13 +147,18 @@ impl Inventory {
     }
     pub fn send_equiped(&self, player_id: u32) -> Packet {
         let mut equiped_items = LoadEquipedPacket::default();
-        for (pos, equiped) in self.inventory.equiped.iter().enumerate() {
-            let Some(item) = self.inventory.items.iter().find(|x| x.uuid == *equiped) else {
+        for (pos, uuid) in &self.inventory.equiped {
+            let Some(item) = self.inventory.items.iter().find(|x| x.uuid == *uuid) else {
                 continue;
             };
             equiped_items.items.push(EquipedItem {
                 item: item.clone(),
-                unk: pos as u32,
+                // 0-back unit
+                // 1-arm unit
+                // 2-leg unit
+                // 3-outfit
+                // 9-weapon
+                unk: *pos,
             });
         }
         equiped_items.player = ObjectHeader {
@@ -163,8 +168,8 @@ impl Inventory {
         };
         Packet::LoadEquiped(equiped_items)
     }
-    pub fn equip_item(&mut self, uuid: u64) -> Result<(), Error> {
-        if self.inventory.equiped.iter().any(|&x| x == uuid) {
+    pub fn equip_item(&mut self, uuid: u64, pos: u32) -> Result<(), Error> {
+        if self.inventory.equiped.iter().any(|&x| x.1 == uuid) {
             return Ok(());
         }
         self.inventory
@@ -172,7 +177,7 @@ impl Inventory {
             .iter()
             .find(|x| x.uuid == uuid)
             .ok_or(Error::InvalidInput("equip_item"))?;
-        self.inventory.equiped.push(uuid);
+        self.inventory.equiped.push((pos, uuid));
         Ok(())
     }
     pub fn unequip_item(&mut self, uuid: u64) -> Result<(), Error> {
@@ -181,7 +186,7 @@ impl Inventory {
             .equiped
             .iter()
             .enumerate()
-            .find(|(_, &x)| x == uuid)
+            .find(|(_, &x)| x.1 == uuid)
             .ok_or(Error::InvalidInput("unequip_item"))?;
         self.inventory.equiped.remove(pos);
         Ok(())
@@ -508,6 +513,14 @@ impl Inventory {
             meseta: self.storages.storage_meseta,
         }));
         packets
+    }
+    pub fn add_item(&mut self, item: Item) -> Packet {
+        let packet = Packet::AddedItem(AddedItemPacket {
+            item: item.clone(),
+            ..Default::default()
+        });
+        self.inventory.items.push(item);
+        packet
     }
     pub fn add_default_item(&mut self, uuid: &mut u64, item_id: ItemId) -> Packet {
         let item = Item {
