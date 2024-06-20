@@ -1,0 +1,123 @@
+{
+  "name": "SoldierAnt",
+  "stats": {
+    "levels": [
+      {
+        "level": 1,
+        "exp": 1,
+        "hp": 1,
+        "max_mel_dmg": 1,
+        "min_mel_dmg": 1,
+        "max_rng_dmg": 1,
+        "min_rng_dmg": 1,
+        "max_tec_dmg": 1,
+        "min_tec_dmg": 1,
+        "mel_def": 1,
+        "rng_def": 1,
+        "tec_def": 1,
+        "dex": 1
+      },
+      {
+        "level": 100,
+        "exp": 1,
+        "hp": 1,
+        "max_mel_dmg": 1,
+        "min_mel_dmg": 1,
+        "max_rng_dmg": 1,
+        "min_rng_dmg": 1,
+        "max_tec_dmg": 1,
+        "min_tec_dmg": 1,
+        "mel_def": 1,
+        "rng_def": 1,
+        "tec_def": 1,
+        "dex": 1
+      }
+    ],
+    "hitboxes": [
+      {
+        "name": "Body",
+        "hitbox_id": 0,
+        "damage_mul": 1,
+        "mel_mul": 1,
+        "rng_mul": 1,
+        "tec_mul": 1,
+        "fire_mul": 1.2,
+        "ice_mul": 1,
+        "thunder_mul": 1,
+        "wind_mul": 1,
+        "light_mul": 1.2,
+        "dark_mul": 1
+      },
+      {
+        "name": "Weak",
+        "hitbox_id": 1,
+        "damage_mul": 2,
+        "mel_mul": 1,
+        "rng_mul": 1,
+        "tec_mul": 1,
+        "fire_mul": 1.2,
+        "ice_mul": 1,
+        "thunder_mul": 1,
+        "wind_mul": 1,
+        "light_mul": 1.2,
+        "dark_mul": 1
+      },
+      {
+        "name": "Head",
+        "hitbox_id": 2,
+        "damage_mul": 1,
+        "mel_mul": 1,
+        "rng_mul": 2,
+        "tec_mul": 1,
+        "fire_mul": 1.2,
+        "ice_mul": 1,
+        "thunder_mul": 1,
+        "wind_mul": 1,
+        "light_mul": 1.2,
+        "dark_mul": 1
+      },
+      {
+        "name": "Boost1",
+        "hitbox_id": 3,
+        "damage_mul": 1,
+        "mel_mul": 2,
+        "rng_mul": 2,
+        "tec_mul": 2,
+        "fire_mul": 2,
+        "ice_mul": 2,
+        "thunder_mul": 2,
+        "wind_mul": 2,
+        "light_mul": 2,
+        "dark_mul": 2
+      },
+      {
+        "name": "Boost2",
+        "hitbox_id": 4,
+        "damage_mul": 1,
+        "mel_mul": 2,
+        "rng_mul": 2,
+        "tec_mul": 2,
+        "fire_mul": 2,
+        "ice_mul": 2,
+        "thunder_mul": 2,
+        "wind_mul": 2,
+        "light_mul": 2,
+        "dark_mul": 2
+      },
+      {
+        "name": "Boost3",
+        "hitbox_id": 5,
+        "damage_mul": 1,
+        "mel_mul": 2,
+        "rng_mul": 2,
+        "tec_mul": 2,
+        "fire_mul": 2,
+        "ice_mul": 2,
+        "thunder_mul": 2,
+        "wind_mul": 2,
+        "light_mul": 2,
+        "dark_mul": 2
+      }
+    ]
+  }
+}
