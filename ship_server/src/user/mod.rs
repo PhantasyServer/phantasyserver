@@ -144,6 +144,9 @@ impl User {
     pub const fn get_map_id(&self) -> u32 {
         self.mapid
     }
+    pub const fn get_stats(&self) -> &PlayerStats {
+        &self.battle_stats
+    }
     pub const fn create_object_header(&self) -> ObjectHeader {
         ObjectHeader {
             id: self.player_id,
@@ -252,6 +255,7 @@ pub async fn packet_handler(
             user.position = data.cur_pos;
             User::send_position(user_guard, match_unit.1).await
         }
+        (US::InGame, P::ActionEnd(..)) => User::send_position(user_guard, match_unit.1).await,
 
         // Chat packets
         (US::InGame, P::ChatMessage(..)) => H::chat::send_chat(user_guard, match_unit.1).await,

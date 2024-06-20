@@ -1,0 +1,14 @@
+[
+  {
+    "attack_name": "StrikeAdd",
+    "damage_name": "StrikeAdd",
+    "attack_type": "Mel",
+    "defense_type": "Mel",
+    "damage": {
+      "Generic": {
+        "mul": 1
+      }
+    }
+  }
+]
+

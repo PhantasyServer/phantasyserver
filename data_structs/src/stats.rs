@@ -150,13 +150,13 @@ pub enum AttackType {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DamageTypeReadable {
     Generic { mul: f32 },
-    PA { name: String },
+    PA { name: String, mul: f32 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum DamageType{
+pub enum DamageType {
     Generic(f32),
-    PA(u32),
+    PA((u32, f32)),
 }
 
 impl Default for DamageTypeReadable {
@@ -175,7 +175,7 @@ impl From<DamageTypeReadable> for DamageType {
     fn from(value: DamageTypeReadable) -> Self {
         match value {
             DamageTypeReadable::Generic { mul } => Self::Generic(mul),
-            DamageTypeReadable::PA { name } => Self::PA(super::name_to_id(&name)),
+            DamageTypeReadable::PA { name, mul } => Self::PA((super::name_to_id(&name), mul)),
         }
     }
 }

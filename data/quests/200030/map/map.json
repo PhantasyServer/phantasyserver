@@ -84,31 +84,16 @@
         "world_id": 301,
         "unk1": 0,
         "zone_id": 0,
-        "map_id": 392,
-        "zone_type": 3,
-        "seed": 2519561873,
-        "args": 402,
+        "map_id": 310,
+        "zone_type": 2,
+        "seed": 2012513828,
+        "args": 1744,
         "size_x": 0,
         "size_y": 0,
         "unk2": 0,
         "area_index": 1,
         "sub_area": 4294967295,
-        "unk3": 69889
-      },
-      {
-        "world_id": 301,
-        "unk1": 0,
-        "zone_id": 1,
-        "map_id": 393,
-        "zone_type": 3,
-        "seed": 1795178380,
-        "args": 6,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 2,
-        "sub_area": 4294967295,
-        "unk3": 69889
+        "unk3": 2561
       }
     ],
     "warps": [
@@ -1164,18 +1149,6 @@
   },
   "default_location": [
     [
-      9000,
-      {
-        "rot_x": 0,
-        "rot_y": 0,
-        "rot_z": 0,
-        "rot_w": 15360,
-        "pos_x": 0,
-        "pos_y": 17664,
-        "pos_z": 0
-      }
-    ],
-    [
       150,
       {
         "rot_x": 0,
@@ -1188,32 +1161,20 @@
       }
     ],
     [
-      392,
+      310,
       {
         "rot_x": 0,
         "rot_y": 15360,
         "rot_z": 0,
         "rot_w": 0,
-        "pos_x": 55159,
-        "pos_y": 0,
-        "pos_z": 23684
-      }
-    ],
-    [
-      393,
-      {
-        "rot_x": 0,
-        "rot_y": 15360,
-        "rot_z": 0,
-        "rot_w": 0,
-        "pos_x": 13275,
-        "pos_y": 0,
-        "pos_z": 17537
+        "pos_x": 11534,
+        "pos_y": 48414,
+        "pos_z": 23306
       }
     ]
   ],
   "init_map": 150,
   "map_names": {
-    "campship_down": 392
+    "campship_down": 310
   }
 }
