@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{user::UserState, Action, Error, User};
+use crate::{battle_stats::PlayerStats, user::UserState, Action, Error, User};
 use data_structs::master_ship::SetNicknameResult;
 use pso2packetlib::protocol::{
     self,
@@ -254,12 +254,22 @@ pub async fn client_ping(user: &mut User, packet: login::ClientPingPacket) -> HR
 }
 
 pub async fn character_list(user: &mut User) -> HResult {
-    user.send_packet(&Packet::CharacterListResponse(login::CharacterListPacket {
-        characters: user.blockdata.sql.get_characters(user.player_id).await?,
-        // deletion_flags: [(1, 0); 30],
-        ..Default::default()
-    }))
-    .await?;
+    let mut packet = login::CharacterListPacket::default();
+    let characters = user.blockdata.sql.get_characters(user.player_id).await?;
+    for character in characters {
+        packet.characters.push(character.character);
+        let Packet::LoadEquiped(equiped) = character.inventory.send_equiped(0) else {
+            unreachable!();
+        };
+        let mut items: [Item; 10] = Default::default();
+        for item in equiped.items {
+            //TODO: bound checking
+            items[item.unk as usize] = item.item;
+        }
+        packet.equiped_items.push(items);
+    }
+    user.send_packet(&Packet::CharacterListResponse(packet))
+        .await?;
     Ok(Action::Nothing)
 }
 
@@ -366,7 +376,7 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
                 subid: clothes.subid,
             },
             data: protocol::items::ItemType::Clothing(protocol::items::ClothingItem {
-                color: char_data.character.look.main_color.clone(),
+                color: char_data.character.look.costume_color.clone(),
                 ..Default::default()
             }),
         };
@@ -397,6 +407,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
     user.character = Some(char);
     user.send_packet(&Packet::LoadingScreenTransition).await?;
     user.state = UserState::PreInGame;
+    user.battle_stats = PlayerStats::build(user)?;
     Ok(Action::Nothing)
 }
 

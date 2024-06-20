@@ -172,6 +172,15 @@ impl Inventory {
         if self.inventory.equiped.iter().any(|&x| x.1 == uuid) {
             return Ok(());
         }
+        if let Some((pos, _)) = self
+            .inventory
+            .equiped
+            .iter()
+            .enumerate()
+            .find(|(_, (item_pos, _))| *item_pos == pos)
+        {
+            self.inventory.equiped.remove(pos);
+        }
         self.inventory
             .items
             .iter()
@@ -181,14 +190,15 @@ impl Inventory {
         Ok(())
     }
     pub fn unequip_item(&mut self, uuid: u64) -> Result<(), Error> {
-        let (pos, _) = self
+        if let Some((pos, _)) = self
             .inventory
             .equiped
             .iter()
             .enumerate()
             .find(|(_, &x)| x.1 == uuid)
-            .ok_or(Error::InvalidInput("unequip_item"))?;
-        self.inventory.equiped.remove(pos);
+        {
+            self.inventory.equiped.remove(pos);
+        }
         Ok(())
     }
     pub fn get_inv_item(&self, uuid: u64) -> Result<Item, Error> {

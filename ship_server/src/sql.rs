@@ -401,7 +401,7 @@ impl Sql {
             _ => Err(Error::MSUnexpected),
         }
     }
-    pub async fn get_characters(&self, id: u32) -> Result<Vec<Character>, Error> {
+    pub async fn get_characters(&self, id: u32) -> Result<Vec<CharData>, Error> {
         let mut chars = vec![];
         let row = sqlx::query("select Data from Users where Id = ?")
             .bind(id as i64)
@@ -414,10 +414,9 @@ impl Sql {
                 .fetch_optional(&self.connection)
                 .await?;
             if let Some(data) = row {
-                let char: CharData = rmp_serde::from_slice(data.try_get("Data")?)?;
-                let mut char = char.character;
-                char.player_id = id;
-                char.character_id = char_id;
+                let mut char: CharData = rmp_serde::from_slice(data.try_get("Data")?)?;
+                char.character.player_id = id;
+                char.character.character_id = char_id;
                 chars.push(char);
             }
         }

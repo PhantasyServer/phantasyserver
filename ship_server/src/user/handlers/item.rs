@@ -1,13 +1,15 @@
 use super::HResult;
-use crate::{Action, User};
+use crate::{mutex::MutexGuard, Action, Error, User};
 use pso2packetlib::protocol::{
     self,
     items::{
-        DiscardItemRequestPacket, DiscardStorageItemRequestPacket, GetItemDescriptionPacket,
-        LoadItemDescriptionPacket, MoveMesetaPacket, MoveStoragesRequestPacket,
-        MoveToInventoryRequestPacket, MoveToStorageRequestPacket,
+        DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipItemPacket,
+        EquipItemRequestPacket, GetItemDescriptionPacket, ItemType, LoadItemDescriptionPacket,
+        MoveMesetaPacket, MoveStoragesRequestPacket, MoveToInventoryRequestPacket,
+        MoveToStorageRequestPacket, UnequipItemPacket, UnequipItemRequestPacket,
     },
     login::Language,
+    Packet,
 };
 
 pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
@@ -60,11 +62,7 @@ pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -
 
 pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) -> HResult {
     let names_ref = &user.blockdata.server_data.item_params;
-    match names_ref
-        .names
-        .iter()
-        .find(|x| x.id == packet.item)
-    {
+    match names_ref.names.iter().find(|x| x.id == packet.item) {
         Some(name) => {
             let packet = LoadItemDescriptionPacket {
                 unk1: 1,
@@ -78,6 +76,71 @@ pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) 
                 .await?;
         }
         None => log::debug!("No item description for {:?}", packet.item),
+    }
+
+    Ok(Action::Nothing)
+}
+
+pub async fn equip_item(mut user: MutexGuard<'_, User>, packet: EquipItemRequestPacket) -> HResult {
+    let Some(char) = &mut user.character else {
+        unreachable!("User should be in state >= `PreInGame`")
+    };
+    char.inventory
+        .equip_item(packet.uuid, packet.equipment_pos)?;
+    let item = char.inventory.get_inv_item(packet.uuid)?;
+    if let ItemType::Clothing(data) = &item.data {
+        let block_data = user.get_blockdata();
+        let clothing_stats = block_data
+            .server_data
+            .item_params
+            .attrs
+            .human_costumes
+            .iter()
+            .find(|a| a.id == item.id.id && a.subid == item.id.subid)
+            .cloned()
+            .ok_or(Error::NoItemInAttrs(item.id.id, item.id.subid))?;
+        let Some(char) = &mut user.character else {
+            unreachable!();
+        };
+        char.character.look.costume_id = clothing_stats.model;
+        char.character.look.costume_color = data.color.clone();
+    }
+
+    let equip_packet = Packet::EquipItem(EquipItemPacket {
+        player_equiped: user.create_object_header(),
+        equiped_item: item.clone(),
+        equipment_pos: packet.equipment_pos,
+        ..Default::default()
+    });
+    let user_id = user.get_user_id();
+    if let Some(map) = user.get_current_map() {
+        drop(user);
+        map.lock().await.send_to_all(user_id, &equip_packet).await;
+    }
+
+    Ok(Action::Nothing)
+}
+
+pub async fn unequip_item(
+    mut user: MutexGuard<'_, User>,
+    packet: UnequipItemRequestPacket,
+) -> HResult {
+    let Some(char) = &mut user.character else {
+        unreachable!("User should be in state >= `PreInGame`")
+    };
+    char.inventory.unequip_item(packet.uuid)?;
+    let item = char.inventory.get_inv_item(packet.uuid)?;
+    //BUG: a (0x0F, 0x2B) packet should also be sent, but let's not worry about it at this time
+    let equip_packet = Packet::UnequipItem(UnequipItemPacket {
+        player_unequiped: user.create_object_header(),
+        unequiped_item: item.clone(),
+        equipment_pos: packet.equipment_pos,
+        ..Default::default()
+    });
+    let user_id = user.get_user_id();
+    if let Some(map) = user.get_current_map() {
+        drop(user);
+        map.lock().await.send_to_all(user_id, &equip_packet).await;
     }
 
     Ok(Action::Nothing)

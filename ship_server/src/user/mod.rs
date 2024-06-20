@@ -296,6 +296,8 @@ pub async fn packet_handler(
         }
 
         // Item packets
+        (US::InGame, P::EquipItemRequest(data)) => H::item::equip_item(user_guard, data).await,
+        (US::InGame, P::UnequipItemRequest(data)) => H::item::unequip_item(user_guard, data).await,
         (US::InGame, P::MoveToStorageRequest(data)) => H::item::move_to_storage(user, data).await,
         (US::InGame, P::MoveToInventoryRequest(data)) => {
             H::item::move_to_inventory(user, data).await
