@@ -76,7 +76,7 @@ fn main() {
     println!("Saving data...");
     let mut out_filename = filename.to_path_buf();
     out_filename.push("com_data.mp");
-    server_data.save_to_mp_file(out_filename).unwrap();
+    server_data.save_to_mp_comp(out_filename).unwrap();
 }
 
 fn parse_map(path: &Path, srv_data: &mut ServerData) -> Result<(), Box<dyn Error>> {

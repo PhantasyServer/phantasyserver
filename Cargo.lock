@@ -360,6 +360,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "tokio",
+ "zstd",
 ]
 
 [[package]]

@@ -54,6 +54,12 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
         let names = Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
         Ok(names)
     }
+    #[cfg(feature = "rmp")]
+    fn load_from_mp_comp<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
+        let data = zstd::Decoder::new(std::fs::File::open(path)?)?;
+        let names = Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
+        Ok(names)
+    }
     #[cfg(feature = "json")]
     fn load_from_json_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let data = std::fs::read_to_string(path)?;
@@ -63,6 +69,13 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     #[cfg(feature = "rmp")]
     fn save_to_mp_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
         let file = std::fs::File::create(path)?;
+        self.serialize(&mut rmp_serde::Serializer::new(file).with_human_readable())?;
+        // std::io::Write::write_all(&mut file, &rmp_serde::to_vec(self)?)?;
+        Ok(())
+    }
+    #[cfg(feature = "rmp")]
+    fn save_to_mp_comp<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
+        let file = zstd::Encoder::new(std::fs::File::create(path)?, 0)?.auto_finish();
         self.serialize(&mut rmp_serde::Serializer::new(file).with_human_readable())?;
         // std::io::Write::write_all(&mut file, &rmp_serde::to_vec(self)?)?;
         Ok(())

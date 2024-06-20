@@ -66,6 +66,8 @@ pub enum Error {
     NoItemInAttrs(u16, u16),
     #[error("No clothes with model {0} found in item attributes")]
     NoClothes(u16),
+    #[error("No enemy data for {0} found")]
+    NoEnemyData(String),
 
     // passthrough errors
     #[error("SQL error: {0}")]
@@ -164,7 +166,7 @@ pub async fn run() -> Result<(), Error> {
     log::info!("Starting server...");
     let key = settings.load_key()?;
     log::info!("Loading server data...");
-    let mut server_data = ServerData::load_from_mp_file(settings.data_file)?;
+    let mut server_data = ServerData::load_from_mp_comp(settings.data_file)?;
     log::info!("Loaded server data");
     let quests = Arc::new(Quests::load(std::mem::take(&mut server_data.quests)));
     let server_data = Arc::new(server_data);
