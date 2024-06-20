@@ -1,9 +1,14 @@
 mod ice;
 use data_structs::{
-    inventory::ItemName, map::MapData, name_to_id, quest::QuestData, stats::{
+    inventory::ItemName,
+    map::MapData,
+    name_to_id,
+    quest::QuestData,
+    stats::{
         AllEnemyStats, AttackStats, AttackStatsReadable, ClassStatsStored, EnemyBaseStats,
         NamedEnemyStats, PlayerStats, RaceModifierStored,
-    }, SerDeFile as _, ServerData
+    },
+    SerDeFile as _, ServerData,
 };
 use pso2packetlib::protocol::models::item_attrs;
 use std::{
@@ -252,13 +257,65 @@ fn parse_enemy_stats(
             "\tParsing base enemy stats data {}...",
             base_stats_path.display()
         );
-        data.base = EnemyBaseStats::load_from_json_file(base_stats_path)?;
+
+        let mut base = EnemyBaseStats::load_from_json_file(base_stats_path)?;
+        let mut stats = std::mem::take(&mut base.levels);
+        stats.sort_by(|a, b| a.level.cmp(&b.level));
+        let mut last_stats = stats.remove(0);
+        base.levels.push(last_stats.clone());
+        for stat in stats {
+            if base.levels.last().unwrap().level + 1 < stat.level {
+                for level in base.levels.last().unwrap().level + 1..stat.level {
+                    let mut new_stat = last_stats.clone();
+                    new_stat.level = level;
+                    base.levels.push(new_stat);
+                }
+            }
+            base.levels.push(stat.clone());
+            last_stats = stat;
+        }
+        if base.levels.last().unwrap().level < 100 {
+            for level in base.levels.last().unwrap().level + 1..100 {
+                let mut new_stat = last_stats.clone();
+                new_stat.level = level;
+                base.levels.push(new_stat);
+            }
+        }
+
+        data.base = base;
     }
 
     // load class stats
     traverse_data_dir(stats_path, &mut |p| {
         println!("\tParsing enemy stats data {}...", p.display());
-        let stats = NamedEnemyStats::load_from_json_file(p)?;
+        let mut stats = NamedEnemyStats::load_from_json_file(p)?;
+
+        {
+            let base = &mut stats.stats;
+            let mut stats = std::mem::take(&mut base.levels);
+            stats.sort_by(|a, b| a.level.cmp(&b.level));
+            let mut last_stats = stats.remove(0);
+            base.levels.push(last_stats.clone());
+            for stat in stats {
+                if base.levels.last().unwrap().level + 1 < stat.level {
+                    for level in base.levels.last().unwrap().level + 1..stat.level {
+                        let mut new_stat = last_stats.clone();
+                        new_stat.level = level;
+                        base.levels.push(new_stat);
+                    }
+                }
+                base.levels.push(stat.clone());
+                last_stats = stat;
+            }
+            if base.levels.last().unwrap().level < 100 {
+                for level in base.levels.last().unwrap().level + 1..100 {
+                    let mut new_stat = last_stats.clone();
+                    new_stat.level = level;
+                    base.levels.push(new_stat);
+                }
+            }
+        }
+
         data.enemies.insert(stats.name, stats.stats);
         Ok(())
     })?;
@@ -366,4 +423,3 @@ fn create_attr_files(path: &Path, srv_data: &mut ServerData) -> Result<(), Box<d
 
     Ok(())
 }
-

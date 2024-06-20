@@ -82,12 +82,9 @@ impl Party {
             return Ok(());
         }
         let mut np_lock = new_id.lock().await;
+        let (hp, max_hp) = np_lock.get_stats().get_hp();
         let color = self.add_color(np_lock.get_user_id());
-        let new_player_obj = ObjectHeader {
-            id: np_lock.get_user_id(),
-            entity_type: ObjectType::Player,
-            ..Default::default()
-        };
+        let new_player_obj = np_lock.create_object_header();
         if self.players.is_empty() {
             self.leader = new_player_obj;
         }
@@ -107,7 +104,7 @@ impl Party {
             char_name: new_char.character.name.clone(),
             class: new_char.character.classes.main_class,
             subclass: new_char.character.classes.sub_class,
-            hp: [100, 100, 100],
+            hp: [hp, max_hp, max_hp],
             level: new_char.character.get_level().level1 as u8,
             sublevel: new_char.character.get_sublevel().level1 as u8,
             map_id: np_lock.get_map_id() as u16,
@@ -144,11 +141,8 @@ impl Party {
         };
         let mut i = 1;
         exec_users(&self.players, |id, mut player| {
-            let other_player_obj = ObjectHeader {
-                id,
-                entity_type: ObjectType::Player,
-                ..Default::default()
-            };
+            let other_player_obj = player.create_object_header();
+            let (hp, max_hp) = player.get_stats().get_hp();
             let color_packet = Packet::SetPartyColor(party::SetPartyColorPacket {
                 target: other_player_obj,
                 in_party: 1,
@@ -164,7 +158,7 @@ impl Party {
                 char_name: char.character.name.clone(),
                 class: char.character.classes.main_class,
                 subclass: char.character.classes.sub_class,
-                hp: [100, 100, 100],
+                hp: [hp, max_hp, max_hp],
                 level: char.character.get_level().level1 as u8,
                 sublevel: char.character.get_sublevel().level1 as u8,
                 map_id: player.get_map_id() as u16,

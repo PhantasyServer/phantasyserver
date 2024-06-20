@@ -30,6 +30,7 @@ pub struct Map {
     data: MapData,
     players: Vec<(PlayerId, MapId, Weak<Mutex<User>>)>,
     to_move: Vec<(PlayerId, MapId)>,
+    max_id: u32,
 }
 impl Map {
     pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
@@ -41,6 +42,7 @@ impl Map {
             data,
             players: vec![],
             to_move: vec![],
+            max_id: 0,
         };
         let map_obj = ObjectHeader {
             id: map_obj_id.fetch_add(1, Ordering::Relaxed),
@@ -61,7 +63,15 @@ impl Map {
             ))
         }
         map.init_lua()?;
+        map.find_max_id();
         Ok(map)
+    }
+    fn find_max_id(&mut self) {
+        let obj_max = self.data.objects.iter().map(|o| o.data.object.id).max().unwrap_or(0);
+        let npc_max = self.data.npcs.iter().map(|o| o.data.object.id).max().unwrap_or(0);
+        let event_max = self.data.events.iter().map(|o| o.data.object.id).max().unwrap_or(0);
+        let transporter_max = self.data.transporters.iter().map(|o| o.data.object.id).max().unwrap_or(0);
+        self.max_id = obj_max.max(npc_max).max(event_max).max(transporter_max) + 1;
     }
     fn init_lua(&mut self) -> Result<(), Error> {
         // default object handler
@@ -310,6 +320,16 @@ impl Map {
         .await;
 
         Ok(())
+    }
+    pub async fn send_to_all(&self, sender_id: PlayerId, packet: &Packet) {
+        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+            return  ;
+        };
+        let mapid = *mapid;
+        exec_users(&self.players, mapid, |_, _, mut player| {
+            let _ = player.try_send_packet(packet);
+        }).await;
+
     }
 
     pub async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {
