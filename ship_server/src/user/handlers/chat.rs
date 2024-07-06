@@ -219,7 +219,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 };
                 let map_id = user.get_map_id();
                 let map = user.get_current_map().unwrap();
-                let pos = user.position.clone();
+                let pos = user.position;
                 drop(user);
                 map.lock().await.spawn_enemy(name, pos, map_id).await?;
             }

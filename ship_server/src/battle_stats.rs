@@ -118,7 +118,7 @@ impl PlayerStats {
 
         Ok(())
     }
-    pub fn get_hp(&self) -> (u32, u32) {
+    pub const fn get_hp(&self) -> (u32, u32) {
         (self.hp, self.max_hp)
     }
     pub fn damage_enemy(
@@ -231,16 +231,18 @@ impl PlayerStats {
 
 impl EnemyStats {
     pub fn build(name: &str, level: u32, pos: Position, data: &ServerData) -> Result<Self, Error> {
-        let mut resulting_stats = Self::default();
-        resulting_stats.name = name.to_string();
-        resulting_stats.pos = pos;
+        let mut resulting_stats = Self {
+            name: name.to_string(),
+            pos,
+            ..Default::default()
+        };
         let base_stats = &data.enemy_stats.base;
         let enemy_stats = &data
             .enemy_stats
             .enemies
             .get(name)
             .ok_or(Error::NoEnemyData(name.to_string()))?;
-        resulting_stats.hitboxes = enemy_stats.hitboxes.clone();
+        resulting_stats.hitboxes.clone_from(&enemy_stats.hitboxes);
         let base_level_stats = &base_stats.levels[level as usize - 1];
         let level_stats = &enemy_stats.levels[level as usize - 1];
 
@@ -275,7 +277,7 @@ impl EnemyStats {
                 map_id,
                 ..Default::default()
             },
-            position: self.pos.clone(),
+            position: self.pos,
             name: self.name.to_string().into(),
             hp: self.hp,
             level: self.level,

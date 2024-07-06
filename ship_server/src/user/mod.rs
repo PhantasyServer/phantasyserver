@@ -14,7 +14,10 @@ use pso2packetlib::{
     protocol::{
         self as Pr,
         login::Language,
-        models::{character::Class, Position},
+        models::{
+            character::{Class, ClassLevel},
+            Position,
+        },
         party::BusyState,
         playerstatus::EXPReceiver,
         spawn::CharacterSpawnPacket,
@@ -236,23 +239,35 @@ impl User {
             gained: exp as _,
             ..Default::default()
         };
+        let srv_data = &self.blockdata.server_data;
         let char = self
             .character
             .as_mut()
             .expect("User should be in state >= 'PreInGame'");
         let class_offset = char.character.classes.main_class as usize;
         let subclass_offset = char.character.classes.sub_class as usize;
+
+        fn increase_level(
+            srv_data: &data_structs::ServerData,
+            level: &mut ClassLevel,
+            offset: usize,
+            exp: u32,
+        ) {
+            let stats = &srv_data.player_stats.stats[offset][level.level1 as usize - 1];
+            let new_exp = level.exp + exp;
+            if new_exp < stats.exp_to_next as _ {
+                return;
+            }
+            level.level1 += 1;
+            level.level2 = level.level1;
+        }
+
         // main class
         {
             let level = char.character.get_level_mut();
             let new_exp = level.exp + exp;
             if level.level1 < 100 {
-                let stats = &self.blockdata.server_data.player_stats.stats[class_offset]
-                    [level.level1 as usize - 1];
-                if new_exp > stats.exp_to_next as _ {
-                    level.level1 += 1;
-                    level.level2 = level.level1;
-                }
+                increase_level(srv_data, level, class_offset, exp);
             }
             level.exp = new_exp;
             packet.total = level.exp as _;
@@ -265,12 +280,7 @@ impl User {
             let level = char.character.get_sublevel_mut();
             let new_exp = level.exp + exp;
             if level.level1 < 100 {
-                let stats = &self.blockdata.server_data.player_stats.stats[subclass_offset]
-                    [level.level1 as usize - 1];
-                if new_exp > stats.exp_to_next as _ {
-                    level.level1 += 1;
-                    level.level2 = level.level1;
-                }
+                increase_level(srv_data, level, subclass_offset, exp);
             }
             level.exp = new_exp;
             packet.gained_sub = exp as _;

@@ -540,7 +540,7 @@ impl Map {
         let packet = enemy.create_spawn_packet(enemy_id, map_id as _);
         // techically this is a response to 0x04 0x2B
         let packet2 = Packet::EnemyAction(EnemyActionPacket {
-            actor: packet.object.clone(),
+            actor: packet.object,
             action_id: 7,
             ..Default::default()
         });

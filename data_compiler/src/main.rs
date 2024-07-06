@@ -6,7 +6,7 @@ use data_structs::{
     quest::QuestData,
     stats::{
         AllEnemyStats, AttackStats, AttackStatsReadable, ClassStatsStored, EnemyBaseStats,
-        NamedEnemyStats, PlayerStats, RaceModifierStored,
+        EnemyLevelBaseStats, NamedEnemyStats, PlayerStats, RaceModifierStored,
     },
     SerDeFile as _, ServerData,
 };
@@ -244,6 +244,29 @@ fn parse_player_stats(path: &Path) -> Result<PlayerStats, Box<dyn Error>> {
 
     Ok(data)
 }
+fn duplicate_stats(mut stats: Vec<EnemyLevelBaseStats>) -> Vec<EnemyLevelBaseStats> {
+    let mut last_stats = stats.remove(0);
+    let mut new_stats = vec![last_stats.clone()];
+    for stat in stats {
+        for level in new_stats.last().unwrap().level + 1..stat.level {
+            let mut new_stat = last_stats.clone();
+            new_stat.level = level;
+            new_stats.push(new_stat);
+        }
+        new_stats.push(stat.clone());
+        last_stats = stat;
+    }
+
+    if new_stats.last().unwrap().level < 100 {
+        for level in new_stats.last().unwrap().level + 1..100 {
+            let mut new_stat = last_stats.clone();
+            new_stat.level = level;
+            new_stats.push(new_stat);
+        }
+    }
+
+    new_stats
+}
 
 fn parse_enemy_stats(
     base_stats_path: &Path,
@@ -261,26 +284,7 @@ fn parse_enemy_stats(
         let mut base = EnemyBaseStats::load_from_json_file(base_stats_path)?;
         let mut stats = std::mem::take(&mut base.levels);
         stats.sort_by(|a, b| a.level.cmp(&b.level));
-        let mut last_stats = stats.remove(0);
-        base.levels.push(last_stats.clone());
-        for stat in stats {
-            if base.levels.last().unwrap().level + 1 < stat.level {
-                for level in base.levels.last().unwrap().level + 1..stat.level {
-                    let mut new_stat = last_stats.clone();
-                    new_stat.level = level;
-                    base.levels.push(new_stat);
-                }
-            }
-            base.levels.push(stat.clone());
-            last_stats = stat;
-        }
-        if base.levels.last().unwrap().level < 100 {
-            for level in base.levels.last().unwrap().level + 1..100 {
-                let mut new_stat = last_stats.clone();
-                new_stat.level = level;
-                base.levels.push(new_stat);
-            }
-        }
+        base.levels = duplicate_stats(stats);
 
         data.base = base;
     }
@@ -294,26 +298,7 @@ fn parse_enemy_stats(
             let base = &mut stats.stats;
             let mut stats = std::mem::take(&mut base.levels);
             stats.sort_by(|a, b| a.level.cmp(&b.level));
-            let mut last_stats = stats.remove(0);
-            base.levels.push(last_stats.clone());
-            for stat in stats {
-                if base.levels.last().unwrap().level + 1 < stat.level {
-                    for level in base.levels.last().unwrap().level + 1..stat.level {
-                        let mut new_stat = last_stats.clone();
-                        new_stat.level = level;
-                        base.levels.push(new_stat);
-                    }
-                }
-                base.levels.push(stat.clone());
-                last_stats = stat;
-            }
-            if base.levels.last().unwrap().level < 100 {
-                for level in base.levels.last().unwrap().level + 1..100 {
-                    let mut new_stat = last_stats.clone();
-                    new_stat.level = level;
-                    base.levels.push(new_stat);
-                }
-            }
+            base.levels = duplicate_stats(stats);
         }
 
         data.enemies.insert(stats.name, stats.stats);
