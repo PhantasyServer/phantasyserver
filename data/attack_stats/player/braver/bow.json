@@ -22,6 +22,17 @@
     }
   },
   {
+    "attack_name": "CompoundBow:SA1",
+    "damage_name": "CompoundBow:SA1a",
+    "attack_type": "Rng",
+    "defense_type": "Mel",
+    "damage": {
+      "Generic": {
+        "mul": 2.5
+      }
+    }
+  },
+  {
     "attack_name": "CompoundBow:PA1c0",
     "damage_name": "CompoundBow:PA1c0a",
     "attack_type": "Rng",
