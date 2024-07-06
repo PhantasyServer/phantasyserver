@@ -7,7 +7,7 @@ use data_structs::map::MapData;
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
     self,
-    flag::SkitItemAddRequestPacket,
+    flag::{CutsceneEndPacket, SkitItemAddRequestPacket},
     models::Position,
     objects::EnemyActionPacket,
     playerstatus::{DealDamagePacket, GainedEXPPacket, SetPlayerIDPacket},
@@ -31,7 +31,9 @@ pub struct Map {
     map_objs: Vec<(MapId, ObjectHeader)>,
     data: MapData,
     players: Vec<(PlayerId, MapId, Weak<Mutex<User>>)>,
+    // fighting with async recursion
     to_move: Vec<(PlayerId, MapId)>,
+    to_lobby_move: Vec<PlayerId>,
     max_id: u32,
     block_data: Option<Arc<BlockData>>,
     enemies: Vec<(u32, MapId, EnemyStats)>,
@@ -47,6 +49,7 @@ impl Map {
             data,
             players: vec![],
             to_move: vec![],
+            to_lobby_move: vec![],
             max_id: 0,
             block_data: None,
             enemies: vec![],
@@ -207,6 +210,16 @@ impl Map {
         .await?;
         drop(lock);
         self.add_player(player, map.map_id).await
+    }
+    pub async fn move_to_lobby(&mut self, id: PlayerId) -> Result<(), Error> {
+        let Some(player) = self.remove_player(id).await else {
+            return Err(Error::NoUserInMap(id, self.data.map_data.unk7.to_string()));
+        };
+        let lobby = player.lock().await.get_blockdata().lobby.clone();
+        player.lock().await.set_map(lobby.clone());
+        // thanks rust (something, something temporary value)
+        let result = lobby.lock().await.init_add_player(player).await;
+        result
     }
 
     async fn add_player(
@@ -790,6 +803,60 @@ impl Map {
         }
         Ok(())
     }
+    pub async fn on_cutscene_end(
+        &mut self,
+        player: PlayerId,
+        packet: CutsceneEndPacket,
+    ) -> Result<(), Error> {
+        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == player) else {
+            return Err(Error::NoUserInMap(
+                player,
+                self.data.map_data.unk7.to_string(),
+            ));
+        };
+        let mapid = *mapid;
+        let Some(lua) = self.data.luas.get("on_cutscene_end").cloned() else {
+            return Ok(());
+        };
+        self.run_lua(player, mapid, &packet, "on_cutscene_end", &lua)
+            .await?;
+        let to_move: Vec<_> = self.to_move.drain(..).collect();
+        for (player, mapid) in to_move {
+            self.move_player(player, mapid).await?;
+        }
+        let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
+        for player in to_move {
+            self.move_to_lobby(player).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn on_map_loaded(
+        &mut self,
+        player: PlayerId,
+    ) -> Result<(), Error> {
+        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == player) else {
+            return Err(Error::NoUserInMap(
+                player,
+                self.data.map_data.unk7.to_string(),
+            ));
+        };
+        let mapid = *mapid;
+        let Some(lua) = self.data.luas.get("on_map_loaded").cloned() else {
+            return Ok(());
+        };
+        self.run_lua(player, mapid, &Packet::None, "on_map_loaded", &lua)
+            .await?;
+        let to_move: Vec<_> = self.to_move.drain(..).collect();
+        for (player, mapid) in to_move {
+            self.move_player(player, mapid).await?;
+        }
+        let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
+        for player in to_move {
+            self.move_to_lobby(player).await?;
+        }
+        Ok(())
+    }
     pub fn get_close_objects<F>(&self, mapid: MapId, pred: F) -> Vec<ObjectSpawnPacket>
     where
         F: Fn(&Position) -> bool,
@@ -814,6 +881,9 @@ impl Map {
     ) -> Result<(), Error> {
         let mut scheduled_move = vec![];
         let mut to_send = vec![];
+        let mut lobby_moves = vec![];
+        let mut acc_flags = vec![];
+        let mut char_flags = vec![];
         {
             let lua = self.lua.lock();
             let globals = lua.globals();
@@ -824,7 +894,16 @@ impl Map {
             globals.set("players", player_ids)?;
             globals.set("call_type", call_type)?;
             lua.scope(|scope| {
-                self.setup_scope(&globals, scope, mapid, &mut to_send, &mut scheduled_move)?;
+                self.setup_scope(
+                    &globals,
+                    scope,
+                    mapid,
+                    &mut to_send,
+                    &mut scheduled_move,
+                    &mut lobby_moves,
+                    &mut acc_flags,
+                    &mut char_flags,
+                )?;
                 let chunk = lua.load(lua_data);
                 chunk.exec()?;
                 Ok(())
@@ -848,6 +927,29 @@ impl Map {
         for (receiver, mapid) in scheduled_move {
             self.to_move.push((receiver, mapid));
         }
+        for receiver in lobby_moves {
+            self.to_lobby_move.push(receiver);
+        }
+        for (receiver, flag, value) in acc_flags {
+            if let Some(p) = self
+                .players
+                .iter()
+                .find(|p| p.0 == receiver)
+                .and_then(|p| p.2.upgrade())
+            {
+                p.lock().await.set_account_flag(flag, value != 0).await?;
+            }
+        }
+        for (receiver, flag, value) in char_flags {
+            if let Some(p) = self
+                .players
+                .iter()
+                .find(|p| p.0 == receiver)
+                .and_then(|p| p.2.upgrade())
+            {
+                p.lock().await.set_char_flag(flag, value != 0).await?;
+            }
+        }
         Ok(())
     }
 
@@ -858,6 +960,9 @@ impl Map {
         mapid: MapId,
         to_send: &'s mut Vec<(PlayerId, Packet)>,
         scheduled_move: &'s mut Vec<(PlayerId, MapId)>,
+        lobby_moves: &'s mut Vec<PlayerId>,
+        acc_flags: &'s mut Vec<(PlayerId, u32, u8)>,
+        char_flags: &'s mut Vec<(PlayerId, u32, u8)>,
     ) -> Result<(), mlua::Error> {
         /* LUA FUNCTIONS */
 
@@ -924,6 +1029,24 @@ impl Map {
             Ok(())
         })?;
         globals.set("move_player", move_player)?;
+        // move player to lobby
+        let move_lobby = scope.create_function_mut(|_, receiver: u32| {
+            lobby_moves.push(receiver);
+            Ok(())
+        })?;
+        globals.set("move_lobby", move_lobby)?;
+        // set account flag
+        let set_acc_flag = scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
+            acc_flags.push((receiver, flag, value));
+            Ok(())
+        })?;
+        globals.set("set_account_flag", set_acc_flag)?;
+        // set character flag
+        let set_char_flag = scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
+            char_flags.push((receiver, flag, value));
+            Ok(())
+        })?;
+        globals.set("set_character_flag", set_char_flag)?;
 
         /* LUA FUNCTIONS END */
         Ok(())

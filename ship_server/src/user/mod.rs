@@ -292,6 +292,30 @@ impl User {
         self.battle_stats = PlayerStats::build(self)?;
         Ok(packet)
     }
+    pub async fn set_account_flag(&mut self, flag: u32, value: bool) -> Result<(), Error> {
+        self.accountflags.set(flag as _, value as _);
+        self.send_packet(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
+            flag_type: Pr::flag::FlagType::Account,
+            id: flag as u32,
+            value: value as u32,
+            ..Default::default()
+        }))
+        .await?;
+        Ok(())
+    }
+    pub async fn set_char_flag(&mut self, flag: u32, value: bool) -> Result<(), Error> {
+        self.character
+            .as_mut()
+            .map(|c| c.flags.set(flag as _, value as _));
+        self.send_packet(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
+            flag_type: Pr::flag::FlagType::Character,
+            id: flag as u32,
+            value: value as u32,
+            ..Default::default()
+        }))
+        .await?;
+        Ok(())
+    }
 }
 
 pub async fn packet_handler(
@@ -311,7 +335,7 @@ pub async fn packet_handler(
             user.failed_pings = 0;
             Ok(Action::Nothing)
         }
-        (US::InGame, P::MapLoaded(data)) => H::server::map_loaded(user, data).await,
+        (US::InGame, P::MapLoaded(data)) => H::server::map_loaded(user_guard, data).await,
         (US::InGame, P::ToCampship(data)) => H::server::to_campship(user_guard, data).await,
         (US::InGame, P::CampshipDown(data)) => H::server::campship_down(user_guard, data).await,
         (US::InGame, P::CasinoToLobby(data)) => H::server::move_from_casino(user_guard, data).await,
@@ -360,6 +384,7 @@ pub async fn packet_handler(
         }
         (US::InGame, P::AcceptQuest(data)) => H::quest::set_quest(user_guard, data).await,
         (US::InGame, P::QuestCounterRequest) => H::quest::counter_request(user).await,
+        (US::InGame, P::AcceptStoryQuest(data)) => H::quest::set_story_quest(user_guard, data).await,
 
         // Party packets
         (US::InGame, P::PartyInviteRequest(data)) => Ok(Action::SendPartyInvite(data.invitee.id)),
@@ -464,6 +489,7 @@ pub async fn packet_handler(
         // Flag packets
         (US::InGame, P::SetFlag(data)) => H::server::set_flag(user, data).await,
         (US::InGame, P::SkitItemAddRequest(data)) => H::quest::questwork(user_guard, data).await,
+        (US::InGame, P::CutsceneEnd(data)) => H::quest::cutscene_end(user_guard, data).await,
 
         // Settings packets
         (_, P::SettingsRequest) if state >= US::NewUsername => {

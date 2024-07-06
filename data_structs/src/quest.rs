@@ -12,6 +12,7 @@ pub struct QuestData {
     pub difficulties: QuestDifficulty,
     pub map: MapData,
     pub enemies: Vec<EnemyData>,
+    pub immediate_move: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

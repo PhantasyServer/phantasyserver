@@ -63,7 +63,7 @@ pub struct TransporterData {
 #[serde(default)]
 pub struct ZoneChunk {
     pub mapid: MapId,
-    pub chunk_ids: Vec<u32>,
+    pub chunk_id: u32,
     pub enemy_spawn_enabled: bool,
     pub enemy_spawn_points: Vec<Position>,
 }
