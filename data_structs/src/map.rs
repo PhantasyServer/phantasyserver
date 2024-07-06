@@ -20,6 +20,7 @@ pub struct MapData {
     pub luas: HashMap<String, String>,
     pub init_map: MapId,
     pub map_names: HashMap<String, MapId>,
+    pub chunks: Vec<ZoneChunk>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -56,4 +57,13 @@ pub struct TransporterData {
     pub is_active: bool,
     pub data: TransporterSpawnPacket,
     pub lua_data: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct ZoneChunk {
+    pub mapid: MapId,
+    pub chunk_ids: Vec<u32>,
+    pub enemy_spawn_enabled: bool,
+    pub enemy_spawn_points: Vec<Position>,
 }
