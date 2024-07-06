@@ -296,6 +296,9 @@ impl ShipConnection {
         }
         Ok(())
     }
+    pub fn get_ip(&self) -> std::io::Result<std::net::IpAddr> {
+        self.stream.peer_addr().map(|a| a.ip())
+    }
     fn extract_data(&mut self) -> Result<Option<MasterShipComm>, Error> {
         let mut output_data = vec![];
         if self.length == 0 && self.raw_read_buffer.len() > 4 {
