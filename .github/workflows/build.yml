@@ -36,7 +36,10 @@ jobs:
         mkdir output
         mv target/release/{pso2ship_server,master_ship,data_compiler} output
         mkdir -p data_compiled/quests
-        mv data/*.* data_compiled
+        mv data/com_data.mp data_compiled
+        mv data/ship.toml data_compiled
+        mv data/master_ship.toml data_compiled
+        mv data/friend.json data_compiled
     - name: Upload bin artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
