@@ -68,6 +68,10 @@ pub enum Error {
     NoClothes(u16),
     #[error("No enemy data for {0} found")]
     NoEnemyData(String),
+    #[error("No damage ID {0} found")]
+    NoDamageInfo(u32),
+    #[error("Unknown enemy hitbox {0}:{1}")]
+    NoHitboxInfo(String, u32),
 
     // passthrough errors
     #[error("SQL error: {0}")]

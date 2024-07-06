@@ -1,13 +1,24 @@
 pub(crate) mod handlers;
 use crate::{
-    battle_stats::PlayerStats, invites::PartyInvite, map::Map, mutex::{Mutex, MutexGuard, RwLock}, party::{self, Party}, sql::CharData, Action, BlockData, Error
+    battle_stats::PlayerStats,
+    invites::PartyInvite,
+    map::Map,
+    mutex::{Mutex, MutexGuard, RwLock},
+    party::{self, Party},
+    sql::CharData,
+    Action, BlockData, Error,
 };
 use data_structs::flags::Flags;
 use pso2packetlib::{
     connection::{ConnectionError, ConnectionRead, ConnectionWrite},
     protocol::{
-        self as Pr, login::Language, models::Position, party::BusyState,
-        spawn::CharacterSpawnPacket, ObjectHeader, Packet, PacketType,
+        self as Pr,
+        login::Language,
+        models::{character::Class, Position},
+        party::BusyState,
+        playerstatus::EXPReceiver,
+        spawn::CharacterSpawnPacket,
+        ObjectHeader, Packet, PacketType,
     },
     Connection, PublicKey,
 };
@@ -147,6 +158,9 @@ impl User {
     pub const fn get_stats(&self) -> &PlayerStats {
         &self.battle_stats
     }
+    pub fn get_stats_mut(&mut self) -> &mut PlayerStats {
+        &mut self.battle_stats
+    }
     pub const fn create_object_header(&self) -> ObjectHeader {
         ObjectHeader {
             id: self.player_id,
@@ -214,6 +228,60 @@ impl User {
         }
         Ok(Action::Nothing)
     }
+    pub fn add_exp(&mut self, exp: u32) -> Result<EXPReceiver, Error> {
+        let mut packet = EXPReceiver {
+            object: self.create_object_header(),
+            unk1: 1,
+            unk2: 1,
+            gained: exp as _,
+            ..Default::default()
+        };
+        let char = self
+            .character
+            .as_mut()
+            .expect("User should be in state >= 'PreInGame'");
+        let class_offset = char.character.classes.main_class as usize;
+        let subclass_offset = char.character.classes.sub_class as usize;
+        // main class
+        {
+            let level = char.character.get_level_mut();
+            let new_exp = level.exp + exp;
+            if level.level1 < 100 {
+                let stats = &self.blockdata.server_data.player_stats.stats[class_offset]
+                    [level.level1 as usize - 1];
+                if new_exp > stats.exp_to_next as _ {
+                    level.level1 += 1;
+                    level.level2 = level.level1;
+                }
+            }
+            level.exp = new_exp;
+            packet.total = level.exp as _;
+            packet.level2 = level.level2;
+            packet.level = level.level1;
+            packet.class = char.character.classes.main_class;
+        }
+
+        if !matches!(char.character.classes.sub_class, Class::Unknown) {
+            let level = char.character.get_sublevel_mut();
+            let new_exp = level.exp + exp;
+            if level.level1 < 100 {
+                let stats = &self.blockdata.server_data.player_stats.stats[subclass_offset]
+                    [level.level1 as usize - 1];
+                if new_exp > stats.exp_to_next as _ {
+                    level.level1 += 1;
+                    level.level2 = level.level1;
+                }
+            }
+            level.exp = new_exp;
+            packet.gained_sub = exp as _;
+            packet.total_sub = level.exp as _;
+            packet.level2_sub = level.level2;
+            packet.level_sub = level.level1;
+        }
+        packet.subclass = char.character.classes.sub_class;
+        self.battle_stats = PlayerStats::build(self)?;
+        Ok(packet)
+    }
 }
 
 pub async fn packet_handler(
@@ -256,6 +324,9 @@ pub async fn packet_handler(
             User::send_position(user_guard, match_unit.1).await
         }
         (US::InGame, P::ActionEnd(..)) => User::send_position(user_guard, match_unit.1).await,
+        
+        // Player status packets
+        (US::InGame, P::DealDamage(data)) => H::player_status::deal_damage(user_guard, data).await,
 
         // Chat packets
         (US::InGame, P::ChatMessage(..)) => H::chat::send_chat(user_guard, match_unit.1).await,

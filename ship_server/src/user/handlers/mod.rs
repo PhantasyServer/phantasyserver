@@ -13,5 +13,6 @@ pub mod quest;
 pub mod server;
 pub mod settings;
 pub mod symbolart;
+pub mod player_status;
 
 type HResult = Result<Action, Error>;

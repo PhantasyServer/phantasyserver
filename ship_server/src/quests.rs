@@ -5,7 +5,8 @@ use data_structs::quest::QuestData;
 use pso2packetlib::protocol::{
     party::{SetPartyQuestPacket, SetQuestInfoPacket},
     questlist::{
-        AcceptQuestPacket, AvailableQuestType, AvailableQuestsPacket, QuestCategoryPacket, QuestDifficulty, QuestType
+        AcceptQuestPacket, AvailableQuestType, AvailableQuestsPacket, QuestCategoryPacket,
+        QuestDifficulty, QuestType,
     },
 };
 
@@ -332,10 +333,9 @@ impl Quests {
         else {
             return Err(Error::InvalidInput("get_quest"));
         };
-        let map = Arc::new(Mutex::new(Map::new_from_data(
-            quest.map.clone(),
-            map_obj_id,
-        )?));
+        let mut map = Map::new_from_data(quest.map.clone(), map_obj_id)?;
+        map.set_enemy_level(quest.difficulties.diffs[packet.diff as usize].monster_level as _);
+        let map = Arc::new(Mutex::new(map));
         Ok(PartyQuest {
             quest: quest.clone(),
             diff: packet.diff,
@@ -367,4 +367,3 @@ impl PartyQuest {
         self.map.clone()
     }
 }
-

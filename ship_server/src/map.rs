@@ -1,6 +1,7 @@
 use crate::{
+    battle_stats::{BattleResult, EnemyStats},
     mutex::{Mutex, MutexGuard},
-    Error, User,
+    BlockData, Error, User,
 };
 use data_structs::map::MapData;
 use mlua::{Lua, LuaSerdeExt, StdLib};
@@ -9,6 +10,8 @@ use pso2packetlib::protocol::{
     flag::SkitItemAddRequestPacket,
     models::Position,
     playerstatus::SetPlayerIDPacket,
+    objects::EnemyActionPacket,
+    playerstatus::{DealDamagePacket, GainedEXPPacket, SetPlayerIDPacket},
     server::MapTransferPacket,
     spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
@@ -31,6 +34,9 @@ pub struct Map {
     players: Vec<(PlayerId, MapId, Weak<Mutex<User>>)>,
     to_move: Vec<(PlayerId, MapId)>,
     max_id: u32,
+    block_data: Option<Arc<BlockData>>,
+    enemies: Vec<(u32, MapId, EnemyStats)>,
+    enemy_level: u32,
 }
 impl Map {
     pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
@@ -43,6 +49,9 @@ impl Map {
             players: vec![],
             to_move: vec![],
             max_id: 0,
+            block_data: None,
+            enemies: vec![],
+            enemy_level: 0,
         };
         let map_obj = ObjectHeader {
             id: map_obj_id.fetch_add(1, Ordering::Relaxed),
@@ -66,11 +75,41 @@ impl Map {
         map.find_max_id();
         Ok(map)
     }
+    pub fn set_block_data(&mut self, data: Arc<BlockData>) {
+        self.block_data = Some(data);
+    }
+    pub fn set_enemy_level(&mut self, level: u32) {
+        self.enemy_level = level;
+    }
     fn find_max_id(&mut self) {
-        let obj_max = self.data.objects.iter().map(|o| o.data.object.id).max().unwrap_or(0);
-        let npc_max = self.data.npcs.iter().map(|o| o.data.object.id).max().unwrap_or(0);
-        let event_max = self.data.events.iter().map(|o| o.data.object.id).max().unwrap_or(0);
-        let transporter_max = self.data.transporters.iter().map(|o| o.data.object.id).max().unwrap_or(0);
+        let obj_max = self
+            .data
+            .objects
+            .iter()
+            .map(|o| o.data.object.id)
+            .max()
+            .unwrap_or(0);
+        let npc_max = self
+            .data
+            .npcs
+            .iter()
+            .map(|o| o.data.object.id)
+            .max()
+            .unwrap_or(0);
+        let event_max = self
+            .data
+            .events
+            .iter()
+            .map(|o| o.data.object.id)
+            .max()
+            .unwrap_or(0);
+        let transporter_max = self
+            .data
+            .transporters
+            .iter()
+            .map(|o| o.data.object.id)
+            .max()
+            .unwrap_or(0);
         self.max_id = obj_max.max(npc_max).max(event_max).max(transporter_max) + 1;
     }
     fn init_lua(&mut self) -> Result<(), Error> {
@@ -260,6 +299,15 @@ impl Map {
                 .send_cur_weapon(np_id, &new_character.inventory),
             new_character.inventory.send_equiped(np_id),
         );
+        for (id, mapid, enemy) in self.enemies.iter().filter(|(_, mid, _)| *mid == mapid) {
+            let (packet, mut packet2) = Self::prepare_enemy_packets(*id, *mapid, enemy);
+            if let Packet::EnemyAction(data) = &mut packet2 {
+                data.receiver = np_lock.create_object_header();
+                data.action_starter = np_lock.create_object_header();
+            }
+            np_lock.send_packet(&packet).await?;
+            np_lock.send_packet(&packet2).await?;
+        }
         drop(np_lock);
 
         exec_users(&self.players, mapid, |_, _, mut player| {
@@ -460,6 +508,179 @@ impl Map {
         })
         .await;
         rem_player.upgrade()
+    }
+    pub async fn spawn_enemy(
+        &mut self,
+        name: &str,
+        pos: Position,
+        map_id: MapId,
+    ) -> Result<(), Error> {
+        let Some(block_data) = self.block_data.to_owned() else {
+            return Err(Error::NoEnemyData(name.to_string()));
+        };
+        let id = self.max_id + 1;
+        self.max_id += 1;
+        let data = EnemyStats::build(name, self.enemy_level, pos, &block_data.server_data)?;
+        let (packet, mut packet2) = Self::prepare_enemy_packets(id, map_id, &data);
+        self.enemies.push((id, map_id, data));
+
+        exec_users(&self.players, map_id, |_, _, mut player| {
+            let _ = player.try_send_packet(&packet);
+            if let Packet::EnemyAction(data) = &mut packet2 {
+                data.receiver = player.create_object_header();
+                data.action_starter = player.create_object_header();
+                let _ = player.try_send_packet(&packet2);
+            }
+        })
+        .await;
+
+        Ok(())
+    }
+    fn prepare_enemy_packets(enemy_id: u32, map_id: MapId, enemy: &EnemyStats) -> (Packet, Packet) {
+        let packet = enemy.create_spawn_packet(enemy_id, map_id as _);
+        // techically this is a response to 0x04 0x2B
+        let packet2 = Packet::EnemyAction(EnemyActionPacket {
+            actor: packet.object.clone(),
+            action_id: 7,
+            ..Default::default()
+        });
+        let packet = Packet::EnemySpawn(packet);
+        (packet, packet2)
+    }
+    pub async fn deal_damage(&mut self, dmg: DealDamagePacket) -> Result<(), Error> {
+        let Some(block_data) = self.block_data.to_owned() else {
+            return Err(Error::InvalidInput("deal_damage"));
+        };
+        let (inflicter, target) = (dmg.inflicter, dmg.target);
+        if inflicter.entity_type == ObjectType::Player && target.entity_type == ObjectType::Object {
+            let Some((pos, (_, _, target))) = self
+                .enemies
+                .iter_mut()
+                .enumerate()
+                .find(|(_, (id, _, _))| *id == target.id)
+            else {
+                return Ok(());
+            };
+            let Some(inflicter) = self
+                .players
+                .iter()
+                .find(|(id, _, _)| *id == inflicter.id)
+                .and_then(|p| p.2.upgrade())
+            else {
+                return Err(Error::InvalidInput("deal_damage"));
+            };
+            let mut lock = inflicter.lock().await;
+            let map_id = lock.get_map_id();
+            let result = lock
+                .get_stats_mut()
+                .damage_enemy(target, &block_data.server_data, dmg)?;
+            drop(lock);
+            match result {
+                BattleResult::Damaged { dmg_packet } => {
+                    let mut packet = Packet::DamageReceive(dmg_packet);
+                    exec_users(&self.players, map_id, |_, _, mut player| {
+                        if let Packet::DamageReceive(data) = &mut packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&packet);
+                        }
+                    })
+                    .await;
+                }
+                BattleResult::Killed {
+                    dmg_packet,
+                    kill_packet,
+                    exp_amount,
+                } => {
+                    let mut action_packet = Packet::EnemyAction(EnemyActionPacket {
+                        actor: dmg_packet.dmg_target,
+                        action_starter: dmg_packet.dmg_inflicter,
+                        action_id: 4,
+                        ..Default::default()
+                    });
+                    let mut dmg_packet = Packet::DamageReceive(dmg_packet);
+                    let mut kill_packet = Packet::EnemyKilled(kill_packet);
+                    let mut exp_packets = vec![];
+                    exec_users(&self.players, map_id, |_, _, mut player| {
+                        exp_packets.push(player.add_exp(exp_amount))
+                    })
+                    .await;
+                    let exp_packets = exp_packets.into_iter().collect::<Result<Vec<_>, _>>()?;
+                    let mut exp_packet = Packet::GainedEXP(GainedEXPPacket {
+                        receivers: exp_packets,
+                        ..Default::default()
+                    });
+                    exec_users(&self.players, map_id, |_, _, mut player| {
+                        if let Packet::DamageReceive(data) = &mut dmg_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&dmg_packet);
+                        }
+                        if let Packet::EnemyKilled(data) = &mut kill_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&kill_packet);
+                        }
+                        if let Packet::GainedEXP(data) = &mut exp_packet {
+                            data.sender = player.create_object_header();
+                            let _ = player.try_send_packet(&exp_packet);
+                        }
+                        if let Packet::EnemyAction(data) = &mut action_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&action_packet);
+                        }
+                    })
+                    .await;
+                    self.enemies.remove(pos);
+                }
+            }
+        } else if inflicter.entity_type == ObjectType::Object
+            && target.entity_type == ObjectType::Player
+        {
+            let Some(target) = self
+                .players
+                .iter_mut()
+                .find(|(id, _, _)| *id == target.id)
+                .and_then(|p| p.2.upgrade())
+            else {
+                return Err(Error::InvalidInput("deal_damage"));
+            };
+            let Some((_, _, inflicter)) = self
+                .enemies
+                .iter_mut()
+                .find(|(id, _, _)| *id == inflicter.id)
+            else {
+                return Ok(());
+            };
+            let mut lock = target.lock().await;
+            let map_id = lock.get_map_id();
+            let result =
+                inflicter.damage_player(lock.get_stats_mut(), &block_data.server_data, dmg)?;
+            drop(lock);
+
+            match result {
+                BattleResult::Damaged { dmg_packet } => {
+                    let mut packet = Packet::DamageReceive(dmg_packet);
+                    exec_users(&self.players, map_id, |_, _, mut player| {
+                        if let Packet::DamageReceive(data) = &mut packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&packet);
+                        }
+                    })
+                    .await;
+                }
+                BattleResult::Killed { dmg_packet, .. } => {
+                    let mut dmg_packet = Packet::DamageReceive(dmg_packet);
+                    exec_users(&self.players, map_id, |_, _, mut player| {
+                        if let Packet::DamageReceive(data) = &mut dmg_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&dmg_packet);
+                        }
+                    })
+                    .await;
+                    todo!();
+                }
+            }
+        }
+
+        Ok(())
     }
     fn load_objects(
         lua: &parking_lot::Mutex<Lua>,

@@ -119,6 +119,8 @@ pub async fn set_quest(user: MutexGuard<'_, User>, packet: AcceptQuestPacket) ->
         .blockdata
         .quests
         .get_quest(packet, &user.blockdata.latest_mapid)?;
+    // we are the only owner of the map, so this never blocks
+    quest.get_map().lock_blocking().set_block_data(user.blockdata.clone());
     let party = user.get_current_party();
     drop(user);
     if let Some(party) = party {
