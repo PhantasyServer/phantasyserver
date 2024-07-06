@@ -54,6 +54,19 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 });
                 user.send_packet(&packet).await?;
             }
+            "!start_cutscene" => {
+                let Some(name) = args.next() else {
+                    user.send_system_msg("No cutscene name provided").await?;
+                    return Ok(Action::Nothing);
+                };
+                user.send_packet(&Packet::StartCutscene(
+                    pso2packetlib::protocol::questlist::StartCutscenePacket {
+                        scene_name: name.to_string().into(),
+                        ..Default::default()
+                    },
+                ))
+                .await?;
+            }
             "!send_con" => {
                 let name = args.next();
                 if name.is_none() {
@@ -204,52 +217,11 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     user.send_system_msg("No enemy name provided").await?;
                     return Ok(Action::Nothing);
                 };
-                let Some(level) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No level provided").await?;
-                    return Ok(Action::Nothing);
-                };
                 let map_id = user.get_map_id();
-                let packet = crate::battle_stats::EnemyStats::build(
-                    name,
-                    level,
-                    user.position.clone(),
-                    &user.blockdata.server_data,
-                )?
-                .create_spawn_packet(3000, map_id as _);
-                let packet2 = Packet::Unk0422(pso2packetlib::protocol::objects::Unk0422Packet {
-                    unk1: user.create_object_header(),
-                    unk2: packet.object.clone(),
-                    unk3: 1,
-                    ..Default::default()
-                });
-                let packet3 = Packet::Unk0422(pso2packetlib::protocol::objects::Unk0422Packet {
-                    unk1: user.create_object_header(),
-                    unk2: packet.object.clone(),
-                    unk3: 1,
-                    unk4: user.create_object_header(),
-                    ..Default::default()
-                });
-                let packet4 = Packet::Unk0422(pso2packetlib::protocol::objects::Unk0422Packet {
-                    unk1: user.create_object_header(),
-                    unk2: packet.object.clone(),
-                    unk3: 2,
-                    unk4: user.create_object_header(),
-                    ..Default::default()
-                });
-                let packet5 = Packet::Unk0422(pso2packetlib::protocol::objects::Unk0422Packet {
-                    unk1: user.create_object_header(),
-                    unk2: packet.object.clone(),
-                    unk3: 7,
-                    unk4: user.create_object_header(),
-                    ..Default::default()
-                });
-                user.send_system_msg(&format!("{packet:?}")).await?;
-                user.send_packet(&Packet::EnemySpawn(packet)).await?;
-                user.send_packet(&packet2).await?;
-                user.send_packet(&packet3).await?;
-                user.send_packet(&packet4).await?;
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                user.send_packet(&packet5).await?;
+                let map = user.get_current_map().unwrap();
+                let pos = user.position.clone();
+                drop(user);
+                map.lock().await.spawn_enemy(name, pos, map_id).await?;
             }
             _ => user.send_system_msg("Unknown command").await?,
         }
