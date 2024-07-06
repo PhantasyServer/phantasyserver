@@ -915,7 +915,7 @@
       {
         "req_level": 1,
         "sub_class_req_level": 0,
-        "monster_level": 20,
+        "monster_level": 5,
         "unk1": 0,
         "ability_adj": 0,
         "dmg_limit": 0,
@@ -931,7 +931,7 @@
       {
         "req_level": 20,
         "sub_class_req_level": 0,
-        "monster_level": 40,
+        "monster_level": 20,
         "unk1": 0,
         "ability_adj": 0,
         "dmg_limit": 0,
@@ -947,7 +947,7 @@
       {
         "req_level": 40,
         "sub_class_req_level": 0,
-        "monster_level": 55,
+        "monster_level": 40,
         "unk1": 0,
         "ability_adj": 0,
         "dmg_limit": 0,
