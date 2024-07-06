@@ -111,6 +111,15 @@ pub async fn on_successful_login(user: &mut User) -> HResult {
     user.send_item_attrs().await?;
     let info = user.blockdata.sql.get_user_info(id).await?;
     user.send_packet(&Packet::UserInfo(info)).await?;
+    user.send_packet(&Packet::SecondPwdOperation(
+        pso2packetlib::protocol::login::SecondPwdOperationPacket {
+            unk2: 0,
+            is_set: 1,
+            is_unlocked: 1,
+            unk5: 1,
+            ..Default::default()
+        },
+    )).await?;
     user.state = UserState::CharacterSelect;
 
     Ok(Action::Nothing)
