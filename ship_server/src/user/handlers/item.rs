@@ -89,6 +89,7 @@ pub async fn equip_item(mut user: MutexGuard<'_, User>, packet: EquipItemRequest
         .equip_item(packet.uuid, packet.equipment_pos)?;
     let item = char.inventory.get_inv_item(packet.uuid)?;
     if let ItemType::Clothing(data) = &item.data {
+        //BUG: a (0x0F, 0x2B) packet should also be sent, but let's not worry about it at this time
         let block_data = user.get_blockdata();
         let clothing_stats = block_data
             .server_data
@@ -130,7 +131,6 @@ pub async fn unequip_item(
     };
     char.inventory.unequip_item(packet.uuid)?;
     let item = char.inventory.get_inv_item(packet.uuid)?;
-    //BUG: a (0x0F, 0x2B) packet should also be sent, but let's not worry about it at this time
     let equip_packet = Packet::UnequipItem(UnequipItemPacket {
         player_unequiped: user.create_object_header(),
         unequiped_item: item.clone(),

@@ -9,7 +9,6 @@ use pso2packetlib::protocol::{
     self,
     flag::SkitItemAddRequestPacket,
     models::Position,
-    playerstatus::SetPlayerIDPacket,
     objects::EnemyActionPacket,
     playerstatus::{DealDamagePacket, GainedEXPPacket, SetPlayerIDPacket},
     server::MapTransferPacket,
@@ -425,8 +424,10 @@ impl Map {
                 };
                 Packet::ActionUpdateServer(packet)
             }
-            //FIXME: not the right packet
-            Packet::ActionEnd(_) => packet,
+            Packet::ActionEnd(mut data) => {
+                data.unk1 = data.performer;
+                Packet::ActionEnd(data)
+            }
             _ => return,
         };
         exec_users(&self.players, mapid, |id, _, mut player| {
@@ -434,8 +435,6 @@ impl Map {
                 data.receiver.id = player.get_user_id();
             } else if let Packet::ActionUpdateServer(ref mut data) = out_packet {
                 data.receiver.id = player.get_user_id();
-            } else if let Packet::ActionEnd(ref mut data) = out_packet {
-                data.receiver = player.create_object_header();
             }
             if id != sender_id {
                 let _ = player.try_send_packet(&out_packet);

@@ -170,12 +170,12 @@ pub async fn set_flag(user: &mut User, data: SetFlagPacket) -> HResult {
 }
 
 pub async fn to_campship(user: MutexGuard<'_, User>, _: ToCampshipPacket) -> HResult {
-    let party = user
-        .get_current_party()
-        .ok_or_else(|| Error::InvalidInput("to_campship"))?;
-    let map = user
-        .get_current_map()
-        .ok_or_else(|| Error::InvalidInput("to_campship"))?;
+    let Some(party) = user.get_current_party() else {
+        unreachable!("User should be in state >= 'PreInGame'");
+    };
+    let Some(map) = user.get_current_map() else {
+        unreachable!("User should be in state >= 'PreInGame'");
+    };
     let player_id = user.get_user_id();
     drop(user);
     let quest_map = party

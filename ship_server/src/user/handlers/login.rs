@@ -263,8 +263,9 @@ pub async fn character_list(user: &mut User) -> HResult {
         };
         let mut items: [Item; 10] = Default::default();
         for item in equiped.items {
-            //TODO: bound checking
-            items[item.unk as usize] = item.item;
+            if item.unk < 10 {
+                items[item.unk as usize] = item.item;
+            }
         }
         packet.equiped_items.push(items);
     }
