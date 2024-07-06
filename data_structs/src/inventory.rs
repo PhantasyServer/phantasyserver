@@ -1,4 +1,7 @@
-use pso2packetlib::protocol::{items::{Item, ItemId, StorageInfo}, models::item_attrs::ItemAttributesPC};
+use pso2packetlib::protocol::{
+    items::{Item, ItemId, StorageInfo},
+    models::item_attrs::ItemAttributesPC,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

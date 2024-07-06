@@ -9,8 +9,8 @@ pub mod master_ship;
 pub mod quest;
 pub mod stats;
 
-use std::collections::HashMap;
 use serde::{de::DeserializeOwned, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -51,13 +51,15 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     #[cfg(feature = "rmp")]
     fn load_from_mp_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let data = std::fs::File::open(path)?;
-        let names = Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
+        let names =
+            Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
         Ok(names)
     }
     #[cfg(feature = "rmp")]
     fn load_from_mp_comp<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let data = zstd::Decoder::new(std::fs::File::open(path)?)?;
-        let names = Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
+        let names =
+            Self::deserialize(&mut rmp_serde::Deserializer::new(data).with_human_readable())?;
         Ok(names)
     }
     #[cfg(feature = "json")]

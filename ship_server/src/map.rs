@@ -298,6 +298,7 @@ impl Map {
                 .send_cur_weapon(np_id, &new_character.inventory),
             new_character.inventory.send_equiped(np_id),
         );
+
         for (id, mapid, enemy) in self.enemies.iter().filter(|(_, mid, _)| *mid == mapid) {
             let (packet, mut packet2) = Self::prepare_enemy_packets(*id, *mapid, enemy);
             if let Packet::EnemyAction(data) = &mut packet2 {
@@ -370,13 +371,13 @@ impl Map {
     }
     pub async fn send_to_all(&self, sender_id: PlayerId, packet: &Packet) {
         let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
-            return  ;
+            return;
         };
         let mapid = *mapid;
         exec_users(&self.players, mapid, |_, _, mut player| {
             let _ = player.try_send_packet(packet);
-        }).await;
-
+        })
+        .await;
     }
 
     pub async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {

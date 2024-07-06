@@ -50,7 +50,10 @@ pub async fn init_block(
         quests: this_block.quests,
     });
     // we are the only owner of the map, so this never blocks
-    block_data.lobby.lock_blocking().set_block_data(block_data.clone());
+    block_data
+        .lobby
+        .lock_blocking()
+        .set_block_data(block_data.clone());
 
     let mut clients = vec![];
     let mut conn_id = 0usize;

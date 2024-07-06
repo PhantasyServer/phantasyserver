@@ -8,7 +8,7 @@ use crate::{
 use pso2packetlib::protocol::{
     party::{self, BusyState, ChatStatusPacket, Color, NewBusyStatePacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
-    ObjectType, ObjectHeader, Packet,
+    ObjectHeader, ObjectType, Packet,
 };
 use std::{
     sync::{Arc, Weak},

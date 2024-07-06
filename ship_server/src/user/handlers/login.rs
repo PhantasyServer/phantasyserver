@@ -119,7 +119,8 @@ pub async fn on_successful_login(user: &mut User) -> HResult {
             unk5: 1,
             ..Default::default()
         },
-    )).await?;
+    ))
+    .await?;
     user.state = UserState::CharacterSelect;
 
     Ok(Action::Nothing)

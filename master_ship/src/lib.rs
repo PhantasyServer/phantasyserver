@@ -215,12 +215,8 @@ async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: Sql) 
                 if e.kind() == io::ErrorKind::ConnectionAborted =>
             {
                 log::info!("Ship disconnected");
-                let Ok(ip) = conn.get_ip() else {
-                    return
-                };
-                let std::net::IpAddr::V4(ip) = ip else {
-                    return
-                };
+                let Ok(ip) = conn.get_ip() else { return };
+                let std::net::IpAddr::V4(ip) = ip else { return };
                 let mut lock = async_write(&servers).await;
                 if let Some((i, _)) = lock.iter().enumerate().find(|(_, s)| s.ip == ip) {
                     lock.swap_remove(i);

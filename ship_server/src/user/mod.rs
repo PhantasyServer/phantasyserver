@@ -324,7 +324,7 @@ pub async fn packet_handler(
             User::send_position(user_guard, match_unit.1).await
         }
         (US::InGame, P::ActionEnd(..)) => User::send_position(user_guard, match_unit.1).await,
-        
+
         // Player status packets
         (US::InGame, P::DealDamage(data)) => H::player_status::deal_damage(user_guard, data).await,
 
@@ -333,11 +333,12 @@ pub async fn packet_handler(
 
         // Quest List packets
         (US::InGame, P::MinimapRevealRequest(data)) => {
-            user.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket{
+            user.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket {
                 message: format!("Chunk ID: {}", data.chunk_id),
                 msg_type: Pr::unk19::MessageType::EventInformationYellow,
                 ..Default::default()
-            })).await?; 
+            }))
+            .await?;
             Ok(Action::Nothing)
         }
         (US::InGame, P::AvailableQuestsRequest(data)) => {
