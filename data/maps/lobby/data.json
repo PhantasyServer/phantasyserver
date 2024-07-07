@@ -6,21 +6,6 @@
       "entity_type": "Map",
       "map_id": 0
     },
-    "settings": {
-      "world_id": 0,
-      "unk1": 0,
-      "zone_id": 4294967291,
-      "map_id": 106,
-      "zone_type": 3,
-      "seed": 2100752559,
-      "args": 0,
-      "size_x": 0,
-      "size_y": 0,
-      "unk2": 0,
-      "area_index": 1,
-      "sub_area": 4294967295,
-      "unk3": 0
-    },
     "unk4": [
       0,
       0,
@@ -64,93 +49,12 @@
       0
     ],
     "unk7": "lobby",
-    "other_settings": [
-      {
-        "world_id": 0,
-        "unk1": 0,
-        "zone_id": 4294967291,
-        "map_id": 106,
-        "zone_type": 3,
-        "seed": 2100752559,
-        "args": 0,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 1,
-        "sub_area": 4294967295,
-        "unk3": 0
-      },
-      {
-        "world_id": 0,
-        "unk1": 0,
-        "zone_id": 4294967284,
-        "map_id": 104,
-        "zone_type": 3,
-        "seed": 1502832978,
-        "args": 0,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 4294967295,
-        "sub_area": 2,
-        "unk3": 0
-      },
-      {
-        "world_id": 0,
-        "unk1": 0,
-        "zone_id": 4294967283,
-        "map_id": 107,
-        "zone_type": 2,
-        "seed": 579545393,
-        "args": 1,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 4294967295,
-        "sub_area": 1,
-        "unk3": 0
-      },
-      {
-        "world_id": 0,
-        "unk1": 0,
-        "zone_id": 4294967282,
-        "map_id": 160,
-        "zone_type": 3,
-        "seed": 2665215695,
-        "args": 0,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 4294967295,
-        "sub_area": 0,
-        "unk3": 0
-      },
-      {
-        "world_id": 0,
-        "unk1": 0,
-        "zone_id": 4294967292,
-        "map_id": 9000,
-        "zone_type": 2,
-        "seed": 1799408629,
-        "args": 0,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 4294967295,
-        "sub_area": 3,
-        "unk3": 0
-      }
-    ],
-    "warps": [],
     "unk10": [
       {
         "unk1": 4294967291,
         "unk2": 0
       }
     ],
-    "unk11": [],
-    "unk12": [],
-    "unk13": [],
     "unk14": [
       {
         "unk1": 4294967291,
@@ -463,32 +367,8 @@
         "unk60": 0
       }
     ],
-    "unk15": [],
-    "unk16": [],
-    "unk17": "",
     "unk18": 4294967295,
-    "unk19": 0,
     "unk20": 4294967295,
-    "unk21": [],
-    "unk22": 0,
-    "unk23": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
     "unk24": [
       0,
       0,
@@ -507,40 +387,7 @@
       255,
       255
     ],
-    "unk25": [],
-    "unk26": [],
-    "unk27": [],
-    "unk28": "",
-    "unk29": "",
-    "unk30": 0,
-    "unk31": 0,
     "unk32": 255,
-    "unk33": 0,
-    "unk34": 0,
-    "unk35": 0,
-    "unk36": 0,
-    "unk37": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
     "unk38": 44,
     "unk39": 3787408282,
     "unk40": 81,
@@ -564,63 +411,30 @@
       0,
       0
     ],
-    "unk42": 22801672136818688,
-    "unk43": 0,
-    "unk44": 0,
-    "unk45": [],
-    "unk46": "",
-    "unk47": [],
-    "unk48": 0,
-    "unk49": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "unk50": [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
+    "unk42": 22801672136818690,
     "unk51": 4294967295
   },
-  "default_location": [
-    [
-      106,
-      {
+  "zones": [
+    {
+      "name": "lobby",
+      "is_special_zone": false,
+      "zone_id": 1,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967291,
+        "map_id": 106,
+        "zone_type": 3,
+        "seed": 2100752559,
+        "args": 0,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 1,
+        "sub_area": 4294967295,
+        "unk3": 0
+      },
+      "default_location": {
         "rot_x": 0,
         "rot_y": 15360,
         "rot_z": 0,
@@ -629,22 +443,27 @@
         "pos_y": 0,
         "pos_z": 22589
       }
-    ],
-    [
-      107,
-      {
-        "rot_x": 0,
-        "rot_y": 0,
-        "rot_z": 0,
-        "rot_w": 15360,
-        "pos_x": 45454,
-        "pos_y": 10526,
-        "pos_z": 51291
-      }
-    ],
-    [
-      104,
-      {
+    },
+    {
+      "name": "casino",
+      "is_special_zone": false,
+      "zone_id": 2,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967284,
+        "map_id": 104,
+        "zone_type": 3,
+        "seed": 1502832978,
+        "args": 0,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 2,
+        "unk3": 0
+      },
+      "default_location": {
         "rot_x": 0,
         "rot_y": 48123,
         "rot_z": 0,
@@ -653,10 +472,85 @@
         "pos_y": 18048,
         "pos_z": 22091
       }
-    ],
-    [
-      160,
-      {
+    },
+    {
+      "name": "casino_cutscene",
+      "is_special_zone": true,
+      "zone_id": 3,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967293,
+        "map_id": 9000,
+        "zone_type": 0,
+        "seed": 0,
+        "args": 0,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 4294967295,
+        "unk3": 0
+      },
+      "default_location": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 0,
+        "pos_y": 17664,
+        "pos_z": 0
+      }
+    },
+    {
+      "name": "bridge",
+      "is_special_zone": false,
+      "zone_id": 4,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967283,
+        "map_id": 107,
+        "zone_type": 2,
+        "seed": 579545393,
+        "args": 1,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 1,
+        "unk3": 0
+      },
+      "default_location": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 45454,
+        "pos_y": 10526,
+        "pos_z": 51291
+      }
+    },
+    {
+      "name": "cafe",
+      "is_special_zone": false,
+      "zone_id": 5,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967282,
+        "map_id": 160,
+        "zone_type": 3,
+        "seed": 2665215695,
+        "args": 0,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 0,
+        "unk3": 0
+      },
+      "default_location": {
         "rot_x": 0,
         "rot_y": 0,
         "rot_z": 0,
@@ -665,13 +559,65 @@
         "pos_y": 9502,
         "pos_z": 52635
       }
-    ]
+    },
+    {
+      "name": "cafe_cutscene",
+      "is_special_zone": true,
+      "zone_id": 6,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967293,
+        "map_id": 160,
+        "zone_type": 2,
+        "seed": 2665215695,
+        "args": 777,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 0,
+        "unk3": 0
+      },
+      "default_location": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 12697,
+        "pos_y": 9502,
+        "pos_z": 52635
+      }
+    },
+    {
+      "name": "salon",
+      "is_special_zone": false,
+      "zone_id": 7,
+      "settings": {
+        "world_id": 0,
+        "unk1": 0,
+        "zone_id": 4294967292,
+        "map_id": 9000,
+        "zone_type": 2,
+        "seed": 1799408629,
+        "args": 0,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 3,
+        "unk3": 0
+      },
+      "default_location": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 0,
+        "pos_y": 17664,
+        "pos_z": 0
+      }
+    }
   ],
-  "init_map": 106,
-  "map_names": {
-    "lobby": 106,
-    "cafe": 160,
-    "bridge": 107,
-    "casino": 104
-  }
+  "init_map": 1
 }

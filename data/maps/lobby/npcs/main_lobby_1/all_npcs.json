@@ -1,0 +1,5098 @@
+[
+{
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 744,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14880,
+          "rot_z": 0,
+          "rot_w": 47396,
+          "pos_x": 19662,
+          "pos_y": 16588,
+          "pos_z": 22844
+        },
+        "unk1": 0,
+        "name": "Npc_242",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1084227584,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 663,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46115,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 19616,
+          "pos_y": 18176,
+          "pos_z": 55064
+        },
+        "unk1": 0,
+        "name": "Npc_22",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 666,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15318,
+          "rot_z": 0,
+          "rot_w": 45664,
+          "pos_x": 18624,
+          "pos_y": 0,
+          "pos_z": 55040
+        },
+        "unk1": 0,
+        "name": "Npc_06",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 720,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45101,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 20356,
+          "pos_y": 12902,
+          "pos_z": 22373
+        },
+        "unk1": 0,
+        "name": "Npc_50",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 713,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45101,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 20056,
+          "pos_y": 12902,
+          "pos_z": 22356
+        },
+        "unk1": 0,
+        "name": "Npc_CounterQuest2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 709,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 51271,
+          "pos_y": 49664,
+          "pos_z": 54463
+        },
+        "unk1": 0,
+        "name": "Npc_316",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 738,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 19936,
+          "pos_y": 19328,
+          "pos_z": 23132
+        },
+        "unk1": 0,
+        "name": "Npc_30",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 655,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46287,
+          "rot_z": 0,
+          "rot_w": 15265,
+          "pos_x": 21223,
+          "pos_y": 50662,
+          "pos_z": 54559
+        },
+        "unk1": 0,
+        "name": "Npc_ShopReform2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 658,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14628,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 52896,
+          "pos_y": 11182,
+          "pos_z": 55388
+        },
+        "unk1": 0,
+        "name": "Npc_ShopDisc",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 694,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 18688,
+          "pos_y": 10124,
+          "pos_z": 55336
+        },
+        "unk1": 0,
+        "name": "Npc_153",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 705,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15358,
+          "rot_z": 0,
+          "rot_w": 10648,
+          "pos_x": 51264,
+          "pos_y": 49664,
+          "pos_z": 54464
+        },
+        "unk1": 0,
+        "name": "Npc_454",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 671,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47103,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 20005,
+          "pos_y": 0,
+          "pos_z": 55253
+        },
+        "unk1": 0,
+        "name": "Npc_11",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 753,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14115,
+          "rot_z": 0,
+          "rot_w": 15144,
+          "pos_x": 52290,
+          "pos_y": 12902,
+          "pos_z": 22280
+        },
+        "unk1": 0,
+        "name": "Npc_482",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 737,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14822,
+          "rot_z": 0,
+          "rot_w": 47463,
+          "pos_x": 19776,
+          "pos_y": 16588,
+          "pos_z": 22880
+        },
+        "unk1": 0,
+        "name": "Npc_188",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 652,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14682,
+          "rot_z": 0,
+          "rot_w": 14834,
+          "pos_x": 53584,
+          "pos_y": 18201,
+          "pos_z": 55412
+        },
+        "unk1": 0,
+        "name": "Npc_ShopTrade2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 680,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 0,
+          "pos_y": 19840,
+          "pos_z": 55264
+        },
+        "unk1": 0,
+        "name": "Npc_65",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 745,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 19936,
+          "pos_y": 19328,
+          "pos_z": 23132
+        },
+        "unk1": 0,
+        "name": "Npc_292",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 704,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 0,
+          "rot_z": 0,
+          "rot_w": 15360,
+          "pos_x": 0,
+          "pos_y": 19840,
+          "pos_z": 55264
+        },
+        "unk1": 0,
+        "name": "Npc_313",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 699,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15358,
+          "rot_z": 0,
+          "rot_w": 43412,
+          "pos_x": 18496,
+          "pos_y": 49664,
+          "pos_z": 54464
+        },
+        "unk1": 0,
+        "name": "Npc_209",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 642,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47553,
+          "rot_z": 0,
+          "rot_w": 14734,
+          "pos_x": 20136,
+          "pos_y": 11182,
+          "pos_z": 55336
+        },
+        "unk1": 0,
+        "name": "Npc_CounterLab1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 679,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14936,
+          "rot_z": 0,
+          "rot_w": 47326,
+          "pos_x": 21202,
+          "pos_y": 0,
+          "pos_z": 55017
+        },
+        "unk1": 0,
+        "name": "Npc_56",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 742,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 52876,
+          "pos_y": 16853,
+          "pos_z": 22938
+        },
+        "unk1": 0,
+        "name": "Npc_256",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 691,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47896,
+          "rot_z": 0,
+          "rot_w": 14179,
+          "pos_x": 20102,
+          "pos_y": 0,
+          "pos_z": 55056
+        },
+        "unk1": 0,
+        "name": "Npc_83",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 659,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 53592,
+          "pos_y": 18201,
+          "pos_z": 55372
+        },
+        "unk1": 0,
+        "name": "Npc_PvShopPoint",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 729,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 12333,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 53124,
+          "pos_y": 12902,
+          "pos_z": 22373
+        },
+        "unk1": 0,
+        "name": "Npc_49",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 701,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48096,
+          "rot_z": 0,
+          "rot_w": 12686,
+          "pos_x": 20046,
+          "pos_y": 49664,
+          "pos_z": 54554
+        },
+        "unk1": 0,
+        "name": "Npc_289",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 676,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13347,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 52736,
+          "pos_y": 0,
+          "pos_z": 55168
+        },
+        "unk1": 0,
+        "name": "Npc_55",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 716,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14936,
+          "rot_z": 0,
+          "rot_w": 14558,
+          "pos_x": 52838,
+          "pos_y": 16931,
+          "pos_z": 22991
+        },
+        "unk1": 0,
+        "name": "Npc_CounterMd1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 667,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15358,
+          "rot_z": 0,
+          "rot_w": 43412,
+          "pos_x": 18496,
+          "pos_y": 49664,
+          "pos_z": 54464
+        },
+        "unk1": 0,
+        "name": "Npc_07",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 743,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 51968,
+          "pos_y": 19430,
+          "pos_z": 22928
+        },
+        "unk1": 0,
+        "name": "Npc_227",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 703,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15168,
+          "rot_z": 0,
+          "rot_w": 14019,
+          "pos_x": 19040,
+          "pos_y": 19200,
+          "pos_z": 55590
+        },
+        "unk1": 0,
+        "name": "Npc_300",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 640,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47283,
+          "rot_z": 0,
+          "rot_w": 14968,
+          "pos_x": 20076,
+          "pos_y": 11182,
+          "pos_z": 55411
+        },
+        "unk1": 0,
+        "name": "Npc_ShopWeapon",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 648,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46287,
+          "rot_z": 0,
+          "rot_w": 15265,
+          "pos_x": 21155,
+          "pos_y": 50662,
+          "pos_z": 54586
+        },
+        "unk1": 0,
+        "name": "Npc_ShopReform1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 670,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15352,
+          "rot_z": 0,
+          "rot_w": 44435,
+          "pos_x": 52256,
+          "pos_y": 49664,
+          "pos_z": 54486
+        },
+        "unk1": 0,
+        "name": "Npc_10",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 673,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46947,
+          "rot_z": 0,
+          "rot_w": 15128,
+          "pos_x": 50303,
+          "pos_y": 0,
+          "pos_z": 55059
+        },
+        "unk1": 0,
+        "name": "Npc_13",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 725,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 52256,
+          "pos_y": 16588,
+          "pos_z": 23076
+        },
+        "unk1": 0,
+        "name": "Npc_04",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 730,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45101,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 20575,
+          "pos_y": 12902,
+          "pos_z": 22394
+        },
+        "unk1": 0,
+        "name": "Npc_82",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 700,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 20240,
+          "pos_y": 49664,
+          "pos_z": 54578
+        },
+        "unk1": 0,
+        "name": "Npc_288",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 733,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14822,
+          "rot_z": 0,
+          "rot_w": 47463,
+          "pos_x": 19776,
+          "pos_y": 16588,
+          "pos_z": 22880
+        },
+        "unk1": 0,
+        "name": "Npc_86",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 756,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14179,
+          "rot_z": 0,
+          "rot_w": 15128,
+          "pos_x": 18496,
+          "pos_y": 16588,
+          "pos_z": 22776
+        },
+        "unk1": 0,
+        "name": "Npc_570",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 692,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 0,
+          "pos_y": 11878,
+          "pos_z": 55452
+        },
+        "unk1": 0,
+        "name": "Npc_85",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 675,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 44862,
+          "rot_z": 0,
+          "rot_w": 15346,
+          "pos_x": 52256,
+          "pos_y": 50688,
+          "pos_z": 54156
+        },
+        "unk1": 0,
+        "name": "Npc_28",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 757,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46947,
+          "rot_z": 0,
+          "rot_w": 15128,
+          "pos_x": 51302,
+          "pos_y": 16588,
+          "pos_z": 22765
+        },
+        "unk1": 0,
+        "name": "Npc_611",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 722,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 45454,
+          "rot_z": 0,
+          "rot_w": 15328,
+          "pos_x": 17408,
+          "pos_y": 16588,
+          "pos_z": 22824
+        },
+        "unk1": 0,
+        "name": "Npc_20",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 746,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 12333,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 53496,
+          "pos_y": 12902,
+          "pos_z": 22412
+        },
+        "unk1": 0,
+        "name": "Npc_158",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 749,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14760,
+          "rot_z": 0,
+          "rot_w": 14760,
+          "pos_x": 52430,
+          "pos_y": 16588,
+          "pos_z": 22844
+        },
+        "unk1": 0,
+        "name": "Npc_437",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1092616192,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 732,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 52536,
+          "pos_y": 16590,
+          "pos_z": 22879
+        },
+        "unk1": 0,
+        "name": "Npc_87",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 740,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 52256,
+          "pos_y": 16588,
+          "pos_z": 23076
+        },
+        "unk1": 0,
+        "name": "Npc_213",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 661,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14682,
+          "rot_z": 0,
+          "rot_w": 14834,
+          "pos_x": 53584,
+          "pos_y": 18201,
+          "pos_z": 55412
+        },
+        "unk1": 0,
+        "name": "Npc_ShopTrade3",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 727,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14760,
+          "rot_z": 0,
+          "rot_w": 14760,
+          "pos_x": 21321,
+          "pos_y": 15360,
+          "pos_z": 22614
+        },
+        "unk1": 0,
+        "name": "Npc_59",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 647,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47528,
+          "rot_z": 0,
+          "rot_w": 14760,
+          "pos_x": 20821,
+          "pos_y": 18210,
+          "pos_z": 55361
+        },
+        "unk1": 0,
+        "name": "Npc_CounterSalon1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 734,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47757,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 51776,
+          "pos_y": 0,
+          "pos_z": 22678
+        },
+        "unk1": 0,
+        "name": "Npc_151",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 754,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48128,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 18176,
+          "pos_y": 16588,
+          "pos_z": 23112
+        },
+        "unk1": 0,
+        "name": "Npc_503",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 643,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47648,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 20109,
+          "pos_y": 11182,
+          "pos_z": 55311
+        },
+        "unk1": 0,
+        "name": "Npc_PetLab1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 736,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 52256,
+          "pos_y": 16588,
+          "pos_z": 23076
+        },
+        "unk1": 0,
+        "name": "Npc_185",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 653,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 53595,
+          "pos_y": 18210,
+          "pos_z": 55352
+        },
+        "unk1": 0,
+        "name": "Npc_ShopPoint3",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 649,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46287,
+          "rot_z": 0,
+          "rot_w": 15265,
+          "pos_x": 21515,
+          "pos_y": 50662,
+          "pos_z": 54446
+        },
+        "unk1": 0,
+        "name": "Npc_ShopTrade",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 711,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15290,
+          "rot_z": 0,
+          "rot_w": 13348,
+          "pos_x": 51543,
+          "pos_y": 49664,
+          "pos_z": 54469
+        },
+        "unk1": 0,
+        "name": "Npc_314",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 731,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14115,
+          "rot_z": 0,
+          "rot_w": 15144,
+          "pos_x": 52423,
+          "pos_y": 12902,
+          "pos_z": 22324
+        },
+        "unk1": 0,
+        "name": "Npc_98",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 721,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14989,
+          "rot_z": 0,
+          "rot_w": 47254,
+          "pos_x": 51097,
+          "pos_y": 16588,
+          "pos_z": 22792
+        },
+        "unk1": 0,
+        "name": "Npc_19",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 641,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14515,
+          "rot_z": 0,
+          "rot_w": 14968,
+          "pos_x": 52844,
+          "pos_y": 11182,
+          "pos_z": 55411
+        },
+        "unk1": 0,
+        "name": "Npc_ShopItem",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 651,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 53590,
+          "pos_y": 18201,
+          "pos_z": 55392
+        },
+        "unk1": 0,
+        "name": "Npc_ShopPoint",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 656,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47553,
+          "rot_z": 0,
+          "rot_w": 14734,
+          "pos_x": 20136,
+          "pos_y": 11182,
+          "pos_z": 55336
+        },
+        "unk1": 0,
+        "name": "Npc_CounterLab2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 718,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48128,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 18176,
+          "pos_y": 16588,
+          "pos_z": 23112
+        },
+        "unk1": 0,
+        "name": "Npc_26",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 677,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 53792,
+          "pos_y": 0,
+          "pos_z": 54812
+        },
+        "unk1": 0,
+        "name": "Npc_53",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 719,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47757,
+          "rot_z": 0,
+          "rot_w": 14486,
+          "pos_x": 53680,
+          "pos_y": 15360,
+          "pos_z": 22664
+        },
+        "unk1": 0,
+        "name": "Npc_52",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 717,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13347,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 51648,
+          "pos_y": 0,
+          "pos_z": 22496
+        },
+        "unk1": 0,
+        "name": "Npc_03",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 708,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 51271,
+          "pos_y": 49664,
+          "pos_z": 54463
+        },
+        "unk1": 0,
+        "name": "Npc_318",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 741,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 13347,
+          "rot_z": 0,
+          "rot_w": 15290,
+          "pos_x": 51648,
+          "pos_y": 0,
+          "pos_z": 22496
+        },
+        "unk1": 0,
+        "name": "Npc_210",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 748,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14335,
+          "rot_z": 0,
+          "rot_w": 15085,
+          "pos_x": 19040,
+          "pos_y": 19430,
+          "pos_z": 23019
+        },
+        "unk1": 0,
+        "name": "Npc_57",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 681,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 52884,
+          "pos_y": 4581,
+          "pos_z": 54893
+        },
+        "unk1": 0,
+        "name": "Npc_91",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 646,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47396,
+          "rot_z": 0,
+          "rot_w": 14880,
+          "pos_x": 20128,
+          "pos_y": 11182,
+          "pos_z": 55388
+        },
+        "unk1": 0,
+        "name": "Npc_ShopItem2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 724,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14822,
+          "rot_z": 0,
+          "rot_w": 47463,
+          "pos_x": 19776,
+          "pos_y": 16588,
+          "pos_z": 22880
+        },
+        "unk1": 0,
+        "name": "Npc_02",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 715,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14989,
+          "rot_z": 0,
+          "rot_w": 47254,
+          "pos_x": 20025,
+          "pos_y": 16824,
+          "pos_z": 23009
+        },
+        "unk1": 0,
+        "name": "Npc_ClassCounter",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 654,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14785,
+          "rot_z": 0,
+          "rot_w": 14734,
+          "pos_x": 53595,
+          "pos_y": 18210,
+          "pos_z": 55336
+        },
+        "unk1": 0,
+        "name": "Npc_ShopPoint2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 751,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46883,
+          "rot_z": 0,
+          "rot_w": 15144,
+          "pos_x": 19522,
+          "pos_y": 12902,
+          "pos_z": 22280
+        },
+        "unk1": 0,
+        "name": "Npc_ShopTreasure",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1092616192,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 755,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 52691,
+          "pos_y": 15564,
+          "pos_z": 22790
+        },
+        "unk1": 0,
+        "name": "Npc_566",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1092616192,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 672,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15168,
+          "rot_z": 0,
+          "rot_w": 14019,
+          "pos_x": 19040,
+          "pos_y": 19200,
+          "pos_z": 55590
+        },
+        "unk1": 0,
+        "name": "Npc_12",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 750,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 12333,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 53343,
+          "pos_y": 14336,
+          "pos_z": 22394
+        },
+        "unk1": 0,
+        "name": "Npc_344",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 678,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48122,
+          "rot_z": 0,
+          "rot_w": 11384,
+          "pos_x": 21030,
+          "pos_y": 14336,
+          "pos_z": 54643
+        },
+        "unk1": 0,
+        "name": "Npc_51",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 712,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 12333,
+          "rot_z": 0,
+          "rot_w": 15342,
+          "pos_x": 52824,
+          "pos_y": 12902,
+          "pos_z": 22356
+        },
+        "unk1": 0,
+        "name": "Npc_CounterQuest1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 739,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 19936,
+          "pos_y": 19328,
+          "pos_z": 23132
+        },
+        "unk1": 0,
+        "name": "Npc_186",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 735,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 51564,
+          "pos_y": 15564,
+          "pos_z": 22718
+        },
+        "unk1": 0,
+        "name": "Npc_150",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 674,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15128,
+          "rot_z": 0,
+          "rot_w": 14179,
+          "pos_x": 50560,
+          "pos_y": 0,
+          "pos_z": 55048
+        },
+        "unk1": 0,
+        "name": "Npc_14",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 665,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47896,
+          "rot_z": 0,
+          "rot_w": 14179,
+          "pos_x": 20102,
+          "pos_y": 0,
+          "pos_z": 55056
+        },
+        "unk1": 0,
+        "name": "Npc_01",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 645,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14821,
+          "rot_z": 0,
+          "rot_w": 14695,
+          "pos_x": 52902,
+          "pos_y": 11182,
+          "pos_z": 55332
+        },
+        "unk1": 0,
+        "name": "Npc_ShopCostume2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 714,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15085,
+          "rot_z": 0,
+          "rot_w": 47103,
+          "pos_x": 19884,
+          "pos_y": 16824,
+          "pos_z": 23052
+        },
+        "unk1": 0,
+        "name": "Npc_CounterArks",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 726,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14760,
+          "rot_z": 0,
+          "rot_w": 14760,
+          "pos_x": 52320,
+          "pos_y": 19430,
+          "pos_z": 22988
+        },
+        "unk1": 0,
+        "name": "Npc_18",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 657,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46219,
+          "rot_z": 0,
+          "rot_w": 15275,
+          "pos_x": 21464,
+          "pos_y": 50662,
+          "pos_z": 54467
+        },
+        "unk1": 0,
+        "name": "Npc_CQShopPoint",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 710,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15290,
+          "rot_z": 0,
+          "rot_w": 13348,
+          "pos_x": 51543,
+          "pos_y": 49664,
+          "pos_z": 54469
+        },
+        "unk1": 0,
+        "name": "Npc_315",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 723,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14695,
+          "rot_z": 0,
+          "rot_w": 14822,
+          "pos_x": 52876,
+          "pos_y": 16853,
+          "pos_z": 22938
+        },
+        "unk1": 0,
+        "name": "Npc_17",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 693,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 18688,
+          "pos_y": 10880,
+          "pos_z": 55326
+        },
+        "unk1": 0,
+        "name": "Npc_118",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 669,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15204,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 52480,
+          "pos_y": 49664,
+          "pos_z": 54504
+        },
+        "unk1": 0,
+        "name": "Npc_09",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 644,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14880,
+          "rot_z": 0,
+          "rot_w": 14628,
+          "pos_x": 52879,
+          "pos_y": 11182,
+          "pos_z": 55308
+        },
+        "unk1": 0,
+        "name": "Npc_ShopCostume1",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 695,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 47972,
+          "rot_z": 0,
+          "rot_w": 13855,
+          "pos_x": 20240,
+          "pos_y": 49664,
+          "pos_z": 54578
+        },
+        "unk1": 0,
+        "name": "Npc_62",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 650,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46456,
+          "rot_z": 0,
+          "rot_w": 15236,
+          "pos_x": 21542,
+          "pos_y": 50662,
+          "pos_z": 54421
+        },
+        "unk1": 0,
+        "name": "Npc_CounterNetCafe",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 752,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 46883,
+          "rot_z": 0,
+          "rot_w": 15144,
+          "pos_x": 19655,
+          "pos_y": 12902,
+          "pos_z": 22324
+        },
+        "unk1": 0,
+        "name": "Npc_CounterArks2",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 702,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 52884,
+          "pos_y": 4581,
+          "pos_z": 54893
+        },
+        "unk1": 0,
+        "name": "Npc_272",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 0,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 660,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14600,
+          "rot_z": 0,
+          "rot_w": 14903,
+          "pos_x": 53571,
+          "pos_y": 18201,
+          "pos_z": 55432
+        },
+        "unk1": 0,
+        "name": "Npc_ShopTrade4",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 747,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15360,
+          "rot_z": 0,
+          "rot_w": 0,
+          "pos_x": 19591,
+          "pos_y": 19430,
+          "pos_z": 22917
+        },
+        "unk1": 0,
+        "name": "Npc_54",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 728,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 14760,
+          "rot_z": 0,
+          "rot_w": 14760,
+          "pos_x": 53088,
+          "pos_y": 19328,
+          "pos_z": 22908
+        },
+        "unk1": 0,
+        "name": "Npc_27",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 4,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 696,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 48096,
+          "rot_z": 0,
+          "rot_w": 12686,
+          "pos_x": 20046,
+          "pos_y": 49664,
+          "pos_z": 54554
+        },
+        "unk1": 0,
+        "name": "Npc_63",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 668,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 15236,
+          "rot_z": 0,
+          "rot_w": 13688,
+          "pos_x": 20032,
+          "pos_y": 19200,
+          "pos_z": 55552
+        },
+        "unk1": 0,
+        "name": "Npc_08",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    },
+    {
+      "zone_id": 1,
+      "is_active": true,
+      "data": {
+        "object": {
+          "id": 664,
+          "unk": 0,
+          "entity_type": "Object",
+          "map_id": 0
+        },
+        "position": {
+          "rot_x": 0,
+          "rot_y": 12826,
+          "rot_z": 0,
+          "rot_w": 15322,
+          "pos_x": 19654,
+          "pos_y": 49664,
+          "pos_z": 54670
+        },
+        "unk1": 0,
+        "name": "Npc_21",
+        "unk2": 0,
+        "unk3": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "unk4": 0,
+        "unk5": 0,
+        "unk6": 0,
+        "unk7": 0,
+        "unk8": 1101004800,
+        "unk9": 0,
+        "unk10": 0,
+        "unk11": 0,
+        "unk12": 1,
+        "unk13": ""
+      },
+      "lua_data": null
+    }
+]

@@ -167,6 +167,18 @@ fn collect_map_data(map_path: &Path, map: &mut MapData) -> Result<(), Box<dyn Er
             Ok(())
         })?;
     }
+
+    // populate zone settings
+    let Some(init_zone) = map.zones.iter().find(|z| z.zone_id == map.init_map) else {
+        return Err("No initial zone set".into());
+    };
+    map.map_data.settings = init_zone.settings.clone();
+    let mut other_settings = vec![];
+    for zone in map.zones.iter().filter(|z| !z.is_special_zone) {
+        other_settings.push(zone.settings.clone());
+    }
+    map.map_data.other_settings = other_settings;
+
     Ok(())
 }
 

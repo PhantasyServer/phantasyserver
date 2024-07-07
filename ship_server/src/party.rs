@@ -107,7 +107,7 @@ impl Party {
             hp: [hp, max_hp, max_hp],
             level: new_char.character.get_level().level1 as u8,
             sublevel: new_char.character.get_sublevel().level1 as u8,
-            map_id: np_lock.get_map_id() as u16,
+            map_id: np_lock.get_zone_id() as u16,
             color,
             ..Default::default()
         };
@@ -161,7 +161,7 @@ impl Party {
                 hp: [hp, max_hp, max_hp],
                 level: char.character.get_level().level1 as u8,
                 sublevel: char.character.get_sublevel().level1 as u8,
-                map_id: player.get_map_id() as u16,
+                map_id: player.get_zone_id() as u16,
                 color: self.get_color(id),
                 ..Default::default()
             };

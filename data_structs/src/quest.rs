@@ -1,4 +1,4 @@
-use crate::map::{MapData, MapId};
+use crate::map::{MapData, ZoneId};
 use pso2packetlib::protocol::{
     questlist::{Quest, QuestDifficulty},
     spawn::EnemySpawnPacket,
@@ -19,6 +19,6 @@ pub struct QuestData {
 #[serde(default)]
 pub struct EnemyData {
     pub difficulty: u16,
-    pub mapid: MapId,
+    pub mapid: ZoneId,
     pub data: EnemySpawnPacket,
 }

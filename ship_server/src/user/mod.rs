@@ -44,7 +44,7 @@ pub struct User {
     pub nickname: String,
     pub party_invites: Vec<PartyInvite>,
     pub party_ignore: Pr::party::RejectStatus,
-    pub mapid: u32,
+    pub zone_id: u32,
     firstload: bool,
     accountflags: Flags,
     pub isgm: bool,
@@ -92,7 +92,7 @@ impl User {
                 nickname: String::new(),
                 party_invites: vec![],
                 party_ignore: Default::default(),
-                mapid: 0,
+                zone_id: 0,
                 firstload: true,
                 accountflags: Default::default(),
                 isgm: false,
@@ -155,8 +155,8 @@ impl User {
     pub const fn get_user_id(&self) -> u32 {
         self.player_id
     }
-    pub const fn get_map_id(&self) -> u32 {
-        self.mapid
+    pub const fn get_zone_id(&self) -> u32 {
+        self.zone_id
     }
     pub const fn get_stats(&self) -> &PlayerStats {
         &self.battle_stats
@@ -303,6 +303,9 @@ impl User {
         .await?;
         Ok(())
     }
+    pub fn get_account_flags(&self) -> Flags {
+        self.accountflags.clone()
+    }
     pub async fn set_char_flag(&mut self, flag: u32, value: bool) -> Result<(), Error> {
         self.character
             .as_mut()
@@ -315,6 +318,9 @@ impl User {
         }))
         .await?;
         Ok(())
+    }
+    pub fn get_char_flags(&self) -> Option<Flags> {
+        self.character.as_ref().map(|c| c.flags.clone())
     }
 }
 

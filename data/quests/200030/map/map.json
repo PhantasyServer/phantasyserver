@@ -6,21 +6,6 @@
       "entity_type": "Map",
       "map_id": 0
     },
-    "settings": {
-        "world_id": 301,
-        "unk1": 0,
-        "zone_id": 4294967294,
-        "map_id": 150,
-        "zone_type": 2,
-        "seed": 4057416776,
-        "args": 0,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 4294967295,
-        "sub_area": 4294967295,
-        "unk3": 69889
-      },
     "unk4": [
       45,
       1,
@@ -64,38 +49,6 @@
       0
     ],
     "unk7": "urgency_010150",
-    "other_settings": [
-      {
-        "world_id": 301,
-        "unk1": 0,
-        "zone_id": 4294967294,
-        "map_id": 150,
-        "zone_type": 2,
-        "seed": 4057416776,
-        "args": 0,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 4294967295,
-        "sub_area": 4294967295,
-        "unk3": 69889
-      },
-      {
-        "world_id": 301,
-        "unk1": 0,
-        "zone_id": 0,
-        "map_id": 310,
-        "zone_type": 2,
-        "seed": 2012513828,
-        "args": 1744,
-        "size_x": 0,
-        "size_y": 0,
-        "unk2": 0,
-        "area_index": 1,
-        "sub_area": 4294967295,
-        "unk3": 2561
-      }
-    ],
     "warps": [
       {
         "unk1": 0,
@@ -1147,10 +1100,27 @@
     ],
     "unk51": 4294967295
   },
-  "default_location": [
-    [
-      150,
-      {
+  "zones": [
+    {
+      "name": "campship",
+      "is_special_zone": false,
+      "zone_id": 1,
+      "settings": {
+        "world_id": 301,
+        "unk1": 0,
+        "zone_id": 4294967294,
+        "map_id": 150,
+        "zone_type": 2,
+        "seed": 4057416776,
+        "args": 0,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 4294967295,
+        "sub_area": 4294967295,
+        "unk3": 69889
+      },
+      "default_location": {
         "rot_x": 0,
         "rot_y": 0,
         "rot_z": 0,
@@ -1159,10 +1129,27 @@
         "pos_y": 0,
         "pos_z": 44085
       }
-    ],
-    [
-      310,
-      {
+    },
+    {
+      "name": "campship_down",
+      "is_special_zone": false,
+      "zone_id": 2,
+      "settings": {
+        "world_id": 301,
+        "unk1": 0,
+        "zone_id": 0,
+        "map_id": 310,
+        "zone_type": 2,
+        "seed": 2012513828,
+        "args": 1744,
+        "size_x": 0,
+        "size_y": 0,
+        "unk2": 0,
+        "area_index": 1,
+        "sub_area": 4294967295,
+        "unk3": 2561
+      },
+      "default_location": {
         "rot_x": 0,
         "rot_y": 15360,
         "rot_z": 0,
@@ -1171,10 +1158,7 @@
         "pos_y": 48414,
         "pos_z": 23306
       }
-    ]
+    }
   ],
-  "init_map": 150,
-  "map_names": {
-    "campship_down": 310
-  }
+  "init_map": 1
 }

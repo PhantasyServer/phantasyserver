@@ -1,12 +1,12 @@
 use pso2packetlib::protocol::{
     models::Position,
-    server::LoadLevelPacket,
+    server::{LoadLevelPacket, ZoneSettings},
     spawn::{EventSpawnPacket, NPCSpawnPacket, ObjectSpawnPacket, TransporterSpawnPacket},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub type MapId = u32;
+pub type ZoneId = u32;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
@@ -16,17 +16,16 @@ pub struct MapData {
     pub events: Vec<EventData>,
     pub npcs: Vec<NPCData>,
     pub transporters: Vec<TransporterData>,
-    pub default_location: Vec<(MapId, Position)>,
     pub luas: HashMap<String, String>,
-    pub init_map: MapId,
-    pub map_names: HashMap<String, MapId>,
+    pub init_map: ZoneId,
+    pub zones: Vec<ZoneData>,
     pub chunks: Vec<ZoneChunk>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct ObjectData {
-    pub mapid: MapId,
+    pub zone_id: ZoneId,
     pub is_active: bool,
     pub data: ObjectSpawnPacket,
     pub lua_data: Option<String>,
@@ -35,7 +34,7 @@ pub struct ObjectData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct EventData {
-    pub mapid: MapId,
+    pub zone_id: ZoneId,
     pub is_active: bool,
     pub data: EventSpawnPacket,
     pub lua_data: Option<String>,
@@ -44,7 +43,7 @@ pub struct EventData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct NPCData {
-    pub mapid: MapId,
+    pub zone_id: ZoneId,
     pub is_active: bool,
     pub data: NPCSpawnPacket,
     pub lua_data: Option<String>,
@@ -53,7 +52,7 @@ pub struct NPCData {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct TransporterData {
-    pub mapid: MapId,
+    pub zone_id: ZoneId,
     pub is_active: bool,
     pub data: TransporterSpawnPacket,
     pub lua_data: Option<String>,
@@ -61,8 +60,18 @@ pub struct TransporterData {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
+pub struct ZoneData {
+    pub name: String,
+    pub is_special_zone: bool,
+    pub zone_id: ZoneId,
+    pub settings: ZoneSettings,
+    pub default_location: Position,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 pub struct ZoneChunk {
-    pub mapid: MapId,
+    pub zone_id: ZoneId,
     pub chunk_id: u32,
     pub enemy_spawn_enabled: bool,
     pub enemy_spawn_points: Vec<Position>,

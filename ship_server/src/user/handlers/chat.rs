@@ -105,7 +105,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let Some(map) = user.get_current_map() else {
                     unreachable!("User should be in state >= `InGame`")
                 };
-                let mapid = user.mapid;
+                let mapid = user.zone_id;
                 let lock = map.lock().await;
                 let objs = lock.get_close_objects(mapid, |p| user.position.dist_2d(p) < dist);
                 let user_pos = user.position;
@@ -217,7 +217,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     user.send_system_msg("No enemy name provided").await?;
                     return Ok(Action::Nothing);
                 };
-                let map_id = user.get_map_id();
+                let map_id = user.get_zone_id();
                 let map = user.get_current_map().unwrap();
                 let pos = user.position;
                 drop(user);
