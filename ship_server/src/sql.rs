@@ -456,6 +456,28 @@ impl Sql {
 
         Ok(char_id as u32)
     }
+    pub async fn delete_character(&self, id: u32, char_id: u32) -> Result<(), Error> {
+        let mut transaction = self.connection.begin().await?;
+        sqlx::query("delete from Characters where Id = ?")
+            .bind(char_id)
+            .execute(&mut *transaction)
+            .await?;
+        transaction.commit().await?;
+
+        self.update_userdata(id, |user_data| {
+            if let Some((pos, _)) = user_data
+                .character_ids
+                .iter()
+                .enumerate()
+                .find(|(_, &i)| i == char_id)
+            {
+                user_data.character_ids.swap_remove(pos);
+            }
+        })
+        .await?;
+
+        Ok(())
+    }
     pub async fn get_symbol_art_list(&self, id: u32) -> Result<Vec<u128>, Error> {
         let row = sqlx::query("select Data from Users where Id = ?")
             .bind(id as i64)

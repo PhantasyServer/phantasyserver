@@ -296,7 +296,7 @@ impl User {
         self.accountflags.set(flag as _, value as _);
         self.send_packet(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
             flag_type: Pr::flag::FlagType::Account,
-            id: flag as u32,
+            id: flag,
             value: value as u32,
             ..Default::default()
         }))
@@ -307,12 +307,12 @@ impl User {
         self.accountflags.clone()
     }
     pub async fn set_char_flag(&mut self, flag: u32, value: bool) -> Result<(), Error> {
-        self.character
-            .as_mut()
-            .map(|c| c.flags.set(flag as _, value as _));
+        if let Some(c) = self.character.as_mut() {
+            c.flags.set(flag as _, value as _);
+        }
         self.send_packet(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
             flag_type: Pr::flag::FlagType::Character,
-            id: flag as u32,
+            id: flag,
             value: value as u32,
             ..Default::default()
         }))
@@ -390,7 +390,9 @@ pub async fn packet_handler(
         }
         (US::InGame, P::AcceptQuest(data)) => H::quest::set_quest(user_guard, data).await,
         (US::InGame, P::QuestCounterRequest) => H::quest::counter_request(user).await,
-        (US::InGame, P::AcceptStoryQuest(data)) => H::quest::set_story_quest(user_guard, data).await,
+        (US::InGame, P::AcceptStoryQuest(data)) => {
+            H::quest::set_story_quest(user_guard, data).await
+        }
 
         // Party packets
         (US::InGame, P::PartyInviteRequest(data)) => Ok(Action::SendPartyInvite(data.invitee.id)),

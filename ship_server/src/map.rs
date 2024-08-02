@@ -219,6 +219,7 @@ impl Map {
         let lobby = player.lock().await.get_blockdata().lobby.clone();
         player.lock().await.set_map(lobby.clone());
         // thanks rust (something, something temporary value)
+        #[allow(clippy::let_and_return)]
         let result = lobby.lock().await.init_add_player(player).await;
         result
     }
@@ -992,6 +993,8 @@ impl Map {
         Ok(())
     }
 
+    // FIXME: probably a good idea to split it up
+    #[allow(clippy::too_many_arguments)]
     fn setup_scope<'s>(
         &'s self,
         globals: &mlua::Table,
