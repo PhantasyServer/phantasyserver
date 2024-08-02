@@ -1,6 +1,7 @@
 [workspace]
 
-members = ["ship_server", "data_compiler", "data_structs", "master_ship", "ppac_reader"]
+members = ["ship_server", "data_compiler", "data_structs", "master_ship"]
+exclude = ["ppac_reader"]
 resolver = "2"
 
 [workspace.dependencies]

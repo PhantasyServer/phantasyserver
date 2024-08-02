@@ -1,5 +1,3 @@
-// this is a nonessential bin anyway. maybe i'll change my mind later
-#![allow(clippy::excessive_nesting)]
 use data_structs::{
     map::{self, MapData},
     quest::{EnemyData, QuestData},
@@ -8,7 +6,7 @@ use pso2packetlib::{
     ppac::{OutputType, PPACReader, PacketData},
     protocol::Packet,
 };
-use std::{env, fs::File};
+use std::{env, fs::File, io::Write};
 
 fn main() {
     let mut args = env::args();
@@ -26,6 +24,15 @@ fn main() {
     let _ = std::fs::create_dir(&out_dir);
     let mut ppac = PPACReader::open(File::open(&filename).unwrap()).unwrap();
     ppac.set_out_type(OutputType::Both);
+
+    let mut item_names = {
+        let out_name = format!("{out_dir}/item_names.txt");
+        File::create(out_name).unwrap()
+    };
+    let mut item_descs = {
+        let out_name = format!("{out_dir}/item_descriptions.txt");
+        File::create(out_name).unwrap()
+    };
 
     while let Ok(Some(PacketData {
         time, packet, data, ..
@@ -92,7 +99,6 @@ fn main() {
                     map_data: p,
                     objects: vec![],
                     npcs: vec![],
-                    default_location: Default::default(),
                     init_map: mapid,
                     ..Default::default()
                 });
@@ -123,13 +129,13 @@ fn main() {
                     if data
                         .objects
                         .iter()
-                        .map(|o| (o.mapid, o.data.object.id))
+                        .map(|o| (o.zone_id, o.data.object.id))
                         .any(|(m, i)| m == mapid && i == p.object.id)
                     {
                         continue;
                     }
                     data.objects.push(map::ObjectData {
-                        mapid,
+                        zone_id: mapid,
                         is_active: true,
                         data: p,
                         lua_data: None,
@@ -144,13 +150,13 @@ fn main() {
                     if data
                         .npcs
                         .iter()
-                        .map(|o| (o.mapid, o.data.object.id))
+                        .map(|o| (o.zone_id, o.data.object.id))
                         .any(|(m, i)| m == mapid && i == p.object.id)
                     {
                         continue;
                     }
                     data.npcs.push(map::NPCData {
-                        mapid,
+                        zone_id: mapid,
                         is_active: true,
                         data: p,
                         lua_data: None,
@@ -165,13 +171,13 @@ fn main() {
                     if data
                         .npcs
                         .iter()
-                        .map(|o| (o.mapid, o.data.object.id))
+                        .map(|o| (o.zone_id, o.data.object.id))
                         .any(|(m, i)| m == mapid && i == p.object.id)
                     {
                         continue;
                     }
                     data.events.push(map::EventData {
-                        mapid,
+                        zone_id: mapid,
                         is_active: true,
                         data: p,
                         lua_data: None,
@@ -186,18 +192,36 @@ fn main() {
                     if data
                         .transporters
                         .iter()
-                        .map(|o| (o.mapid, o.data.object.id))
+                        .map(|o| (o.zone_id, o.data.object.id))
                         .any(|(m, i)| m == mapid && i == p.object.id)
                     {
                         continue;
                     }
                     data.transporters.push(map::TransporterData {
-                        mapid,
+                        zone_id: mapid,
                         is_active: true,
                         data: p,
                         lua_data: None,
                     });
                 }
+            }
+            Packet::LoadItem(p) => {
+                for item in p.items {
+                    writeln!(
+                        &mut item_names,
+                        "{}, {}, {} - {}",
+                        item.id.item_type, item.id.id, item.id.subid, item.name
+                    )
+                    .unwrap();
+                }
+            }
+            Packet::LoadItemDescription(p) => {
+                writeln!(
+                    &mut item_descs,
+                    "{}, {}, {} - {}",
+                    p.item.item_type, p.item.id, p.item.subid, p.desc,
+                )
+                .unwrap();
             }
             _ => {}
         }
