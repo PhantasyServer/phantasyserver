@@ -1,0 +1,178 @@
+{
+  "class": "Ranger",
+  "data": {
+    "items": [
+      {
+        "item_data": {
+          "item_type": 1,
+          "id": 8,
+          "subid": 252,
+          "data": {
+            "Weapon": {
+              "affixes": [
+                517,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        "weapon_palette_id": 0,
+        "weapon_palette_data": {
+          "unk2": {
+            "id": 2,
+            "category": 2,
+            "unk": 33,
+            "level": 1
+          },
+          "unk3": {
+            "id": 1,
+            "category": 2,
+            "unk": 33,
+            "level": 1
+          },
+          "skills": [
+            {
+              "id": 3
+            },
+            {
+              "id": 2,
+              "category": 2,
+              "unk": 33,
+              "level": 1
+            },
+            {},
+            {
+              "id": 1,
+              "category": 2,
+              "unk": 33,
+              "level": 1
+            },
+            {},
+            {}
+          ]
+        }
+      },
+      {
+        "item_data": {
+          "item_type": 1,
+          "id": 9,
+          "subid": 257,
+          "data": {
+            "Weapon": {
+              "affixes": [
+                517,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        "weapon_palette_id": 1,
+        "weapon_palette_data": {
+          "unk2": {
+            "id": 0,
+            "category": 2,
+            "unk": 34,
+            "level": 1
+          },
+          "unk3": {
+            "id": 1,
+            "category": 2,
+            "unk": 34,
+            "level": 1
+          },
+          "skills": [
+            {
+              "id": 3
+            },
+            {
+              "id": 0,
+              "category": 2,
+              "unk": 34,
+              "level": 1
+            },
+            {},
+            {
+              "id": 1,
+              "category": 2,
+              "unk": 34,
+              "level": 1
+            },
+            {},
+            {}
+          ]
+        }
+      },
+      {
+        "item_data": {
+          "item_type": 1,
+          "id": 7,
+          "subid": 229,
+          "data": {
+            "Weapon": {
+              "affixes": [
+                527,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        "weapon_palette_id": 2,
+        "weapon_palette_data": {
+          "unk2": {
+            "id": 2,
+            "category": 2,
+            "unk": 20,
+            "level": 1
+          },
+          "unk3": {
+            "id": 2,
+            "category": 2,
+            "unk": 20,
+            "level": 1
+          },
+          "unk4": {
+            "id": 2,
+            "category": 2,
+            "unk": 20,
+            "level": 1
+          },
+          "skills": [
+            {
+              "id": 3
+            },
+            {
+              "id": 2,
+              "category": 2,
+              "unk": 20,
+              "level": 1
+            },
+            {
+              "id": 4
+            },
+            {},
+            {},
+            {}
+          ]
+        }
+      }
+    ]
+  }
+}
