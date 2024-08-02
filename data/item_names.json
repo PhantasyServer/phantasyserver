@@ -1,10 +1,30 @@
 [
   {
-    "item_type": 3,
-    "id": 3,
+    "item_type": 1,
+    "id": 8,
     "unk3": 0,
-    "subid": 356,
-    "en_name": "name_en",
+    "subid": 252,
+    "en_name": "Rifle",
+    "jp_name": "name_jp",
+    "en_desc": "desc_en",
+    "jp_desc": "desc_jp"
+  },
+  {
+    "item_type": 1,
+    "id": 9,
+    "unk3": 0,
+    "subid": 257,
+    "en_name": "Launcher",
+    "jp_name": "name_jp",
+    "en_desc": "desc_en",
+    "jp_desc": "desc_jp"
+  },
+  {
+    "item_type": 1,
+    "id": 7,
+    "unk3": 0,
+    "subid": 229,
+    "en_name": "Gunblade",
     "jp_name": "name_jp",
     "en_desc": "desc_en",
     "jp_desc": "desc_jp"
