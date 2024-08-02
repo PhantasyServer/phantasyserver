@@ -9,6 +9,7 @@ pub mod master_ship;
 pub mod quest;
 pub mod stats;
 
+use inventory::DefaultClassesData;
 use serde::{de::DeserializeOwned, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -100,6 +101,7 @@ pub struct ServerData {
     pub player_stats: stats::PlayerStats,
     pub enemy_stats: stats::AllEnemyStats,
     pub attack_stats: Vec<stats::AttackStats>,
+    pub default_classes: DefaultClassesData,
 }
 
 pub fn name_to_id(name: &str) -> u32 {

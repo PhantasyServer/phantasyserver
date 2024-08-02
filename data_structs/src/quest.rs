@@ -1,4 +1,4 @@
-use crate::map::{MapData, MapId};
+use crate::map::{MapData, ZoneId};
 use pso2packetlib::protocol::{
     questlist::{Quest, QuestDifficulty},
     spawn::EnemySpawnPacket,
@@ -12,12 +12,13 @@ pub struct QuestData {
     pub difficulties: QuestDifficulty,
     pub map: MapData,
     pub enemies: Vec<EnemyData>,
+    pub immediate_move: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
 pub struct EnemyData {
     pub difficulty: u16,
-    pub mapid: MapId,
+    pub mapid: ZoneId,
     pub data: EnemySpawnPacket,
 }

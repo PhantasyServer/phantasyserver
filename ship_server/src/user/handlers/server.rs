@@ -17,8 +17,7 @@ pub async fn move_to_bridge(user: MutexGuard<'_, User>, _: BridgeTransportPacket
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("bridge").unwrap_or(107);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "bridge").await?;
     }
 
     Ok(Action::Nothing)
@@ -30,8 +29,7 @@ pub async fn move_from_bridge(user: MutexGuard<'_, User>, _: BridgeToLobbyPacket
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("lobby").unwrap_or(106);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "lobby").await?;
     }
 
     Ok(Action::Nothing)
@@ -43,8 +41,7 @@ pub async fn move_to_casino(user: MutexGuard<'_, User>, _: CasinoTransportPacket
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("casino").unwrap_or(104);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "casino").await?;
     }
 
     Ok(Action::Nothing)
@@ -56,8 +53,7 @@ pub async fn move_from_casino(user: MutexGuard<'_, User>, _: CasinoToLobbyPacket
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("lobby").unwrap_or(106);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "lobby").await?;
     }
 
     Ok(Action::Nothing)
@@ -69,8 +65,7 @@ pub async fn move_to_cafe(user: MutexGuard<'_, User>, _: CafeTransportPacket) ->
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("cafe").unwrap_or(160);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "cafe").await?;
     }
 
     Ok(Action::Nothing)
@@ -82,8 +77,7 @@ pub async fn move_from_cafe(user: MutexGuard<'_, User>, _: CafeToLobbyPacket) ->
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("lobby").unwrap_or(106);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "lobby").await?;
     }
 
     Ok(Action::Nothing)
@@ -95,14 +89,14 @@ pub async fn campship_down(user: MutexGuard<'_, User>, _: CampshipDownPacket) ->
     drop(user);
     if let Some(map) = map {
         let mut lock = map.lock().await;
-        let mapid = lock.name_to_id("campship_down").unwrap_or(150);
-        lock.move_player(id, mapid).await?;
+        lock.move_player_named(id, "campship_down").await?;
     }
 
     Ok(Action::Nothing)
 }
 
-pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
+pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket) -> HResult {
+    let user = &mut *user_guard;
     let packet = protocol::unk19::LobbyMonitorPacket { video_id: 1 };
     user.send_packet(&Packet::LobbyMonitor(packet)).await?;
     let Some(character) = &mut user.character else {
@@ -153,6 +147,12 @@ pub async fn map_loaded(user: &mut User, _: MapLoadedPacket) -> HResult {
     user.send_packet(&Packet::UnlockControls).await?;
     user.send_packet(&Packet::FinishLoading).await?;
     user.firstload = false;
+
+    let map = user.map.clone().unwrap();
+    let player_id = user.get_user_id();
+    drop(user_guard);
+    map.lock().await.on_map_loaded(player_id).await?;
+
     Ok(Action::Nothing)
 }
 

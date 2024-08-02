@@ -1,10 +1,10 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, User};
+use crate::{mutex::MutexGuard, quests::PartyQuest, Action, User};
 use pso2packetlib::protocol::{
-    flag::SkitItemAddRequestPacket,
+    flag::{CutsceneEndPacket, SkitItemAddRequestPacket},
     questlist::{
-        self, AcceptQuestPacket, QuestCategoryRequestPacket, QuestDifficultyPacket,
-        QuestDifficultyRequestPacket,
+        self, AcceptQuestPacket, AcceptStoryQuestPacket, QuestCategoryRequestPacket,
+        QuestDifficultyPacket, QuestDifficultyRequestPacket,
     },
     Packet, PacketHeader,
 };
@@ -119,17 +119,7 @@ pub async fn set_quest(user: MutexGuard<'_, User>, packet: AcceptQuestPacket) ->
         .blockdata
         .quests
         .get_quest(packet, &user.blockdata.latest_mapid)?;
-    // we are the only owner of the map, so this never blocks
-    quest
-        .get_map()
-        .lock_blocking()
-        .set_block_data(user.blockdata.clone());
-    let party = user.get_current_party();
-    drop(user);
-    if let Some(party) = party {
-        party.write().await.set_quest(quest).await;
-    }
-    Ok(Action::Nothing)
+    start_quest(user, quest).await
 }
 
 pub async fn questwork(user: MutexGuard<'_, User>, packet: SkitItemAddRequestPacket) -> HResult {
@@ -140,4 +130,49 @@ pub async fn questwork(user: MutexGuard<'_, User>, packet: SkitItemAddRequestPac
     }
 
     Ok(Action::Nothing)
+}
+
+pub async fn cutscene_end(user: MutexGuard<'_, User>, packet: CutsceneEndPacket) -> HResult {
+    if let Some(map) = user.get_current_map() {
+        let playerid = user.get_user_id();
+        drop(user);
+        map.lock().await.on_cutscene_end(playerid, packet).await?;
+    }
+
+    Ok(Action::Nothing)
+}
+
+pub async fn set_story_quest(
+    user: MutexGuard<'_, User>,
+    packet: AcceptStoryQuestPacket,
+) -> HResult {
+    let quest = user
+        .blockdata
+        .quests
+        .get_story_quest(packet, &user.blockdata.latest_mapid)?;
+    start_quest(user, quest).await
+}
+
+pub async fn start_quest(user: MutexGuard<'_, User>, quest: PartyQuest) -> HResult {
+    let is_insta = quest.is_insta_transfer();
+    let user_id = user.get_user_id();
+    let old_map = user.get_current_map().expect("User should have a map");
+    let map = quest.get_map();
+    // we are the only owner of the map, so this never blocks
+    map.lock_blocking().set_block_data(user.blockdata.clone());
+    let party = user.get_current_party();
+    drop(user);
+    if let Some(party) = party {
+        party.write().await.set_quest(quest).await;
+    }
+    if is_insta {
+        let mut lock = old_map.lock().await;
+        let player = lock.remove_player(user_id).await.expect("User should exist");
+        drop(lock);
+        player.lock().await.set_map(map.clone());
+        let mut lock = map.lock().await;
+        lock.init_add_player(player).await?;
+    }
+    Ok(Action::Nothing)
+
 }

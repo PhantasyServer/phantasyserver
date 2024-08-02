@@ -7,7 +7,7 @@ use data_structs::map::MapData;
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
     self,
-    flag::SkitItemAddRequestPacket,
+    flag::{CutsceneEndPacket, SkitItemAddRequestPacket},
     models::Position,
     objects::EnemyActionPacket,
     playerstatus::{DealDamagePacket, GainedEXPPacket, SetPlayerIDPacket},
@@ -21,20 +21,22 @@ use std::sync::{
     Arc, Weak,
 };
 
-type MapId = u32;
+type ZoneId = u32;
 type PlayerId = u32;
 
 pub struct Map {
     // lua is not `Send` so i've put it in a mutex
     // this mutex shouldn't block, because `Map` is under a mutex itself.
     lua: parking_lot::Mutex<Lua>,
-    map_objs: Vec<(MapId, ObjectHeader)>,
+    map_objs: Vec<(ZoneId, ObjectHeader)>,
     data: MapData,
-    players: Vec<(PlayerId, MapId, Weak<Mutex<User>>)>,
-    to_move: Vec<(PlayerId, MapId)>,
+    players: Vec<(PlayerId, ZoneId, Weak<Mutex<User>>)>,
+    // fighting with async recursion
+    to_move: Vec<(PlayerId, String)>,
+    to_lobby_move: Vec<PlayerId>,
     max_id: u32,
     block_data: Option<Arc<BlockData>>,
-    enemies: Vec<(u32, MapId, EnemyStats)>,
+    enemies: Vec<(u32, ZoneId, EnemyStats)>,
     enemy_level: u32,
 }
 impl Map {
@@ -47,6 +49,7 @@ impl Map {
             data,
             players: vec![],
             to_move: vec![],
+            to_lobby_move: vec![],
             max_id: 0,
             block_data: None,
             enemies: vec![],
@@ -60,9 +63,9 @@ impl Map {
         map.data.map_data.map_object = map_obj;
         let def_id = map.data.init_map;
         map.map_objs.push((def_id, map_obj));
-        for settngs in &map.data.map_data.other_settings {
+        for zone in &map.data.zones {
             map.map_objs.push((
-                settngs.map_id,
+                zone.zone_id,
                 ObjectHeader {
                     id: map_obj_id.fetch_add(1, Ordering::Relaxed),
                     entity_type: ObjectType::Map,
@@ -161,9 +164,6 @@ impl Map {
         }
         Ok(())
     }
-    pub fn name_to_id(&self, name: &str) -> Option<u32> {
-        self.data.map_names.get(name).copied()
-    }
 
     pub async fn init_add_player(&mut self, new_player: Arc<Mutex<User>>) -> Result<(), Error> {
         let mut np_lock = new_player.lock().await;
@@ -173,23 +173,27 @@ impl Map {
         drop(np_lock);
         self.add_player(new_player, self.data.init_map).await
     }
-    pub async fn move_player(&mut self, id: PlayerId, mapid: MapId) -> Result<(), Error> {
+    pub async fn move_player_named(&mut self, id: PlayerId, name: &str) -> Result<(), Error> {
+        let Some(zone) = self.data.zones.iter().find(|z| z.name == name) else {
+            return Err(Error::InvalidInput(
+                    "move_player_named",
+            ));
+        };
+        self.move_player(id, zone.zone_id).await
+    }
+    pub async fn move_player(&mut self, id: PlayerId, zone_id: ZoneId) -> Result<(), Error> {
         let Some(player) = self.remove_player(id).await else {
             return Err(Error::NoUserInMap(id, self.data.map_data.unk7.to_string()));
         };
-        let mut settings = vec![self.data.map_data.settings.clone()];
-        for map in &self.data.map_data.other_settings {
-            settings.push(map.clone())
-        }
-        let Some(map) = settings.iter().find(|s| s.map_id == mapid) else {
+        let Some(map) = self.data.zones.iter().find(|z| z.zone_id == zone_id) else {
             return Err(Error::NoMapInMapSet(
-                mapid,
+                zone_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let Some((_, map_obj)) = self.map_objs.iter().find(|(m, _)| *m == map.map_id) else {
+        let Some((_, map_obj)) = self.map_objs.iter().find(|(m, _)| *m == map.zone_id) else {
             return Err(Error::NoMapInMapSet(
-                mapid,
+                zone_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
@@ -202,24 +206,35 @@ impl Map {
                 entity_type: ObjectType::Player,
                 ..Default::default()
             },
-            settings: map.clone(),
+            settings: map.settings.clone(),
         }))
         .await?;
         drop(lock);
-        self.add_player(player, map.map_id).await
+        self.add_player(player, map.zone_id).await
+    }
+    pub async fn move_to_lobby(&mut self, id: PlayerId) -> Result<(), Error> {
+        let Some(player) = self.remove_player(id).await else {
+            return Err(Error::NoUserInMap(id, self.data.map_data.unk7.to_string()));
+        };
+        let lobby = player.lock().await.get_blockdata().lobby.clone();
+        player.lock().await.set_map(lobby.clone());
+        // thanks rust (something, something temporary value)
+        #[allow(clippy::let_and_return)]
+        let result = lobby.lock().await.init_add_player(player).await;
+        result
     }
 
     async fn add_player(
         &mut self,
         new_player: Arc<Mutex<User>>,
-        mapid: MapId,
+        zone_id: ZoneId,
     ) -> Result<(), Error> {
         let mut other_equipment = Vec::with_capacity(self.players.len() * 2);
         let mut other_characters = Vec::with_capacity(self.players.len());
         for player in self
             .players
             .iter()
-            .filter(|p| p.1 == mapid)
+            .filter(|p| p.1 == zone_id)
             .filter_map(|p| p.2.upgrade())
         {
             let p = player.lock().await;
@@ -233,7 +248,7 @@ impl Map {
             other_characters.push((char_data.character.clone(), p.position, p.isgm));
         }
         let mut np_lock = new_player.lock().await;
-        np_lock.mapid = mapid;
+        np_lock.zone_id = zone_id;
         let np_id = np_lock.get_user_id();
         let Some(new_character) = np_lock.character.to_owned() else {
             unreachable!("User should be in state >= `PreInGame`")
@@ -249,10 +264,10 @@ impl Map {
             .await?;
         let pos = self
             .data
-            .default_location
+            .zones
             .iter()
-            .find(|(i, _)| *i == mapid)
-            .map(|(_, p)| *p)
+            .find(|z| z.zone_id == zone_id)
+            .map(|z| z.default_location)
             .unwrap_or_default();
         np_lock.position = pos;
         let np_gm = np_lock.isgm as u32;
@@ -270,7 +285,7 @@ impl Map {
                 ..Default::default()
             })
             .await?;
-        Self::load_objects(&self.lua, &self.data, mapid, &mut np_lock)?;
+        Self::load_objects(&self.lua, &self.data, zone_id, &mut np_lock)?;
         for (character, position, isgm) in other_characters {
             let player_id = character.player_id;
             np_lock
@@ -299,8 +314,9 @@ impl Map {
             new_character.inventory.send_equiped(np_id),
         );
 
-        for (id, mapid, enemy) in self.enemies.iter().filter(|(_, mid, _)| *mid == mapid) {
-            let (packet, mut packet2) = Self::prepare_enemy_packets(*id, *mapid, enemy);
+        let map_id = self.data.zones.iter().find(|z| z.zone_id == zone_id).map(|z| z.settings.map_id).unwrap();
+        for (id, _, enemy) in self.enemies.iter().filter(|(_, zid, _)| *zid == zone_id) {
+            let (packet, mut packet2) = Self::prepare_enemy_packets(*id, map_id, enemy);
             if let Packet::EnemyAction(data) = &mut packet2 {
                 data.receiver = np_lock.create_object_header();
                 data.action_starter = np_lock.create_object_header();
@@ -310,7 +326,7 @@ impl Map {
         }
         drop(np_lock);
 
-        exec_users(&self.players, mapid, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             let _ = player.try_spawn_character(CharacterSpawnPacket {
                 position: pos,
                 spawn_type: CharacterSpawnType::Other,
@@ -329,23 +345,23 @@ impl Map {
         })
         .await;
         self.players
-            .push((np_id, mapid, Arc::downgrade(&new_player)));
+            .push((np_id, zone_id, Arc::downgrade(&new_player)));
 
         let Some(lua) = self.data.luas.get("on_player_load").cloned() else {
             return Ok(());
         };
-        self.run_lua(np_id, mapid, &Packet::None, "on_player_load", &lua)
+        self.run_lua(np_id, zone_id, &Packet::None, "on_player_load", &lua)
             .await?;
         Ok(())
     }
     pub async fn send_palette_change(&self, sender_id: PlayerId) -> Result<(), Error> {
-        let Some((_, mapid, player)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some((_, zone_id, player)) = self.players.iter().find(|p| p.0 == sender_id) else {
             return Err(Error::NoUserInMap(
                 sender_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let mapid = *mapid;
+        let zone_id = *zone_id;
         let Some(player) = player.upgrade() else {
             return Err(Error::InvalidInput("send_palette_change"));
         };
@@ -361,7 +377,7 @@ impl Map {
                     .send_cur_weapon(sender_id, &character.inventory),
             )
         };
-        exec_users(&self.players, mapid, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             let _ = player.try_send_packet(&new_eqipment.0);
             let _ = player.try_send_packet(&new_eqipment.1);
         })
@@ -370,21 +386,21 @@ impl Map {
         Ok(())
     }
     pub async fn send_to_all(&self, sender_id: PlayerId, packet: &Packet) {
-        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
             return;
         };
-        let mapid = *mapid;
-        exec_users(&self.players, mapid, |_, _, mut player| {
+        let zone_id = *zone_id;
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             let _ = player.try_send_packet(packet);
         })
         .await;
     }
 
     pub async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {
-        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
             return;
         };
-        let mapid = *mapid;
+        let zone_id = *zone_id;
         let mut out_packet = match packet {
             Packet::Movement(_) => packet,
             Packet::MovementEnd(mut data) => {
@@ -431,7 +447,7 @@ impl Map {
             }
             _ => return,
         };
-        exec_users(&self.players, mapid, |id, _, mut player| {
+        exec_users(&self.players, zone_id, |id, _, mut player| {
             if let Packet::MovementActionServer(ref mut data) = out_packet {
                 data.receiver.id = player.get_user_id();
             } else if let Packet::ActionUpdateServer(ref mut data) = out_packet {
@@ -445,10 +461,10 @@ impl Map {
     }
 
     pub async fn send_message(&self, mut packet: Packet, id: PlayerId) {
-        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == id) else {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == id) else {
             return;
         };
-        let mapid = *mapid;
+        let zone_id = *zone_id;
         if let Packet::ChatMessage(ref mut data) = packet {
             data.object = ObjectHeader {
                 id,
@@ -456,17 +472,17 @@ impl Map {
                 ..Default::default()
             };
         }
-        exec_users(&self.players, mapid, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             let _ = player.try_send_packet(&packet);
         })
         .await;
     }
 
     pub async fn send_sa(&self, data: SendSymbolArtPacket, id: PlayerId) {
-        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == id) else {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == id) else {
             return;
         };
-        let mapid = *mapid;
+        let zone_id = *zone_id;
         let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
             object: ObjectHeader {
                 id,
@@ -479,7 +495,7 @@ impl Map {
             unk2: data.unk2,
             unk3: data.unk3,
         });
-        exec_users(&self.players, mapid, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             let _ = player.try_send_packet(&packet);
         })
         .await;
@@ -487,7 +503,7 @@ impl Map {
 
     pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
         let (pos, _) = self.players.iter().enumerate().find(|(_, p)| p.0 == id)?;
-        let (_, mapid, rem_player) = self.players.swap_remove(pos);
+        let (_, zone_id, rem_player) = self.players.swap_remove(pos);
         let mut packet = Packet::DespawnPlayer(protocol::objects::DespawnPlayerPacket {
             receiver: ObjectHeader {
                 id: 0,
@@ -500,7 +516,7 @@ impl Map {
                 ..Default::default()
             },
         });
-        exec_users(&self.players, mapid, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             if let Packet::DespawnPlayer(data) = &mut packet {
                 data.receiver.id = player.get_user_id();
                 let _ = player.try_send_packet(&packet);
@@ -513,7 +529,7 @@ impl Map {
         &mut self,
         name: &str,
         pos: Position,
-        map_id: MapId,
+        zone_id: ZoneId,
     ) -> Result<(), Error> {
         let Some(block_data) = self.block_data.to_owned() else {
             return Err(Error::NoEnemyData(name.to_string()));
@@ -521,10 +537,11 @@ impl Map {
         let id = self.max_id + 1;
         self.max_id += 1;
         let data = EnemyStats::build(name, self.enemy_level, pos, &block_data.server_data)?;
+        let map_id = self.data.zones.iter().find(|z| z.zone_id == zone_id).map(|z| z.settings.map_id).unwrap();
         let (packet, mut packet2) = Self::prepare_enemy_packets(id, map_id, &data);
-        self.enemies.push((id, map_id, data));
+        self.enemies.push((id, zone_id, data));
 
-        exec_users(&self.players, map_id, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, _, mut player| {
             let _ = player.try_send_packet(&packet);
             if let Packet::EnemyAction(data) = &mut packet2 {
                 data.receiver = player.create_object_header();
@@ -536,7 +553,7 @@ impl Map {
 
         Ok(())
     }
-    fn prepare_enemy_packets(enemy_id: u32, map_id: MapId, enemy: &EnemyStats) -> (Packet, Packet) {
+    fn prepare_enemy_packets(enemy_id: u32, map_id: u32, enemy: &EnemyStats) -> (Packet, Packet) {
         let packet = enemy.create_spawn_packet(enemy_id, map_id as _);
         // techically this is a response to 0x04 0x2B
         let packet2 = Packet::EnemyAction(EnemyActionPacket {
@@ -570,7 +587,7 @@ impl Map {
                 return Err(Error::InvalidInput("deal_damage"));
             };
             let mut lock = inflicter.lock().await;
-            let map_id = lock.get_map_id();
+            let zone_id = lock.get_zone_id();
             let result = lock
                 .get_stats_mut()
                 .damage_enemy(target, &block_data.server_data, dmg)?;
@@ -578,7 +595,7 @@ impl Map {
             match result {
                 BattleResult::Damaged { dmg_packet } => {
                     let mut packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, map_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, _, mut player| {
                         if let Packet::DamageReceive(data) = &mut packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&packet);
@@ -600,7 +617,7 @@ impl Map {
                     let mut dmg_packet = Packet::DamageReceive(dmg_packet);
                     let mut kill_packet = Packet::EnemyKilled(kill_packet);
                     let mut exp_packets = vec![];
-                    exec_users(&self.players, map_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, _, mut player| {
                         exp_packets.push(player.add_exp(exp_amount))
                     })
                     .await;
@@ -609,7 +626,7 @@ impl Map {
                         receivers: exp_packets,
                         ..Default::default()
                     });
-                    exec_users(&self.players, map_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, _, mut player| {
                         if let Packet::DamageReceive(data) = &mut dmg_packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&dmg_packet);
@@ -650,7 +667,7 @@ impl Map {
                 return Ok(());
             };
             let mut lock = target.lock().await;
-            let map_id = lock.get_map_id();
+            let zone_id = lock.get_zone_id();
             let result =
                 inflicter.damage_player(lock.get_stats_mut(), &block_data.server_data, dmg)?;
             drop(lock);
@@ -658,7 +675,7 @@ impl Map {
             match result {
                 BattleResult::Damaged { dmg_packet } => {
                     let mut packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, map_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, _, mut player| {
                         if let Packet::DamageReceive(data) = &mut packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&packet);
@@ -668,7 +685,7 @@ impl Map {
                 }
                 BattleResult::Killed { dmg_packet, .. } => {
                     let mut dmg_packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, map_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, _, mut player| {
                         if let Packet::DamageReceive(data) = &mut dmg_packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&dmg_packet);
@@ -685,14 +702,14 @@ impl Map {
     fn load_objects(
         lua: &parking_lot::Mutex<Lua>,
         map_data: &MapData,
-        mapid: MapId,
+        zone_id: ZoneId,
         user: &mut User,
     ) -> Result<(), Error> {
         let lua = lua.lock();
         for mut obj in map_data
             .objects
             .iter()
-            .filter(|o| o.mapid == mapid)
+            .filter(|o| o.zone_id == zone_id)
             .cloned()
         {
             if user.packet_type == PacketType::Vita {
@@ -714,16 +731,16 @@ impl Map {
             }
             user.try_send_packet(&Packet::ObjectSpawn(obj.data))?;
         }
-        for npc in map_data.npcs.iter().filter(|o| o.mapid == mapid).cloned() {
+        for npc in map_data.npcs.iter().filter(|o| o.zone_id == zone_id).cloned() {
             user.try_send_packet(&Packet::NPCSpawn(npc.data))?;
         }
-        for event in map_data.events.iter().filter(|e| e.mapid == mapid).cloned() {
+        for event in map_data.events.iter().filter(|e| e.zone_id == zone_id).cloned() {
             user.try_send_packet(&Packet::EventSpawn(event.data))?;
         }
         for tele in map_data
             .transporters
             .iter()
-            .filter(|t| t.mapid == mapid)
+            .filter(|t| t.zone_id == zone_id)
             .cloned()
         {
             user.try_send_packet(&Packet::TransporterSpawn(tele.data))?;
@@ -737,24 +754,24 @@ impl Map {
         packet: protocol::objects::InteractPacket,
         sender_id: PlayerId,
     ) -> Result<(), Error> {
-        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
             return Err(Error::NoUserInMap(
                 sender_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let mapid = *mapid;
+        let zone_id = *zone_id;
         let Some(lua_data) = self
             .data
             .objects
             .iter()
-            .filter(|o| o.mapid == mapid)
+            .filter(|o| o.zone_id == zone_id)
             .map(|x| (x.data.object.id, &x.data.name))
             .chain(
                 self.data
                     .npcs
                     .iter()
-                    .filter(|o| o.mapid == mapid)
+                    .filter(|o| o.zone_id == zone_id)
                     .map(|x| (x.data.object.id, &x.data.name)),
             )
             .find(|(id, _)| *id == packet.object1.id)
@@ -763,7 +780,7 @@ impl Map {
             return Ok(());
         };
         let lua_data = lua_data.clone();
-        self.run_lua(sender_id, mapid, &packet, "interaction", &lua_data)
+        self.run_lua(sender_id, zone_id, &packet, "interaction", &lua_data)
             .await?;
         Ok(())
     }
@@ -772,30 +789,81 @@ impl Map {
         player: PlayerId,
         packet: SkitItemAddRequestPacket,
     ) -> Result<(), Error> {
-        let Some((_, mapid, _)) = self.players.iter().find(|p| p.0 == player) else {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let mapid = *mapid;
+        let zone_id = *zone_id;
         let Some(lua) = self.data.luas.get("on_questwork").cloned() else {
             return Ok(());
         };
-        self.run_lua(player, mapid, &packet, "on_questwork", &lua)
+        self.run_lua(player, zone_id, &packet, "on_questwork", &lua)
             .await?;
         let to_move: Vec<_> = self.to_move.drain(..).collect();
-        for (player, mapid) in to_move {
-            self.move_player(player, mapid).await?;
+        for (player, zone) in to_move {
+            self.move_player_named(player, &zone).await?;
         }
         Ok(())
     }
-    pub fn get_close_objects<F>(&self, mapid: MapId, pred: F) -> Vec<ObjectSpawnPacket>
+    pub async fn on_cutscene_end(
+        &mut self,
+        player: PlayerId,
+        packet: CutsceneEndPacket,
+    ) -> Result<(), Error> {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == player) else {
+            return Err(Error::NoUserInMap(
+                player,
+                self.data.map_data.unk7.to_string(),
+            ));
+        };
+        let zone_id = *zone_id;
+        let Some(lua) = self.data.luas.get("on_cutscene_end").cloned() else {
+            return Ok(());
+        };
+        self.run_lua(player, zone_id, &packet, "on_cutscene_end", &lua)
+            .await?;
+        let to_move: Vec<_> = self.to_move.drain(..).collect();
+        for (player, zone) in to_move {
+            self.move_player_named(player, &zone).await?;
+        }
+        let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
+        for player in to_move {
+            self.move_to_lobby(player).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn on_map_loaded(&mut self, player: PlayerId) -> Result<(), Error> {
+        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == player) else {
+            return Err(Error::NoUserInMap(
+                player,
+                self.data.map_data.unk7.to_string(),
+            ));
+        };
+        let zone_id = *zone_id;
+        let Some(lua) = self.data.luas.get("on_map_loaded").cloned() else {
+            return Ok(());
+        };
+        self.run_lua(player, zone_id, &Packet::None, "on_map_loaded", &lua)
+            .await?;
+        let to_move: Vec<_> = self.to_move.drain(..).collect();
+        for (player, zone) in to_move {
+            self.move_player_named(player, &zone).await?;
+        }
+        let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
+        for player in to_move {
+            self.move_to_lobby(player).await?;
+        }
+        Ok(())
+    }
+    pub fn get_close_objects<F>(&self, zone_id: ZoneId, pred: F) -> Vec<ObjectSpawnPacket>
     where
         F: Fn(&Position) -> bool,
     {
         let mut obj = vec![];
-        for self_obj in self.data.objects.iter().filter(|o| o.mapid == mapid) {
+        for self_obj in self.data.objects.iter().filter(|o| o.zone_id == zone_id) {
             if pred(&self_obj.data.position) {
                 obj.push(self_obj.data.clone());
             }
@@ -807,24 +875,75 @@ impl Map {
     async fn run_lua<S: serde::Serialize + Sync>(
         &mut self,
         sender_id: PlayerId,
-        mapid: MapId,
+        zone_id: ZoneId,
         packet: &S,
         call_type: &str,
         lua_data: &str,
     ) -> Result<(), Error> {
         let mut scheduled_move = vec![];
         let mut to_send = vec![];
+        let mut lobby_moves = vec![];
+        let mut acc_flags = vec![];
+        let mut char_flags = vec![];
+
+        let Some(caller) = self
+            .players
+            .iter()
+            .find(|p| p.0 == sender_id)
+            .and_then(|p| p.2.upgrade())
+        else {
+            unreachable!("Sender should exist in the current map");
+        };
+        let caller_lock = caller.lock().await;
+        // yikes, this calls clone
+        let set_acc_flags = caller_lock.get_account_flags();
+        let Some(set_char_flags) = caller_lock.get_char_flags() else {
+            unreachable!("Users in maps should have loaded characters")
+        };
+        let Some(zone) = self.data.zones.iter().find(|z| z.zone_id == zone_id) else {
+            return Err(Error::InvalidInput("run_lua, zone"));
+        };
+        drop(caller_lock);
         {
             let lua = self.lua.lock();
             let globals = lua.globals();
             let player_ids: Vec<_> = self.players.iter().map(|p| p.0).collect();
-            globals.set("mapid", mapid)?;
+            globals.set("zone", zone.name.clone())?;
             globals.set("packet", lua.to_value(&packet)?)?;
             globals.set("sender", sender_id)?;
             globals.set("players", player_ids)?;
             globals.set("call_type", call_type)?;
             lua.scope(|scope| {
-                self.setup_scope(&globals, scope, mapid, &mut to_send, &mut scheduled_move)?;
+                self.setup_scope(
+                    &globals,
+                    scope,
+                    zone_id,
+                    &mut to_send,
+                    &mut scheduled_move,
+                    &mut lobby_moves,
+                    &mut acc_flags,
+                    &mut char_flags,
+                )?;
+
+                /* LUA FUNCTIONS */
+
+                // get account flag
+                globals.set(
+                    "get_account_flag",
+                    scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
+                        Ok(set_acc_flags.get(flag as _))
+                    })?,
+                )?;
+                // get character flag
+                globals.set(
+                    "get_character_flag",
+                    scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
+                        Ok(set_char_flags.get(flag as _))
+                    })?,
+                )?;
+
+                /* LUA FUNCTIONS END */
+
                 let chunk = lua.load(lua_data);
                 chunk.exec()?;
                 Ok(())
@@ -833,7 +952,7 @@ impl Map {
             globals.raw_remove("sender")?;
             globals.raw_remove("players")?;
             globals.raw_remove("call_type")?;
-            globals.raw_remove("mapid")?;
+            globals.raw_remove("zone")?;
         }
         for (receiver, packet) in to_send {
             if let Some(p) = self
@@ -848,16 +967,44 @@ impl Map {
         for (receiver, mapid) in scheduled_move {
             self.to_move.push((receiver, mapid));
         }
+        for receiver in lobby_moves {
+            self.to_lobby_move.push(receiver);
+        }
+        for (receiver, flag, value) in acc_flags {
+            if let Some(p) = self
+                .players
+                .iter()
+                .find(|p| p.0 == receiver)
+                .and_then(|p| p.2.upgrade())
+            {
+                p.lock().await.set_account_flag(flag, value != 0).await?;
+            }
+        }
+        for (receiver, flag, value) in char_flags {
+            if let Some(p) = self
+                .players
+                .iter()
+                .find(|p| p.0 == receiver)
+                .and_then(|p| p.2.upgrade())
+            {
+                p.lock().await.set_char_flag(flag, value != 0).await?;
+            }
+        }
         Ok(())
     }
 
+    // FIXME: probably a good idea to split it up
+    #[allow(clippy::too_many_arguments)]
     fn setup_scope<'s>(
         &'s self,
         globals: &mlua::Table,
         scope: &mlua::Scope<'_, 's>,
-        mapid: MapId,
+        zone_id: ZoneId,
         to_send: &'s mut Vec<(PlayerId, Packet)>,
-        scheduled_move: &'s mut Vec<(PlayerId, MapId)>,
+        scheduled_move: &'s mut Vec<(PlayerId, String)>,
+        lobby_moves: &'s mut Vec<PlayerId>,
+        acc_flags: &'s mut Vec<(PlayerId, u32, u8)>,
+        char_flags: &'s mut Vec<(PlayerId, u32, u8)>,
     ) -> Result<(), mlua::Error> {
         /* LUA FUNCTIONS */
 
@@ -874,7 +1021,7 @@ impl Map {
                 .data
                 .objects
                 .iter()
-                .filter(|o| o.mapid == mapid)
+                .filter(|o| o.zone_id == zone_id)
                 .find(|obj| obj.data.object.id == id)
                 .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
             lua.to_value(&object.data)
@@ -886,7 +1033,7 @@ impl Map {
                 .data
                 .npcs
                 .iter()
-                .filter(|o| o.mapid == mapid)
+                .filter(|o| o.zone_id == zone_id)
                 .find(|obj| obj.data.object.id == id)
                 .ok_or(mlua::Error::runtime("Couldn't find requested npc"))?;
             lua.to_value(&object.data)
@@ -898,13 +1045,13 @@ impl Map {
                 .data
                 .objects
                 .iter()
-                .filter(|o| o.mapid == mapid)
+                .filter(|o| o.zone_id == zone_id)
                 .map(|x| (x.data.object.id, &x.lua_data))
                 .chain(
                     self.data
                         .npcs
                         .iter()
-                        .filter(|o| o.mapid == mapid)
+                        .filter(|o| o.zone_id == zone_id)
                         .map(|x| (x.data.object.id, &x.lua_data)),
                 )
                 .find(|(obj_id, _)| *obj_id == id)
@@ -919,24 +1066,75 @@ impl Map {
         })?;
         globals.set("get_extra_data", get_extra_data)?;
         // move player to another submap
-        let move_player = scope.create_function_mut(|_, (receiver, mapid): (u32, u32)| {
-            scheduled_move.push((receiver, mapid));
-            Ok(())
-        })?;
-        globals.set("move_player", move_player)?;
+        globals.set(
+            "move_player",
+            scope.create_function_mut(|_, (receiver, zone): (u32, String)| {
+                scheduled_move.push((receiver, zone));
+                Ok(())
+            })?,
+        )?;
+        // move player to lobby
+        globals.set(
+            "move_lobby",
+            scope.create_function_mut(|_, receiver: u32| {
+                lobby_moves.push(receiver);
+                Ok(())
+            })?,
+        )?;
+        // set account flag
+        globals.set(
+            "set_account_flag",
+            scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
+                acc_flags.push((receiver, flag, value));
+                Ok(())
+            })?,
+        )?;
+        // set character flag
+        globals.set(
+            "set_character_flag",
+            scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
+                char_flags.push((receiver, flag, value));
+                Ok(())
+            })?,
+        )?;
+        // delete all npcs from the client
+        globals.set(
+            "delete_all_npcs_packets",
+            scope.create_function_mut(move |lua, receiver: u32| -> Result<mlua::Value, _> {
+                let mut packets = vec![];
+                for object in self
+                    .data
+                    .npcs
+                    .iter()
+                    .filter(|n| n.zone_id == zone_id && n.is_active)
+                {
+                    packets.push(Packet::DespawnObject(
+                        protocol::objects::DespawnObjectPacket {
+                            player: ObjectHeader {
+                                id: receiver,
+                                entity_type: ObjectType::Player,
+                                ..Default::default()
+                            },
+                            item: object.data.object,
+                        },
+                    ))
+                }
+                lua.to_value(&packets)
+            })?,
+        )?;
 
         /* LUA FUNCTIONS END */
         Ok(())
     }
 }
 
-async fn exec_users<F>(users: &[(PlayerId, MapId, Weak<Mutex<User>>)], mapid: MapId, mut f: F)
+async fn exec_users<F>(users: &[(PlayerId, ZoneId, Weak<Mutex<User>>)], zone_id: ZoneId, mut f: F)
 where
-    F: FnMut(PlayerId, MapId, MutexGuard<User>) + Send,
+    F: FnMut(PlayerId, ZoneId, MutexGuard<User>) + Send,
 {
     for (id, user_mapid, user) in users
         .iter()
-        .filter(|(_, m, _)| if mapid == 0 { true } else { *m == mapid })
+        .filter(|(_, z, _)| if zone_id == 0 { true } else { *z == zone_id })
         .filter_map(|(i, m, p)| p.upgrade().map(|p| (*i, *m, p)))
     {
         f(id, user_mapid, user.lock().await)

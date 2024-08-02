@@ -1,6 +1,6 @@
 mod ice;
 use data_structs::{
-    inventory::ItemName,
+    inventory::{DefaultClassesData, DefaultClassesDataReadable, ItemName},
     map::MapData,
     name_to_id,
     quest::QuestData,
@@ -77,6 +77,12 @@ fn main() {
     let mut attack_stats_dir = filename.to_path_buf();
     attack_stats_dir.push("attack_stats");
     server_data.attack_stats = parse_attack_stats(&attack_stats_dir).unwrap();
+
+    // parse default class data
+    println!("Parsing default classes data...");
+    let mut class_data_dir = filename.to_path_buf();
+    class_data_dir.push("class_data");
+    server_data.default_classes = parse_default_classes(&class_data_dir).unwrap();
 
     println!("Saving data...");
     let mut out_filename = filename.to_path_buf();
@@ -167,6 +173,18 @@ fn collect_map_data(map_path: &Path, map: &mut MapData) -> Result<(), Box<dyn Er
             Ok(())
         })?;
     }
+
+    // populate zone settings
+    let Some(init_zone) = map.zones.iter().find(|z| z.zone_id == map.init_map) else {
+        return Err("No initial zone set".into());
+    };
+    map.map_data.settings = init_zone.settings.clone();
+    let mut other_settings = vec![];
+    for zone in map.zones.iter().filter(|z| !z.is_special_zone) {
+        other_settings.push(zone.settings.clone());
+    }
+    map.map_data.other_settings = other_settings;
+
     Ok(())
 }
 
@@ -330,6 +348,23 @@ fn parse_attack_stats(stats_path: &Path) -> Result<Vec<AttackStats>, Box<dyn Err
     Ok(data)
 }
 
+fn parse_default_classes(classes_path: &Path) -> Result<DefaultClassesData, Box<dyn Error>> {
+    let mut data = DefaultClassesData::default();
+
+    // load stats
+    traverse_data_dir(classes_path, &mut |p| {
+        println!("\tParsing default class data {}...", p.display());
+        let stats = DefaultClassesDataReadable::load_from_json_file(p)?;
+        if stats.class as usize >= data.classes.len() {
+            data.classes.resize(stats.class as usize + 1, Default::default());
+        }
+        data.classes[stats.class as usize] = stats.data;
+        Ok(())
+    })?;
+
+    Ok(data)
+}
+
 fn find_data_dir<P, F>(
     path: P,
     callback: F,
@@ -359,6 +394,9 @@ where
     P: AsRef<Path>,
     F: FnMut(&Path) -> Result<(), Box<dyn Error>>,
 {
+    if !path.as_ref().exists() {
+        return Ok(())
+    }
     for entry in fs::read_dir(path)? {
         let entry = entry?.path();
         if entry.is_dir() {

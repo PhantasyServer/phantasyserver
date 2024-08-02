@@ -5,8 +5,7 @@ use data_structs::quest::QuestData;
 use pso2packetlib::protocol::{
     party::{SetPartyQuestPacket, SetQuestInfoPacket},
     questlist::{
-        AcceptQuestPacket, AvailableQuestType, AvailableQuestsPacket, QuestCategoryPacket,
-        QuestDifficulty, QuestType,
+        AcceptQuestPacket, AcceptStoryQuestPacket, AvailableQuestType, AvailableQuestsPacket, QuestCategoryPacket, QuestDifficulty, QuestType
     },
 };
 
@@ -342,6 +341,27 @@ impl Quests {
             map,
         })
     }
+    pub fn get_story_quest(
+        &self,
+        packet: AcceptStoryQuestPacket,
+        map_obj_id: &AtomicU32,
+    ) -> Result<PartyQuest, Error> {
+        let Some(quest) = self
+            .quests
+            .iter()
+            .find(|q| q.definition.name_id == packet.name_id)
+        else {
+            return Err(Error::InvalidInput("get_quest"));
+        };
+        let mut map = Map::new_from_data(quest.map.clone(), map_obj_id)?;
+        map.set_enemy_level(quest.difficulties.diffs[0].monster_level as _);
+        let map = Arc::new(Mutex::new(map));
+        Ok(PartyQuest {
+            quest: quest.clone(),
+            diff: 0,
+            map,
+        })
+    }
 }
 
 impl PartyQuest {
@@ -365,5 +385,8 @@ impl PartyQuest {
     }
     pub fn get_map(&self) -> Arc<Mutex<Map>> {
         self.map.clone()
+    }
+    pub const fn is_insta_transfer(&self) -> bool {
+        self.quest.immediate_move
     }
 }

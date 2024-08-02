@@ -300,7 +300,14 @@ pub async fn character_create2(user: &mut User) -> HResult {
     Ok(Action::Nothing)
 }
 
-pub async fn delete_request(user: &mut User, _: login::CharacterDeletionRequestPacket) -> HResult {
+pub async fn delete_request(
+    user: &mut User,
+    packet: login::CharacterDeletionRequestPacket,
+) -> HResult {
+    user.blockdata
+        .sql
+        .delete_character(user.get_user_id(), packet.char_id)
+        .await?;
     let packet = login::CharacterDeletionPacket {
         status: login::DeletionStatus::Success,
         ..Default::default()
@@ -365,6 +372,9 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
         character: packet.character.clone(),
         ..Default::default()
     };
+    if packet.character.classes.main_class == protocol::models::character::Class::Unknown {
+        return Err(Error::InvalidInput("new_character"));
+    }
     if !matches!(char_data.character.look.race, Race::Cast) {
         let clothes = user
             .blockdata
@@ -393,6 +403,33 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
         };
         char_data.inventory.add_item(item);
         char_data.inventory.equip_item(uuid, 3)?;
+    }
+    // add items
+    {
+        let block_data = user.blockdata.clone();
+        let class_data = &block_data.server_data.default_classes.classes
+            [char_data.character.classes.main_class as usize];
+        for item in &class_data.items {
+            let uuid = user.uuid;
+            user.uuid += 1;
+            let mut item_data = item.item_data.clone();
+            item_data.uuid = uuid;
+            char_data.inventory.add_item(item_data);
+            if matches!(item.item_data.data, protocol::items::ItemType::Weapon(_)) {
+                let mut palette_data = item.weapon_palette_data.clone();
+                palette_data.uuid = uuid;
+                char_data
+                    .palette
+                    .set_palette_data(item.weapon_palette_id as _, palette_data);
+            } else if matches!(item.item_data.data, protocol::items::ItemType::Unit(_)) {
+                char_data
+                    .inventory
+                    .equip_item(uuid, item.unit_equiped_id as _)?;
+            }
+        }
+        char_data
+            .palette
+            .set_subpalette_data(class_data.subpalettes.clone());
     }
     let char_id = user
         .blockdata

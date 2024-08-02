@@ -1,6 +1,6 @@
 use pso2packetlib::protocol::{
     items::{Item, ItemId, StorageInfo},
-    models::item_attrs::ItemAttributesPC,
+    models::{character::Class, item_attrs::ItemAttributesPC}, palette::{SubPalette, WeaponPalette},
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,35 @@ pub struct StorageInventory {
     pub is_purchased: bool,
     pub storage_type: u8,
     pub items: Vec<Item>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DefaultClassesDataReadable {
+    pub class: Class,
+    pub data: DefaultClassData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DefaultClassesData{
+    pub classes: Vec<DefaultClassData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DefaultClassData {
+    pub items: Vec<DefaultItem>,
+    pub subpalettes: [SubPalette; 6],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DefaultItem {
+    pub item_data: Item,
+    pub weapon_palette_data: WeaponPalette,
+    pub weapon_palette_id: u8,
+    pub unit_equiped_id: u8,
 }
 
 impl StorageInventory {
