@@ -82,7 +82,7 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     }
     fn load_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let Some(ext) = path.as_ref().extension().and_then(|e| e.to_str()) else {
-            return Err(Error::InvalidFileFormat)
+            return Err(Error::InvalidFileFormat);
         };
         match ext {
             "json" => {
@@ -99,7 +99,7 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
                     Err(Error::InvalidFileFormat)
                 }
             }
-            _ => Err(Error::InvalidFileFormat)
+            _ => Err(Error::InvalidFileFormat),
         }
     }
     #[cfg(feature = "rmp")]

@@ -167,12 +167,14 @@ pub async fn start_quest(user: MutexGuard<'_, User>, quest: PartyQuest) -> HResu
     }
     if is_insta {
         let mut lock = old_map.lock().await;
-        let player = lock.remove_player(user_id).await.expect("User should exist");
+        let player = lock
+            .remove_player(user_id)
+            .await
+            .expect("User should exist");
         drop(lock);
         player.lock().await.set_map(map.clone());
         let mut lock = map.lock().await;
         lock.init_add_player(player).await?;
     }
     Ok(Action::Nothing)
-
 }

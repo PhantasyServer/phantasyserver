@@ -175,9 +175,7 @@ impl Map {
     }
     pub async fn move_player_named(&mut self, id: PlayerId, name: &str) -> Result<(), Error> {
         let Some(zone) = self.data.zones.iter().find(|z| z.name == name) else {
-            return Err(Error::InvalidInput(
-                    "move_player_named",
-            ));
+            return Err(Error::InvalidInput("move_player_named"));
         };
         self.move_player(id, zone.zone_id).await
     }
@@ -314,7 +312,13 @@ impl Map {
             new_character.inventory.send_equiped(np_id),
         );
 
-        let map_id = self.data.zones.iter().find(|z| z.zone_id == zone_id).map(|z| z.settings.map_id).unwrap();
+        let map_id = self
+            .data
+            .zones
+            .iter()
+            .find(|z| z.zone_id == zone_id)
+            .map(|z| z.settings.map_id)
+            .unwrap();
         for (id, _, enemy) in self.enemies.iter().filter(|(_, zid, _)| *zid == zone_id) {
             let (packet, mut packet2) = Self::prepare_enemy_packets(*id, map_id, enemy);
             if let Packet::EnemyAction(data) = &mut packet2 {
@@ -537,7 +541,13 @@ impl Map {
         let id = self.max_id + 1;
         self.max_id += 1;
         let data = EnemyStats::build(name, self.enemy_level, pos, &block_data.server_data)?;
-        let map_id = self.data.zones.iter().find(|z| z.zone_id == zone_id).map(|z| z.settings.map_id).unwrap();
+        let map_id = self
+            .data
+            .zones
+            .iter()
+            .find(|z| z.zone_id == zone_id)
+            .map(|z| z.settings.map_id)
+            .unwrap();
         let (packet, mut packet2) = Self::prepare_enemy_packets(id, map_id, &data);
         self.enemies.push((id, zone_id, data));
 
@@ -731,10 +741,20 @@ impl Map {
             }
             user.try_send_packet(&Packet::ObjectSpawn(obj.data))?;
         }
-        for npc in map_data.npcs.iter().filter(|o| o.zone_id == zone_id).cloned() {
+        for npc in map_data
+            .npcs
+            .iter()
+            .filter(|o| o.zone_id == zone_id)
+            .cloned()
+        {
             user.try_send_packet(&Packet::NPCSpawn(npc.data))?;
         }
-        for event in map_data.events.iter().filter(|e| e.zone_id == zone_id).cloned() {
+        for event in map_data
+            .events
+            .iter()
+            .filter(|e| e.zone_id == zone_id)
+            .cloned()
+        {
             user.try_send_packet(&Packet::EventSpawn(event.data))?;
         }
         for tele in map_data

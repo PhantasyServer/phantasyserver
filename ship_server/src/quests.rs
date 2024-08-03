@@ -5,7 +5,8 @@ use data_structs::quest::QuestData;
 use pso2packetlib::protocol::{
     party::{SetPartyQuestPacket, SetQuestInfoPacket},
     questlist::{
-        AcceptQuestPacket, AcceptStoryQuestPacket, AvailableQuestType, AvailableQuestsPacket, QuestCategoryPacket, QuestDifficulty, QuestType
+        AcceptQuestPacket, AcceptStoryQuestPacket, AvailableQuestType, AvailableQuestsPacket,
+        QuestCategoryPacket, QuestDifficulty, QuestType,
     },
 };
 
