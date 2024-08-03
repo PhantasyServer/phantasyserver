@@ -5,9 +5,9 @@
     "unk3": 0,
     "subid": 252,
     "en_name": "Rifle",
-    "jp_name": "name_jp",
-    "en_desc": "desc_en",
-    "jp_desc": "desc_jp"
+    "jp_name": "ライフル-NT",
+    "en_desc": "An item equippable as an Assault Rifle.",
+    "jp_desc": "アークスで正式採用されている長銃。\n連射による行動阻害に重きを置いた\nレンジャーのための武器。"
   },
   {
     "item_type": 1,
@@ -15,9 +15,9 @@
     "unk3": 0,
     "subid": 257,
     "en_name": "Launcher",
-    "jp_name": "name_jp",
-    "en_desc": "desc_en",
-    "jp_desc": "desc_jp"
+    "jp_name": "ランチャー-NT",
+    "en_desc": "An item equippable as a Launcher.",
+    "jp_desc": "アークスで正式採用されている大砲。\n着弾時に炸裂する強力な弾丸を\n発射する、レンジャー専用武器。"
   },
   {
     "item_type": 1,
@@ -25,8 +25,8 @@
     "unk3": 0,
     "subid": 229,
     "en_name": "Gunblade",
-    "jp_name": "name_jp",
-    "en_desc": "desc_en",
-    "jp_desc": "desc_jp"
+    "jp_name": "ガンスラッシュ-NT",
+    "en_desc": "An item equippable as a Gunblade.",
+    "jp_desc": "アークスで正式採用されている銃剣。\n片刃の剣と銃を両立させ、任意で機能を\n切り替えられる扱いやすい武器。"
   }
 ]
