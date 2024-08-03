@@ -61,7 +61,7 @@
           1082130432
         ]
       },
-      "lua_data": "{\"TransferTo\": 624}"
+      "lua_data": "{TransferTo = 624}"
     },
     {
       "zone_id": 1,
@@ -125,7 +125,7 @@
           1082130432
         ]
       },
-      "lua_data": "{\"TransferTo\": 626}"
+      "lua_data": "{TransferTo = 626}"
     },
     {
       "zone_id": 1,
@@ -189,7 +189,7 @@
           1082130432
         ]
       },
-      "lua_data": "{\"TransferTo\": 628}"
+      "lua_data": "{TransferTo = 628}"
     },
     {
       "zone_id": 1,
@@ -253,7 +253,7 @@
           1082130432
         ]
       },
-      "lua_data": "{\"TransferTo\": 635}"
+      "lua_data": "{TransferTo = 635}"
     },
     {
       "zone_id": 1,
@@ -317,7 +317,7 @@
           1082130432
         ]
       },
-      "lua_data": "{\"TransferTo\": 634}"
+      "lua_data": "{TransferTo = 634}"
     },
     {
       "zone_id": 1,
@@ -381,6 +381,6 @@
           1082130432
         ]
       },
-      "lua_data": "{\"TransferTo\": 632}"
+      "lua_data": "{TransferTo = 632}"
     }
 ]
