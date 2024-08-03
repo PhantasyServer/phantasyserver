@@ -699,6 +699,62 @@
         ]
       }
     ],
+    "consumables": [
+      {
+        "id": 1,
+        "subid": 0,
+        "unk1": 14552,
+        "unk2": 0,
+        "rarity": 1,
+        "flags": 8,
+        "unk3": 0,
+        "icon_list": 61,
+        "icon_index": 12305,
+        "max_qty": 10,
+        "unk4": [
+          32,
+          224,
+          1
+        ],
+        "unk5": 3
+      },
+      {
+        "id": 1,
+        "subid": 7,
+        "unk1": 14559,
+        "unk2": 0,
+        "rarity": 6,
+        "flags": 8,
+        "unk3": 0,
+        "icon_list": 61,
+        "icon_index": 12309,
+        "max_qty": 133,
+        "unk4": [
+          35,
+          32,
+          3
+        ],
+        "unk5": 9
+      },
+      {
+        "id": 7,
+        "subid": 0,
+        "unk1": 46422,
+        "unk2": 0,
+        "rarity": 3,
+        "flags": 8,
+        "unk3": 0,
+        "icon_list": 92,
+        "icon_index": 20695,
+        "max_qty": 10,
+        "unk4": [
+          16,
+          5,
+          0
+        ],
+        "unk5": 1
+      }
+    ],
     "data17": [
       {
         "unk": [

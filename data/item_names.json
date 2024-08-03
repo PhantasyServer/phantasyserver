@@ -28,5 +28,35 @@
     "jp_name": "ガンスラッシュ-NT",
     "en_desc": "An item equippable as a Gunblade.",
     "jp_desc": "アークスで正式採用されている銃剣。\n片刃の剣と銃を両立させ、任意で機能を\n切り替えられる扱いやすい武器。"
+  },
+  {
+    "item_type": 3,
+    "id": 1,
+    "unk3": 0,
+    "subid": 0,
+    "en_name": "Monomate",
+    "jp_name": "モノメイト",
+    "en_desc": "A curative medicine used by ARKS. <br>Restores HP.",
+    "jp_desc": "アークス御用達の回復剤。\n使用することでＨＰが回復する。"
+  },
+  {
+    "item_type": 3,
+    "id": 1,
+    "unk3": 0,
+    "subid": 7,
+    "en_name": "Moon Atomizer",
+    "jp_name": "ムーンアトマイザー",
+    "en_desc": "",
+    "jp_desc": "広範囲に及ぶ復活薬。\n使用した者の周囲にいる戦闘不能状態の\n味方を復活させることができる。"
+  },
+  {
+    "item_type": 3,
+    "id": 7,
+    "unk3": 0,
+    "subid": 0,
+    "en_name": "Telepipe",
+    "jp_name": "テレパイプ",
+    "en_desc": "",
+    "jp_desc": "簡易携帯型の転送装置。\n設置することでキャンプシップまでの\n簡易的な転移ポートが生成される。"
   }
 ]
