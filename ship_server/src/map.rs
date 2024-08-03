@@ -1057,12 +1057,10 @@ impl Map {
                 .find(|(obj_id, _)| *obj_id == id)
                 .map(|(_, data)| data)
                 .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
-            let object: serde_json::Value = match object {
-                Some(d) => serde_json::from_str(d)
-                    .map_err(|e| mlua::Error::runtime(format!("serde_json error: {e}")))?,
-                None => Default::default(),
-            };
-            lua.to_value(&object)
+            match object {
+                Some(d) => lua.load(d).eval::<mlua::Value>(),
+                None => Ok(mlua::Value::Nil),
+            }
         })?;
         globals.set("get_extra_data", get_extra_data)?;
         // move player to another submap
