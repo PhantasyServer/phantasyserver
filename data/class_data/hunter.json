@@ -1,0 +1,120 @@
+{
+  "class": "Hunter",
+  "data": {
+    "items": [
+      {
+        "item_data": {
+          "item_type": 3,
+          "id": 1,
+          "subid": 0,
+          "data": {
+            "Consumable": {
+              "amount": 3
+            }
+          }
+        }
+      },
+      {
+        "item_data": {
+          "item_type": 3,
+          "id": 1,
+          "subid": 7,
+          "data": {
+            "Consumable": {
+              "amount": 3
+            }
+          }
+        }
+      },
+      {
+        "item_data": {
+          "item_type": 3,
+          "id": 7,
+          "subid": 0,
+          "data": {
+            "Consumable": {
+              "amount": 3
+            }
+          }
+        }
+      }
+    ],
+    "subpalettes": [
+      {
+        "items": [
+          {
+            "unk": 1,
+            "level": 4
+          },
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {
+            "unk": 4,
+            "level": 4
+          },
+          {
+            "level": 4
+          },
+          {},
+          {}
+        ]
+      },
+      {
+        "items": [
+          {
+            "unk": 1,
+            "level": 4
+          },
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {
+            "unk": 4,
+            "level": 4
+          },
+          {
+            "level": 4
+          },
+          {},
+          {}
+        ]
+      },
+      {
+        "items": [
+          {
+            "unk": 1,
+            "level": 4
+          },
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {
+            "unk": 4,
+            "level": 4
+          },
+          {
+            "level": 4
+          },
+          {},
+          {}
+        ]
+      },
+      {},
+      {},
+      {}
+    ]
+  }
+}
