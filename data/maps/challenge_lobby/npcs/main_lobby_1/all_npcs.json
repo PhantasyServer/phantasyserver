@@ -1,0 +1,149 @@
+[
+  {
+    "zone_id": 1,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 128,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 0
+      },
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 50275,
+        "pos_y": 16588,
+        "pos_z": 20943
+      },
+      "unk1": 0,
+      "name": "Npc_CQOperator",
+      "unk2": 0,
+      "unk3": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unk4": 0,
+      "unk5": 0,
+      "unk6": 0,
+      "unk7": 0,
+      "unk8": 1092616192,
+      "unk9": 0,
+      "unk10": 0,
+      "unk11": 0,
+      "unk12": 1,
+      "unk13": ""
+    },
+    "lua_data": null
+  },
+  {
+    "zone_id": 1,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 127,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 0
+      },
+      "position": {
+        "rot_x": 0,
+        "rot_y": 12236,
+        "rot_z": 0,
+        "rot_w": 15344,
+        "pos_x": 53312,
+        "pos_y": 12902,
+        "pos_z": 52185
+      },
+      "unk1": 0,
+      "name": "Npc_CQCounterQuestA",
+      "unk2": 0,
+      "unk3": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unk4": 0,
+      "unk5": 0,
+      "unk6": 0,
+      "unk7": 0,
+      "unk8": 1092616192,
+      "unk9": 0,
+      "unk10": 0,
+      "unk11": 0,
+      "unk12": 1,
+      "unk13": ""
+    },
+    "lua_data": null
+  },
+  {
+    "zone_id": 1,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 126,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 0
+      },
+      "position": {
+        "rot_x": 0,
+        "rot_y": 45004,
+        "rot_z": 0,
+        "rot_w": 15344,
+        "pos_x": 20544,
+        "pos_y": 12902,
+        "pos_z": 52185
+      },
+      "unk1": 0,
+      "name": "Npc_CQCounterQuestB",
+      "unk2": 0,
+      "unk3": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "unk4": 0,
+      "unk5": 0,
+      "unk6": 0,
+      "unk7": 0,
+      "unk8": 1092616192,
+      "unk9": 0,
+      "unk10": 0,
+      "unk11": 0,
+      "unk12": 1,
+      "unk13": ""
+    },
+    "lua_data": null
+  }
+]
