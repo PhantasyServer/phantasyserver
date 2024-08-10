@@ -278,6 +278,7 @@ impl User {
 
         if !matches!(char.character.classes.sub_class, Class::Unknown) {
             let level = char.character.get_sublevel_mut();
+            let exp = if level.level1 >= 70 { 0 } else { exp };
             let new_exp = level.exp + exp;
             if level.level1 < 100 {
                 increase_level(srv_data, level, subclass_offset, exp);
