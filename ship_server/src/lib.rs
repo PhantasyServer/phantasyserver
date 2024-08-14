@@ -58,6 +58,8 @@ pub enum Error {
     MSUnexpected,
     #[error("Invalid master ship PSK")]
     MSInvalidPSK,
+    #[error("Master server didn't respond")]
+    MSNoResponse,
     #[error("User sent unexpected packet while being in state: {0}")]
     UserInvalidState(UserState),
     #[error("Map with name {0} doesn't exist")]
