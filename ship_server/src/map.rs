@@ -900,11 +900,19 @@ impl Map {
         call_type: &str,
         lua_data: &str,
     ) -> Result<(), Error> {
+        spawn_blocking(|| self.run_lua_blocking(sender_id, zone_id, packet, call_type, lua_data))
+            .await?
+    }
+    fn run_lua_blocking<S: serde::Serialize + Sync>(
+        &mut self,
+        sender_id: PlayerId,
+        zone_id: ZoneId,
+        packet: &S,
+        call_type: &str,
+        lua_data: &str,
+    ) -> Result<(), Error> {
         let mut scheduled_move = vec![];
-        let mut to_send = vec![];
         let mut lobby_moves = vec![];
-        let mut acc_flags = vec![];
-        let mut char_flags = vec![];
 
         let Some(caller) = self
             .players
@@ -914,12 +922,7 @@ impl Map {
         else {
             unreachable!("Sender should exist in the current map");
         };
-        let caller_lock = caller.lock().await;
-        // yikes, this calls clone
-        let set_acc_flags = caller_lock.get_account_flags();
-        let Some(set_char_flags) = caller_lock.get_char_flags() else {
-            unreachable!("Users in maps should have loaded characters")
-        };
+        let caller_lock = caller.lock_blocking();
         let Some(zone) = self.data.zones.iter().find(|z| z.zone_id == zone_id) else {
             return Err(Error::InvalidInput("run_lua, zone"));
         };
@@ -938,11 +941,8 @@ impl Map {
                     &globals,
                     scope,
                     zone_id,
-                    &mut to_send,
                     &mut scheduled_move,
                     &mut lobby_moves,
-                    &mut acc_flags,
-                    &mut char_flags,
                 )?;
 
                 /* LUA FUNCTIONS */
@@ -951,14 +951,18 @@ impl Map {
                 globals.set(
                     "get_account_flag",
                     scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
-                        Ok(set_acc_flags.get(flag as _))
+                        Ok(caller.lock_blocking().get_account_flags().get(flag as _))
                     })?,
                 )?;
                 // get character flag
                 globals.set(
                     "get_character_flag",
                     scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
-                        Ok(set_char_flags.get(flag as _))
+                        if let Some(f) = caller.lock_blocking().get_char_flags() {
+                            Ok(f.get(flag as _))
+                        } else {
+                            unreachable!("Users in maps should have loaded characters")
+                        }
                     })?,
                 )?;
 
@@ -974,64 +978,38 @@ impl Map {
             globals.raw_remove("call_type")?;
             globals.raw_remove("zone")?;
         }
-        for (receiver, packet) in to_send {
-            if let Some(p) = self
-                .players
-                .iter()
-                .find(|p| p.0 == receiver)
-                .and_then(|p| p.2.upgrade())
-            {
-                p.lock().await.send_packet(&packet).await?;
-            }
-        }
         for (receiver, mapid) in scheduled_move {
             self.to_move.push((receiver, mapid));
         }
         for receiver in lobby_moves {
             self.to_lobby_move.push(receiver);
         }
-        for (receiver, flag, value) in acc_flags {
-            if let Some(p) = self
-                .players
-                .iter()
-                .find(|p| p.0 == receiver)
-                .and_then(|p| p.2.upgrade())
-            {
-                p.lock().await.set_account_flag(flag, value != 0).await?;
-            }
-        }
-        for (receiver, flag, value) in char_flags {
-            if let Some(p) = self
-                .players
-                .iter()
-                .find(|p| p.0 == receiver)
-                .and_then(|p| p.2.upgrade())
-            {
-                p.lock().await.set_char_flag(flag, value != 0).await?;
-            }
-        }
         Ok(())
     }
 
-    // FIXME: probably a good idea to split it up
-    #[allow(clippy::too_many_arguments)]
     fn setup_scope<'s>(
         &'s self,
         globals: &mlua::Table,
         scope: &mlua::Scope<'_, 's>,
         zone_id: ZoneId,
-        to_send: &'s mut Vec<(PlayerId, Packet)>,
         scheduled_move: &'s mut Vec<(PlayerId, String)>,
         lobby_moves: &'s mut Vec<PlayerId>,
-        acc_flags: &'s mut Vec<(PlayerId, u32, u8)>,
-        char_flags: &'s mut Vec<(PlayerId, u32, u8)>,
     ) -> Result<(), mlua::Error> {
         /* LUA FUNCTIONS */
 
         // send packet
         let send = scope.create_function_mut(|lua, (receiver, packet): (u32, mlua::Value)| {
             let packet: Packet = lua.from_value(packet)?;
-            to_send.push((receiver, packet));
+            if let Some(p) = self
+                .players
+                .iter()
+                .find(|p| p.0 == receiver)
+                .and_then(|p| p.2.upgrade())
+            {
+                p.lock_blocking()
+                    .send_packet_block(&packet)
+                    .map_err(mlua::Error::external)?;
+            }
             Ok(())
         })?;
         globals.set("send", send)?;
@@ -1103,7 +1081,16 @@ impl Map {
         globals.set(
             "set_account_flag",
             scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
-                acc_flags.push((receiver, flag, value));
+                if let Some(p) = self
+                    .players
+                    .iter()
+                    .find(|p| p.0 == receiver)
+                    .and_then(|p| p.2.upgrade())
+                {
+                    p.lock_blocking()
+                        .set_account_flag_block(flag, value != 0)
+                        .map_err(mlua::Error::external)?;
+                }
                 Ok(())
             })?,
         )?;
@@ -1111,7 +1098,16 @@ impl Map {
         globals.set(
             "set_character_flag",
             scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
-                char_flags.push((receiver, flag, value));
+                if let Some(p) = self
+                    .players
+                    .iter()
+                    .find(|p| p.0 == receiver)
+                    .and_then(|p| p.2.upgrade())
+                {
+                    p.lock_blocking()
+                        .set_char_flag_block(flag, value != 0)
+                        .map_err(mlua::Error::external)?;
+                }
                 Ok(())
             })?,
         )?;
@@ -1157,4 +1153,15 @@ where
     {
         f(id, user_mapid, user.lock().await)
     }
+}
+
+async fn spawn_blocking<F, R>(func: F) -> Result<R, Error>
+where
+    F: FnOnce() -> R + Send,
+    R: Send + 'static,
+{
+    let val: Box<dyn FnOnce() -> R + Send> = Box::new(func);
+    // SAFETY: this should be safe because we immediately await the function
+    let func: Box<dyn FnOnce() -> R + Send + 'static> = unsafe { std::mem::transmute(val) };
+    Ok(tokio::task::spawn_blocking(func).await?)
 }

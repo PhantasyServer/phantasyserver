@@ -102,6 +102,8 @@ pub enum Error {
     ConnError(#[from] pso2packetlib::connection::ConnectionError),
     #[error("Packet error: {0}")]
     PacketError(#[from] pso2packetlib::protocol::PacketError),
+    #[error("Task join error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 #[derive(Clone)]

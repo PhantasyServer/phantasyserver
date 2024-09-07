@@ -10,7 +10,7 @@ pub struct Flags {
     params: Vec<u32>,
 }
 impl Flags {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             flags: vec![],
             params: vec![],

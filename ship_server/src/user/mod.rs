@@ -135,6 +135,20 @@ impl User {
         };
         Ok(())
     }
+    pub fn send_packet_block(&mut self, packet: &Packet) -> Result<(), Error> {
+        match self.connection.write_packet(packet) {
+            Ok(_) => return Ok(()),
+            Err(ConnectionError::Io(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) => return Err(e.into()),
+        };
+        loop {
+            match self.connection.flush() {
+                Ok(_) => return Ok(()),
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+                Err(e) => return Err(e.into()),
+            }
+        }
+    }
     pub async fn spawn_character(&mut self, packet: CharacterSpawnPacket) -> Result<(), Error> {
         self.send_packet(&Packet::CharacterSpawn(packet)).await?;
         Ok(())
@@ -304,6 +318,16 @@ impl User {
         .await?;
         Ok(())
     }
+    pub fn set_account_flag_block(&mut self, flag: u32, value: bool) -> Result<(), Error> {
+        self.accountflags.set(flag as _, value as _);
+        self.send_packet_block(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
+            flag_type: Pr::flag::FlagType::Account,
+            id: flag,
+            value: value as u32,
+            ..Default::default()
+        }))?;
+        Ok(())
+    }
     pub fn get_account_flags(&self) -> Flags {
         self.accountflags.clone()
     }
@@ -318,6 +342,18 @@ impl User {
             ..Default::default()
         }))
         .await?;
+        Ok(())
+    }
+    pub fn set_char_flag_block(&mut self, flag: u32, value: bool) -> Result<(), Error> {
+        if let Some(c) = self.character.as_mut() {
+            c.flags.set(flag as _, value as _);
+        }
+        self.send_packet_block(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
+            flag_type: Pr::flag::FlagType::Character,
+            id: flag,
+            value: value as u32,
+            ..Default::default()
+        }))?;
         Ok(())
     }
     pub fn get_char_flags(&self) -> Option<Flags> {
