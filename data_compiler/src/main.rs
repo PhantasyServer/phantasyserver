@@ -246,7 +246,7 @@ fn parse_player_stats(path: &Path) -> Result<PlayerStats, Box<dyn Error>> {
     // load class stats
     let mut max_class = 0;
     traverse_data_dir(path, &mut |p| {
-        if path.file_name().unwrap().to_string_lossy() == "level_modifiers.json" {
+        if p.file_name().unwrap().to_string_lossy() == "level_modifiers.json" {
             return Ok(());
         }
         println!("\tParsing class stats data {}...", p.display());
