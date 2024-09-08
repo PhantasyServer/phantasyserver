@@ -8,6 +8,7 @@ edition = "2021"
 [features]
 rmp = ["dep:rmp-serde"]
 json = ["dep:serde_json"]
+toml = ["dep:toml"]
 ship = ["dep:tokio", "dep:p256", "dep:rand_core", "dep:sha2", "dep:aes-gcm", "rmp"]
 
 [dependencies]
@@ -22,3 +23,4 @@ rand_core = { version = "0.6.4", optional = true }
 sha2 = { version = "0.10.8", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 zstd = "0.13.2"
+toml = { version = "0.8.19", optional = true }

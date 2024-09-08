@@ -1,4 +1,4 @@
- [
+[
   {
     "attack_name": "Unarmed:AA1Damage",
     "damage_name": "Unarmed:AA1DamageA",
@@ -17,7 +17,7 @@
     "defense_type": "Mel",
     "damage": {
       "Generic": {
-        "mul": 5.0
+        "mul": 5
       }
     }
   },
@@ -50,7 +50,7 @@
     "defense_type": "Mel",
     "damage": {
       "Generic": {
-        "mul": 5.0
+        "mul": 5
       }
     }
   },

@@ -1,6 +1,7 @@
 use pso2packetlib::protocol::{
     items::{Item, ItemId, StorageInfo},
-    models::{character::Class, item_attrs::ItemAttributesPC}, palette::{SubPalette, WeaponPalette},
+    models::{character::Class, item_attrs::ItemAttributesPC},
+    palette::{SubPalette, WeaponPalette},
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +53,7 @@ pub struct DefaultClassesDataReadable {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
-pub struct DefaultClassesData{
+pub struct DefaultClassesData {
     pub classes: Vec<DefaultClassData>,
 }
 

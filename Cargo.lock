@@ -368,6 +368,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "tokio",
+ "toml",
  "zstd",
 ]
 

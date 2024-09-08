@@ -1,53 +1,53 @@
 [
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 19,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 0,
-          "rot_z": 0,
-          "rot_w": 15360,
-          "pos_x": 21760,
-          "pos_y": 11878,
-          "pos_z": 55312
-        },
-        "unk1": 0,
-        "name": "EventCollision",
-        "unk3": 1,
-        "unk4": [
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          16,
-          0,
-          0,
-          0
-        ],
-        "unk5": 0,
-        "unk6": 0,
-        "unk7": 0,
-        "unk8": 1097859072,
-        "unk9": 1097859072,
-        "unk10": 1097859072,
-        "unk11": 0,
-        "unk12": 0,
-        "unk13": 0,
-        "unk14": 0,
-        "flags": 4093640964,
-        "data": []
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 19,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
-    }
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 21760,
+        "pos_y": 11878,
+        "pos_z": 55312
+      },
+      "unk1": 0,
+      "name": "EventCollision",
+      "unk3": 1,
+      "unk4": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        16,
+        0,
+        0,
+        0
+      ],
+      "unk5": 0,
+      "unk6": 0,
+      "unk7": 0,
+      "unk8": 1097859072,
+      "unk9": 1097859072,
+      "unk10": 1097859072,
+      "unk11": 0,
+      "unk12": 0,
+      "unk13": 0,
+      "unk14": 0,
+      "flags": 4093640964,
+      "data": []
+    },
+    "lua_data": null
+  }
 ]

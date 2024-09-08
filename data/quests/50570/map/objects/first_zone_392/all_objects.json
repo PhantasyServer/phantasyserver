@@ -1,387 +1,387 @@
 [
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 21,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 0,
-          "rot_z": 0,
-          "rot_w": 15360,
-          "pos_x": 21760,
-          "pos_y": 11878,
-          "pos_z": 55312
-        },
-        "unk1": 0,
-        "name": "oc_boss_area",
-        "unk2": [
-          0,
-          0,
-          0,
-          0,
-          0
-        ],
-        "flags": 0,
-        "data": []
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 21,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 21760,
+        "pos_y": 11878,
+        "pos_z": 55312
+      },
+      "unk1": 0,
+      "name": "oc_boss_area",
+      "unk2": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": 0,
+      "data": []
     },
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 32,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 0,
-          "rot_z": 0,
-          "rot_w": 15360,
-          "pos_x": 0,
-          "pos_y": 0,
-          "pos_z": 0
-        },
-        "unk1": 0,
-        "name": "oa_telepipe_clear",
-        "unk2": [
-          16,
-          0,
-          0,
-          0,
-          0
-        ],
-        "flags": 4,
-        "data": [
-          1304,
-          7208961,
-          2,
-          0,
-          0,
-          0,
-          256,
-          6357024,
-          58,
-          4294967295,
-          55,
-          1,
-          57,
-          0,
-          66,
-          2,
-          67,
-          0,
-          2,
-          0,
-          0,
-          0
-        ]
+    "lua_data": null
+  },
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 32,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 0,
+        "pos_y": 0,
+        "pos_z": 0
+      },
+      "unk1": 0,
+      "name": "oa_telepipe_clear",
+      "unk2": [
+        16,
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": 4,
+      "data": [
+        1304,
+        7208961,
+        2,
+        0,
+        0,
+        0,
+        256,
+        6357024,
+        58,
+        4294967295,
+        55,
+        1,
+        57,
+        0,
+        66,
+        2,
+        67,
+        0,
+        2,
+        0,
+        0,
+        0
+      ]
     },
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 30,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 0,
-          "rot_z": 0,
-          "rot_w": 15360,
-          "pos_x": 21838,
-          "pos_y": 11878,
-          "pos_z": 55437
-        },
-        "unk1": 0,
-        "name": "oa_transporter_universal",
-        "unk2": [
-          17,
-          0,
-          0,
-          0,
-          0
-        ],
-        "flags": 4,
-        "data": [
-          1816,
-          6488064,
-          0,
-          0,
-          0,
-          0,
-          256,
-          7602288,
-          58,
-          4294967295,
-          55,
-          2,
-          57,
-          1,
-          60,
-          0,
-          70,
-          0,
-          27,
-          0,
-          67,
-          1
-        ]
+    "lua_data": null
+  },
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 30,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 21838,
+        "pos_y": 11878,
+        "pos_z": 55437
+      },
+      "unk1": 0,
+      "name": "oa_transporter_universal",
+      "unk2": [
+        17,
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": 4,
+      "data": [
+        1816,
+        6488064,
+        0,
+        0,
+        0,
+        0,
+        256,
+        7602288,
+        58,
+        4294967295,
+        55,
+        2,
+        57,
+        1,
+        60,
+        0,
+        70,
+        0,
+        27,
+        0,
+        67,
+        1
+      ]
     },
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 26,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 13347,
-          "rot_z": 0,
-          "rot_w": 15290,
-          "pos_x": 55168,
-          "pos_y": 0,
-          "pos_z": 23635
-        },
-        "unk1": 0,
-        "name": "oa_transfer_multi",
-        "unk2": [
-          17,
-          0,
-          0,
-          0,
-          0
-        ],
-        "flags": 4,
-        "data": [
-          68376,
-          15795200,
-          2,
-          0,
-          0,
-          0,
-          0,
-          4,
-          58,
-          1,
-          55,
-          1,
-          57,
-          1,
-          60,
-          2,
-          67,
-          0,
-          75,
-          0,
-          68,
-          4294967295,
-          66,
-          0,
-          71,
-          2,
-          74,
-          1,
-          31,
-          1,
-          71,
-          1082130432
-        ]
+    "lua_data": null
+  },
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 26,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
+      "position": {
+        "rot_x": 0,
+        "rot_y": 13347,
+        "rot_z": 0,
+        "rot_w": 15290,
+        "pos_x": 55168,
+        "pos_y": 0,
+        "pos_z": 23635
+      },
+      "unk1": 0,
+      "name": "oa_transfer_multi",
+      "unk2": [
+        17,
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": 4,
+      "data": [
+        68376,
+        15795200,
+        2,
+        0,
+        0,
+        0,
+        0,
+        4,
+        58,
+        1,
+        55,
+        1,
+        57,
+        1,
+        60,
+        2,
+        67,
+        0,
+        75,
+        0,
+        68,
+        4294967295,
+        66,
+        0,
+        71,
+        2,
+        74,
+        1,
+        31,
+        1,
+        71,
+        1082130432
+      ]
     },
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 25,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 15360,
-          "rot_z": 0,
-          "rot_w": 0,
-          "pos_x": 21760,
-          "pos_y": 11878,
-          "pos_z": 55312
-        },
-        "unk1": 0,
-        "name": "oa_transfer_multi",
-        "unk2": [
-          17,
-          0,
-          0,
-          0,
-          0
-        ],
-        "flags": 4,
-        "data": [
-          68120,
-          0,
-          2,
-          0,
-          0,
-          0,
-          0,
-          1,
-          58,
-          0,
-          55,
-          1,
-          57,
-          1,
-          60,
-          2,
-          67,
-          1,
-          75,
-          1,
-          68,
-          4294967295,
-          66,
-          0,
-          71,
-          2,
-          74,
-          1,
-          71,
-          1082130432
-        ]
+    "lua_data": null
+  },
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 25,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
+      "position": {
+        "rot_x": 0,
+        "rot_y": 15360,
+        "rot_z": 0,
+        "rot_w": 0,
+        "pos_x": 21760,
+        "pos_y": 11878,
+        "pos_z": 55312
+      },
+      "unk1": 0,
+      "name": "oa_transfer_multi",
+      "unk2": [
+        17,
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": 4,
+      "data": [
+        68120,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        1,
+        58,
+        0,
+        55,
+        1,
+        57,
+        1,
+        60,
+        2,
+        67,
+        1,
+        75,
+        1,
+        68,
+        4294967295,
+        66,
+        0,
+        71,
+        2,
+        74,
+        1,
+        71,
+        1082130432
+      ]
     },
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 24,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 0,
-          "rot_z": 0,
-          "rot_w": 15360,
-          "pos_x": 55288,
-          "pos_y": 0,
-          "pos_z": 23658
-        },
-        "unk1": 0,
-        "name": "oa_telepipe_start",
-        "unk2": [
-          16,
-          0,
-          0,
-          0,
-          0
-        ],
-        "flags": 4,
-        "data": [
-          1560,
-          15795201,
-          2,
-          0,
-          0,
-          0,
-          256,
-          4,
-          58,
-          4294967295,
-          55,
-          1,
-          57,
-          0,
-          66,
-          1,
-          67,
-          0,
-          71,
-          1,
-          2,
-          0,
-          0,
-          0
-        ]
+    "lua_data": null
+  },
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 24,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 55288,
+        "pos_y": 0,
+        "pos_z": 23658
+      },
+      "unk1": 0,
+      "name": "oa_telepipe_start",
+      "unk2": [
+        16,
+        0,
+        0,
+        0,
+        0
+      ],
+      "flags": 4,
+      "data": [
+        1560,
+        15795201,
+        2,
+        0,
+        0,
+        0,
+        256,
+        4,
+        58,
+        4294967295,
+        55,
+        1,
+        57,
+        0,
+        66,
+        1,
+        67,
+        0,
+        71,
+        1,
+        2,
+        0,
+        0,
+        0
+      ]
     },
-    {
-      "mapid": 392,
-      "is_active": true,
-      "data": {
-        "object": {
-          "id": 22,
-          "unk": 0,
-          "entity_type": "Object",
-          "map_id": 301
-        },
-        "position": {
-          "rot_x": 0,
-          "rot_y": 0,
-          "rot_z": 0,
-          "rot_w": 15360,
-          "pos_x": 21760,
-          "pos_y": 11878,
-          "pos_z": 55312
-        },
-        "unk1": 0,
-        "name": "oa_enemy_base",
-        "unk2": [
-          7,
-          0,
-          0,
-          0,
-          2
-        ],
-        "flags": 4,
-        "data": [
-          66584,
-          32512,
-          2,
-          0,
-          0,
-          0,
-          4093640704,
-          32766,
-          58,
-          4294967295,
-          55,
-          1,
-          57,
-          0,
-          31,
-          1,
-          70,
-          0
-        ]
+    "lua_data": null
+  },
+  {
+    "mapid": 392,
+    "is_active": true,
+    "data": {
+      "object": {
+        "id": 22,
+        "unk": 0,
+        "entity_type": "Object",
+        "map_id": 301
       },
-      "lua_data": null
-    }
+      "position": {
+        "rot_x": 0,
+        "rot_y": 0,
+        "rot_z": 0,
+        "rot_w": 15360,
+        "pos_x": 21760,
+        "pos_y": 11878,
+        "pos_z": 55312
+      },
+      "unk1": 0,
+      "name": "oa_enemy_base",
+      "unk2": [
+        7,
+        0,
+        0,
+        0,
+        2
+      ],
+      "flags": 4,
+      "data": [
+        66584,
+        32512,
+        2,
+        0,
+        0,
+        0,
+        4093640704,
+        32766,
+        58,
+        4294967295,
+        55,
+        1,
+        57,
+        0,
+        31,
+        1,
+        70,
+        0
+      ]
+    },
+    "lua_data": null
+  }
 ]

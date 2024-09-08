@@ -58,6 +58,8 @@ pub enum Error {
     MSUnexpected,
     #[error("Invalid master ship PSK")]
     MSInvalidPSK,
+    #[error("Master server didn't respond")]
+    MSNoResponse,
     #[error("User sent unexpected packet while being in state: {0}")]
     UserInvalidState(UserState),
     #[error("Map with name {0} doesn't exist")]
@@ -100,6 +102,8 @@ pub enum Error {
     ConnError(#[from] pso2packetlib::connection::ConnectionError),
     #[error("Packet error: {0}")]
     PacketError(#[from] pso2packetlib::protocol::PacketError),
+    #[error("Task join error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 #[derive(Clone)]

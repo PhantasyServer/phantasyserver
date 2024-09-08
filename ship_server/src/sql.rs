@@ -1,6 +1,4 @@
-use crate::{
-    inventory::Inventory, master_conn::MasterConnection, mutex::Mutex, palette::Palette, Error,
-};
+use crate::{inventory::Inventory, master_conn::MasterConnection, palette::Palette, Error};
 use data_structs::{
     flags::Flags,
     inventory::AccountStorages,
@@ -19,7 +17,7 @@ use std::net::Ipv4Addr;
 
 pub struct Sql {
     connection: sqlx::SqlitePool,
-    master_ship: Mutex<MasterConnection>,
+    master_ship: MasterConnection,
 }
 
 #[derive(Default)]
@@ -56,7 +54,7 @@ pub struct ChallengeData {
 }
 
 impl Sql {
-    pub async fn new(path: &str, master_ship: Mutex<MasterConnection>) -> Result<Self, Error> {
+    pub async fn new(path: &str, master_ship: MasterConnection) -> Result<Self, Error> {
         sqlx::any::install_default_drivers();
         let conn = if !sqlx::Sqlite::database_exists(path).await.unwrap_or(false) {
             Self::create_db(path).await?
@@ -115,7 +113,7 @@ impl Sql {
     }
 
     pub async fn run_action(&self, action: MasterShipAction) -> Result<MasterShipAction, Error> {
-        MasterConnection::run_action(&self.master_ship, action).await
+        self.master_ship.run_action(action).await
     }
 
     pub async fn get_sega_user(

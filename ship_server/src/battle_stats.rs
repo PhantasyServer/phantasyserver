@@ -1,7 +1,7 @@
 use crate::{Error, User};
 use data_structs::{stats::EnemyHitbox, ServerData};
 use pso2packetlib::protocol::{
-    models::Position,
+    models::{character::Class, Position},
     objects::{DamageReceivePacket, EnemyKilledPacket},
     playerstatus::DealDamagePacket,
     spawn::EnemySpawnPacket,
@@ -67,14 +67,55 @@ impl PlayerStats {
         let Some(char) = &user.character else {
             unreachable!("User should be in state >= `PreInGame`")
         };
-        let mut resulting_stats = Self::default();
         let server_data = &user.get_blockdata().server_data;
-        let player_stats = &server_data.player_stats;
-        //TODO: add subclass stats
-        let char_data = &char.character;
-        let stats = &player_stats.stats[char_data.classes.main_class as usize]
-            [char_data.get_level().level1 as usize - 1];
 
+        let char_data = &char.character;
+        let class = char_data.classes.main_class as usize;
+        let level = char_data.get_level().level1 as usize;
+        let mut resulting_stats = Self::calculate_class_stats(user, class, level);
+
+        if char_data.classes.sub_class != Class::Unknown {
+            // source: arks-visiphone
+            let class = char_data.classes.sub_class as usize;
+            let level = (char_data.get_sublevel().level1 as usize).min(level);
+            let subclass_stats = Self::calculate_class_stats(user, class, level);
+            resulting_stats.hp += subclass_stats.hp / 4;
+            resulting_stats.max_hp = resulting_stats.hp;
+            resulting_stats.dex += subclass_stats.dex / 4;
+            resulting_stats.base_mel_pwr += subclass_stats.base_mel_pwr / 4;
+            resulting_stats.base_rng_pwr += subclass_stats.base_rng_pwr / 4;
+            resulting_stats.base_tec_pwr += subclass_stats.base_tec_pwr / 4;
+            resulting_stats.base_mel_def += subclass_stats.base_mel_def / 4;
+            resulting_stats.base_rng_def += subclass_stats.base_rng_def / 4;
+            resulting_stats.base_tec_def += subclass_stats.base_tec_def / 4;
+        }
+
+        if let Some(equiped_item) = char.palette.get_current_item(&char.inventory)? {
+            let ids = equiped_item.id;
+            let weapon_stats = server_data
+                .item_params
+                .attrs
+                .weapons
+                .iter()
+                .find(|a| a.id == ids.id && a.subid == ids.subid)
+                .cloned()
+                .ok_or(Error::NoItemInAttrs(ids.id, ids.subid))?;
+            resulting_stats.weapon_mel_pwr = weapon_stats.melee_dmg as _;
+            resulting_stats.weapon_rng_pwr = weapon_stats.range_dmg as _;
+            resulting_stats.weapon_tec_pwr = weapon_stats.gender_force_dmg.force_dmg as _;
+        }
+        Ok(resulting_stats)
+    }
+    fn calculate_class_stats(user: &User, class: usize, level: usize) -> Self {
+        let Some(char) = &user.character else {
+            unreachable!("User should be in state >= `PreInGame`")
+        };
+        let mut resulting_stats = Self::default();
+        let player_stats = &user.get_blockdata().server_data.player_stats;
+
+        let stats = &player_stats.stats[class][level - 1];
+
+        let char_data = &char.character;
         let modifier_offset = char_data.look.race as usize * 2 + char_data.look.gender as usize;
         let modifiers = &player_stats.modifiers[modifier_offset];
 
@@ -94,21 +135,7 @@ impl PlayerStats {
         resulting_stats.base_tec_def =
             (stats.tec_def + (stats.tec_def * 0.01 * modifiers.tec_def as f32).floor()) as _;
 
-        if let Some(equiped_item) = char.palette.get_current_item(&char.inventory)? {
-            let ids = equiped_item.id;
-            let weapon_stats = server_data
-                .item_params
-                .attrs
-                .weapons
-                .iter()
-                .find(|a| a.id == ids.id && a.subid == ids.subid)
-                .cloned()
-                .ok_or(Error::NoItemInAttrs(ids.id, ids.subid))?;
-            resulting_stats.weapon_mel_pwr = weapon_stats.melee_dmg as _;
-            resulting_stats.weapon_rng_pwr = weapon_stats.range_dmg as _;
-            resulting_stats.weapon_tec_pwr = weapon_stats.gender_force_dmg.force_dmg as _;
-        }
-        Ok(resulting_stats)
+        resulting_stats
     }
     pub fn update(player: &mut User) -> Result<(), Error> {
         let old_hp = player.get_stats().hp;
@@ -167,7 +194,7 @@ impl PlayerStats {
             (base_pwr as f32 + weapon_pwr as f32 * 0.9 - def as f32).clamp(1.0, f32::MAX);
         let pure_attack = (base_pwr + weapon_pwr)
             .saturating_sub(def)
-            .clamp(2, u32::MAX) as f32;
+            .clamp(1, u32::MAX) as f32;
         let damage_mul = match damage.damage {
             data_structs::stats::DamageType::Generic(m) => m,
             data_structs::stats::DamageType::PA(_) => todo!(),
@@ -179,7 +206,7 @@ impl PlayerStats {
 
         let mut rng = rand::rngs::OsRng;
         let crit_chance = rand::distributions::Uniform::new(0, 100).sample(&mut rng);
-        let dmg = if crit_chance < 5 {
+        let dmg = if crit_chance < 5 || min_weapon_attack == max_weapon_attack {
             max_weapon_attack
         } else {
             rand::distributions::Uniform::new(min_weapon_attack, max_weapon_attack).sample(&mut rng)
@@ -321,7 +348,7 @@ impl EnemyStats {
         };
         let total_mul = 1.0;
         let min_pure_attack = min_pwr.saturating_sub(def).clamp(1, u32::MAX) as f32;
-        let pure_attack = max_pwr.saturating_sub(def).clamp(2, u32::MAX) as f32;
+        let pure_attack = max_pwr.saturating_sub(def).clamp(1, u32::MAX) as f32;
         let damage_mul = match damage.damage {
             data_structs::stats::DamageType::Generic(m) => m,
             data_structs::stats::DamageType::PA(_) => unimplemented!(),
@@ -333,7 +360,7 @@ impl EnemyStats {
 
         let mut rng = rand::rngs::OsRng;
         let crit_chance = rand::distributions::Uniform::new(0, 100).sample(&mut rng);
-        let dmg = if crit_chance < 5 {
+        let dmg = if crit_chance < 5 || min_weapon_attack == max_weapon_attack {
             max_weapon_attack
         } else {
             rand::distributions::Uniform::new(min_weapon_attack, max_weapon_attack).sample(&mut rng)
