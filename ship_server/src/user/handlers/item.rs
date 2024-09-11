@@ -16,7 +16,7 @@ pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket
     let character = user.character.as_mut().unwrap();
     let packet = character
         .inventory
-        .move_to_storage(packet, &mut user.uuid)?;
+        .move_to_storage(packet, &mut user.user_data.last_uuid)?;
     user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
@@ -25,7 +25,7 @@ pub async fn move_to_inventory(user: &mut User, packet: MoveToInventoryRequestPa
     let character = user.character.as_mut().unwrap();
     let packet = character
         .inventory
-        .move_to_inventory(packet, &mut user.uuid)?;
+        .move_to_inventory(packet, &mut user.user_data.last_uuid)?;
     user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
@@ -55,7 +55,7 @@ pub async fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestP
 
 pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
-    let packet = character.inventory.move_storages(packet, &mut user.uuid)?;
+    let packet = character.inventory.move_storages(packet, &mut user.user_data.last_uuid)?;
     user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }
@@ -67,7 +67,7 @@ pub async fn get_description(user: &mut User, packet: GetItemDescriptionPacket) 
             let packet = LoadItemDescriptionPacket {
                 unk1: 1,
                 item: packet.item,
-                desc: match user.text_lang {
+                desc: match user.user_data.lang {
                     Language::English => name.en_desc.clone(),
                     Language::Japanese => name.jp_desc.clone(),
                 },

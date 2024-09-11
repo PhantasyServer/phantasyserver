@@ -63,7 +63,7 @@ pub async fn kick_player(user: MutexGuard<'_, User>, data: KickMemberPacket) -> 
 pub async fn leave_party(user: MutexGuard<'_, User>) -> HResult {
     let block_data = user.blockdata.clone();
     let party = user.get_current_party();
-    let id = user.player_id;
+    let id = user.get_user_id();
     drop(user);
     if let Some(party) = party {
         let user = party
@@ -96,7 +96,7 @@ pub async fn disband_party(user: MutexGuard<'_, User>) -> HResult {
 
 pub async fn accept_invite(user: MutexGuard<'_, User>, packet: AcceptInvitePacket) -> HResult {
     let party = user.get_current_party();
-    let id = user.player_id;
+    let id = user.get_user_id();
     drop(user);
     if let Some(party) = party {
         let user = party
