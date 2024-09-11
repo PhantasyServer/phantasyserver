@@ -5,7 +5,7 @@ use crate::{
     map::Map,
     mutex::{Mutex, MutexGuard, RwLock},
     party::{self, Party},
-    sql::CharData,
+    sql::{self, CharData},
     Action, BlockData, Error,
 };
 use data_structs::flags::Flags;
@@ -31,27 +31,21 @@ pub struct User {
     // ideally all of these should be private
     connection: ConnectionWrite,
     blockdata: Arc<BlockData>,
-    player_id: u32,
     pub position: Position,
-    text_lang: Language,
     map: Option<Arc<Mutex<Map>>>,
     pub party: Option<Arc<RwLock<Party>>>,
     pub character: Option<CharData>,
     last_ping: Instant,
     failed_pings: u32,
-    pub packet_type: PacketType,
     ready_to_shutdown: bool,
-    pub nickname: String,
     pub party_invites: Vec<PartyInvite>,
     pub party_ignore: Pr::party::RejectStatus,
     pub zone_id: u32,
     firstload: bool,
-    accountflags: Flags,
-    pub isgm: bool,
-    uuid: u64,
     pub state: UserState,
     battle_stats: PlayerStats,
     conn_id: usize,
+    pub user_data: sql::User,
 }
 
 impl User {
@@ -81,27 +75,27 @@ impl User {
             User {
                 connection: write,
                 blockdata,
-                player_id: 0,
                 character: None,
                 map: None,
                 party: None,
                 position: Default::default(),
-                text_lang: Language::Japanese,
                 last_ping: Instant::now(),
                 failed_pings: 0,
-                packet_type: PacketType::Classic,
                 ready_to_shutdown: false,
-                nickname: String::new(),
                 party_invites: vec![],
                 party_ignore: Default::default(),
                 zone_id: 0,
                 firstload: true,
-                accountflags: Default::default(),
-                isgm: false,
-                uuid: 1,
                 state: UserState::LoggingIn,
                 battle_stats: Default::default(),
                 conn_id,
+                user_data: sql::User {
+                    packet_type: PacketType::Classic,
+                    lang: Language::Japanese,
+                    isgm: false,
+                    last_uuid: 1,
+                    ..Default::default()
+            }
             },
             read,
         ))
@@ -170,7 +164,7 @@ impl User {
         self.map = Some(map)
     }
     pub const fn get_user_id(&self) -> u32 {
-        self.player_id
+        self.user_data.id
     }
     pub const fn get_zone_id(&self) -> u32 {
         self.zone_id
@@ -183,7 +177,7 @@ impl User {
     }
     pub const fn create_object_header(&self) -> ObjectHeader {
         ObjectHeader {
-            id: self.player_id,
+            id: self.get_user_id(),
             unk: 0,
             entity_type: Pr::ObjectType::Player,
             map_id: 0,
@@ -195,7 +189,7 @@ impl User {
     pub async fn send_item_attrs(&mut self) -> Result<(), Error> {
         let blockdata = self.blockdata.clone();
         let item_attrs = &blockdata.server_data.item_params;
-        let data = match self.packet_type {
+        let data = match self.user_data.packet_type {
             PacketType::Vita => &item_attrs.vita_attrs,
             _ => &item_attrs.pc_attrs,
         };
@@ -311,7 +305,7 @@ impl User {
         Ok(packet)
     }
     pub async fn set_account_flag(&mut self, flag: u32, value: bool) -> Result<(), Error> {
-        self.accountflags.set(flag as _, value as _);
+        self.user_data.accountflags.set(flag as _, value as _);
         self.send_packet(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
             flag_type: Pr::flag::FlagType::Account,
             id: flag,
@@ -322,7 +316,7 @@ impl User {
         Ok(())
     }
     pub fn set_account_flag_block(&mut self, flag: u32, value: bool) -> Result<(), Error> {
-        self.accountflags.set(flag as _, value as _);
+        self.user_data.accountflags.set(flag as _, value as _);
         self.send_packet_block(&Packet::ServerSetFlag(Pr::flag::ServerSetFlagPacket {
             flag_type: Pr::flag::FlagType::Account,
             id: flag,
@@ -332,7 +326,7 @@ impl User {
         Ok(())
     }
     pub fn get_account_flags(&self) -> Flags {
-        self.accountflags.clone()
+        self.user_data.accountflags.clone()
     }
     pub async fn set_char_flag(&mut self, flag: u32, value: bool) -> Result<(), Error> {
         if let Some(c) = self.character.as_mut() {
@@ -500,7 +494,7 @@ pub async fn packet_handler(
         (US::LoggingIn, P::VitaLogin(..)) => H::login::login_request(user, match_unit.1).await,
         (_, P::AllBlocksListRequest) => H::login::all_block_list(user).await,
         (_, P::ChallengeResponse(..)) => {
-            user.packet_type = PacketType::NA;
+            user.user_data.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);
             Ok(Action::Nothing)
         }
@@ -567,7 +561,7 @@ pub async fn packet_handler(
         (state, data) => {
             log::debug!(
                 "Client {} in state ({state}) sent unhandled packet: {data:?}",
-                user.player_id
+                user.user_data.id
             );
             Ok(Action::Nothing)
         }
@@ -599,17 +593,15 @@ pub async fn packet_handler(
 
 impl Drop for User {
     fn drop(&mut self) {
-        let player_id = self.player_id;
+        let player_id = self.user_data.id;
         log::debug!("Dropping user {player_id}");
         if let Some(char) = self.character.take() {
             let sql = self.blockdata.sql.clone();
-            let acc_flags = std::mem::take(&mut self.accountflags);
-            let uuid = self.uuid;
+            let data = std::mem::take(&mut self.user_data);
             tokio::spawn(async move {
                 let _ = sql.update_character(&char).await;
                 let _ = sql.update_account_storage(player_id, &char.inventory).await;
-                let _ = sql.put_account_flags(player_id, acc_flags).await;
-                let _ = sql.put_uuid(player_id, uuid).await;
+                let _ = sql.set_account_data(data).await;
             });
         }
         if let Some(party) = self.party.take() {

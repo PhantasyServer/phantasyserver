@@ -22,11 +22,11 @@ pub async fn encryption_request(user: &mut User, _: login::EncryptionRequestPack
 }
 
 pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
-    let (mut id, mut status, mut error) = Default::default();
+    let (mut status, mut error) = Default::default();
     let ip = user.get_ip()?;
     match packet {
         Packet::SegaIDLogin(packet) => {
-            user.packet_type = PacketType::NA;
+            user.user_data.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);
             let sega_user = user
                 .blockdata
@@ -34,17 +34,14 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                 .get_sega_user(&packet.username, &packet.password, ip)
                 .await;
             match sega_user {
-                Ok(data) => {
-                    id = data.id;
-                    user.nickname = data.nickname;
-                    user.text_lang = packet.text_lang;
+                Ok(mut data) => {
+                    data.packet_type = user.user_data.packet_type;
+                    data.lang = packet.text_lang;
+                    user.user_data = data;
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                         data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22].into(),
                     }))
                     .await?;
-                    user.accountflags = data.accountflags;
-                    user.isgm = data.isgm;
-                    user.uuid = data.last_uuid;
                 }
                 Err(Error::InvalidPassword) => {
                     status = login::LoginStatus::Failure;
@@ -58,22 +55,18 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
             }
         }
         Packet::VitaLogin(packet) => {
-            user.packet_type = PacketType::Vita;
+            user.user_data.packet_type = PacketType::Vita;
             user.connection.change_packet_type(PacketType::Vita);
-            let user_psn = user
+            let mut user_psn = user
                 .blockdata
                 .sql
                 .get_psn_user(&packet.username, ip)
                 .await?;
-            user.nickname = user_psn.nickname;
-            id = user_psn.id;
-            user.accountflags = user_psn.accountflags;
-            user.isgm = user_psn.isgm;
-            user.uuid = user_psn.last_uuid;
+            user_psn.packet_type = user.user_data.packet_type;
+            user.user_data = user_psn;
         }
         _ => unreachable!(),
     }
-    user.player_id = id;
 
     if status == login::LoginStatus::Failure {
         user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
@@ -86,7 +79,7 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
         return Ok(Action::Disconnect);
     }
 
-    if user.nickname.is_empty() {
+    if user.user_data.nickname.is_empty() {
         user.state = UserState::NewUsername;
         user.send_packet(&Packet::NicknameRequest(Default::default()))
             .await?;
@@ -130,7 +123,9 @@ pub async fn on_successful_login(user: &mut User) -> HResult {
 
 pub async fn set_username(user: &mut User, packet: NicknameResponsePacket) -> HResult {
     let sql = user.blockdata.sql.clone();
-    let result = sql.set_username(user.player_id, &packet.nickname).await?;
+    let result = sql
+        .set_username(user.get_user_id(), &packet.nickname)
+        .await?;
     //FIXME: error code 1 is for nickname == username
     match result {
         SetNicknameResult::Ok => {}
@@ -224,17 +219,12 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
     match pso_user {
         Ok(x) => {
             id = x.id;
-            user.nickname = x.nickname;
             user.connection.change_packet_type(x.packet_type);
-            user.packet_type = x.packet_type;
-            user.text_lang = x.lang;
             user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
                 data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22].into(),
             }))
             .await?;
-            user.accountflags = x.accountflags;
-            user.isgm = x.isgm;
-            user.uuid = x.last_uuid;
+            user.user_data = x;
         }
         Err(Error::NoUser) => {
             status = login::LoginStatus::Failure;
@@ -243,7 +233,6 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
 
         Err(e) => return Err(e),
     }
-    user.player_id = id;
     user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
         status,
         error,
@@ -266,13 +255,13 @@ pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPack
     let lock = user.blockdata.blocks.read().await;
     if let Some(block) = lock.iter().find(|b| b.id == packet.block_id as u32) {
         let challenge_data = crate::sql::ChallengeData {
-            lang: user.text_lang,
-            packet_type: user.packet_type,
+            lang: user.user_data.lang,
+            packet_type: user.user_data.packet_type,
         };
         let challenge = user
             .blockdata
             .sql
-            .new_challenge(user.player_id, challenge_data)
+            .new_challenge(user.get_user_id(), challenge_data)
             .await?;
         let packet = Packet::BlockSwitchResponse(login::BlockSwitchResponsePacket {
             unk1: packet.unk1,
@@ -283,7 +272,7 @@ pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPack
             port: block.port,
             unk4: 1,
             challenge,
-            user_id: user.player_id,
+            user_id: user.get_user_id(),
         });
         drop(lock);
         user.send_packet(&packet).await?;
@@ -303,7 +292,11 @@ pub async fn client_ping(user: &mut User, packet: login::ClientPingPacket) -> HR
 
 pub async fn character_list(user: &mut User) -> HResult {
     let mut packet = login::CharacterListPacket::default();
-    let characters = user.blockdata.sql.get_characters(user.player_id).await?;
+    let characters = user
+        .blockdata
+        .sql
+        .get_characters(user.get_user_id())
+        .await?;
     for character in characters {
         packet.characters.push(character.character);
         let Packet::LoadEquiped(equiped) = character.inventory.send_equiped(0) else {
@@ -391,7 +384,7 @@ pub async fn newname_request(
     let mut char = user
         .blockdata
         .sql
-        .get_character(user.player_id, packet.char_id)
+        .get_character(user.get_user_id(), packet.char_id)
         .await?;
     char.character.name.clone_from(&packet.name);
     user.blockdata.sql.update_character(&char).await?;
@@ -424,8 +417,8 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
             .find(|a| a.model == char_data.character.look.costume_id)
             .cloned()
             .ok_or(Error::NoClothes(char_data.character.look.costume_id))?;
-        let uuid = user.uuid;
-        user.uuid += 1;
+        let uuid = user.user_data.last_uuid;
+        user.user_data.last_uuid += 1;
         let item = Item {
             uuid,
             id: protocol::items::ItemId {
@@ -448,8 +441,8 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
         let class_data = &block_data.server_data.default_classes.classes
             [char_data.character.classes.main_class as usize];
         for item in &class_data.items {
-            let uuid = user.uuid;
-            user.uuid += 1;
+            let uuid = user.user_data.last_uuid;
+            user.user_data.last_uuid += 1;
             let mut item_data = item.item_data.clone();
             item_data.uuid = uuid;
             char_data.inventory.add_item(item_data);
@@ -472,7 +465,7 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
     let char_id = user
         .blockdata
         .sql
-        .put_character(user.player_id, char_data)
+        .put_character(user.get_user_id(), char_data)
         .await?;
     user.send_packet(&Packet::CharacterCreateResponse(
         login::CharacterCreateResponsePacket {
@@ -488,7 +481,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
     let char = user
         .blockdata
         .sql
-        .get_character(user.player_id, packet.char_id)
+        .get_character(user.get_user_id(), packet.char_id)
         .await?;
     user.character = Some(char);
     user.send_packet(&Packet::LoadingScreenTransition).await?;
@@ -498,7 +491,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
 }
 
 pub async fn login_history(user: &mut User) -> HResult {
-    let attempts = user.blockdata.sql.get_logins(user.player_id).await?;
+    let attempts = user.blockdata.sql.get_logins(user.get_user_id()).await?;
     user.send_packet(&Packet::LoginHistoryResponse(login::LoginHistoryPacket {
         attempts,
     }))
