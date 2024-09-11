@@ -128,40 +128,41 @@ pub async fn campship_down(user: MutexGuard<'_, User>, _: CampshipDownPacket) ->
 
 pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket) -> HResult {
     let user = &mut *user_guard;
+    let user_id = user.get_user_id();
     let packet = protocol::unk19::LobbyMonitorPacket { video_id: 1 };
     user.send_packet(&Packet::LobbyMonitor(packet)).await?;
     let Some(character) = &mut user.character else {
         unreachable!("Character should be loaded here");
     };
     let inventory_packets = character.inventory.send(
-        user.player_id,
+        user_id,
         character.character.name.clone(),
         &user.blockdata.server_data.item_params,
-        user.text_lang,
+        user.user_data.lang,
     );
     let palette = character.palette.send_palette();
     let default_pa_packet = character.palette.send_default_pa();
-    let equiped = character.inventory.send_equiped(user.player_id);
-    let change_palette = character.palette.send_change_palette(user.player_id);
+    let equiped = character.inventory.send_equiped(user_id);
+    let change_palette = character.palette.send_change_palette(user_id);
 
     let char_flags = character.flags.to_char_flags();
     for packet in inventory_packets {
         user.send_packet(&packet).await?;
     }
     if user.firstload {
-        let flags = user.accountflags.to_account_flags();
+        let flags = user.user_data.accountflags.to_account_flags();
         user.send_packet(&flags).await?;
         user.send_packet(&char_flags).await?;
     }
 
     user.send_packet(&Packet::LoadPAs(protocol::objects::LoadPAsPacket {
         receiver: protocol::ObjectHeader {
-            id: user.player_id,
+            id: user_id,
             entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
         target: protocol::ObjectHeader {
-            id: user.player_id,
+            id: user_id,
             entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
@@ -189,7 +190,10 @@ pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket
 
 pub async fn set_flag(user: &mut User, data: SetFlagPacket) -> HResult {
     match data.flag_type {
-        FlagType::Account => user.accountflags.set(data.id as usize, data.value as u8),
+        FlagType::Account => user
+            .user_data
+            .accountflags
+            .set(data.id as usize, data.value as u8),
         FlagType::Character => user
             .character
             .as_mut()

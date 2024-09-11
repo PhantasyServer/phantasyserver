@@ -35,7 +35,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let name = name.unwrap();
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
                     receiver: pso2packetlib::protocol::ObjectHeader {
-                        id: user.player_id,
+                        id: user.get_user_id(),
                         entity_type: ObjectType::Player,
                         ..Default::default()
                     },
@@ -76,7 +76,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let name = name.unwrap();
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
                     receiver: pso2packetlib::protocol::ObjectHeader {
-                        id: user.player_id,
+                        id: user.get_user_id(),
                         entity_type: ObjectType::Player,
                         ..Default::default()
                     },
@@ -86,7 +86,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                         ..Default::default()
                     },
                     object3: pso2packetlib::protocol::ObjectHeader {
-                        id: user.player_id,
+                        id: user.get_user_id(),
                         entity_type: ObjectType::Player,
                         ..Default::default()
                     },
@@ -144,7 +144,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let character = user.character.as_mut().unwrap();
                 let packet = character
                     .inventory
-                    .add_default_item(&mut user.uuid, item_id);
+                    .add_default_item(&mut user.user_data.last_uuid, item_id);
                 user.send_packet(&packet).await?;
             }
             "!change_lvl" => {
@@ -227,7 +227,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
         }
         return Ok(Action::Nothing);
     }
-    let id = user.player_id;
+    let id = user.get_user_id();
     match data.channel {
         MessageChannel::Map => {
             let map = user.get_current_map();
@@ -297,7 +297,7 @@ async fn set_flag(
 ) -> Result<(), crate::Error> {
     let character = user.character.as_mut().unwrap();
     match ftype {
-        FlagType::Account => user.accountflags.set(id, val),
+        FlagType::Account => user.user_data.accountflags.set(id, val),
         FlagType::Character => character.flags.set(id, val),
     };
     user.send_packet(&Packet::ServerSetFlag(

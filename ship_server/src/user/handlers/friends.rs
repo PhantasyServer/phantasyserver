@@ -5,7 +5,7 @@ use pso2packetlib::protocol::{friends::FriendListRequestPacket, Flags, Packet, P
 pub async fn get_friends(user: &mut User, _: FriendListRequestPacket) -> HResult {
     let mut packet: pso2packetlib::protocol::friends::FriendListPacket =
         serde_json::from_str(&std::fs::read_to_string("data/friend.json")?)?;
-    packet.nickname = user.nickname.clone();
+    packet.nickname = user.user_data.nickname.clone();
     user.send_packet(&Packet::FriendList(packet)).await?;
     let packet = Packet::Unknown((
         PacketHeader {

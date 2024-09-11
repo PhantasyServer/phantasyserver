@@ -277,7 +277,7 @@ impl Map {
             other_equipment.push(char_data.palette.send_change_palette(pid));
             other_equipment.push(char_data.palette.send_cur_weapon(pid, &char_data.inventory));
             other_equipment.push(char_data.inventory.send_equiped(pid));
-            other_characters.push((char_data.character.clone(), p.position, p.isgm));
+            other_characters.push((char_data.character.clone(), p.position, p.user_data.isgm));
         }
         let mut np_lock = new_player.lock().await;
         np_lock.zone_id = zone_id;
@@ -302,7 +302,7 @@ impl Map {
             .map(|z| z.default_location)
             .unwrap_or_default();
         np_lock.position = pos;
-        let np_gm = np_lock.isgm as u32;
+        let np_gm = np_lock.user_data.isgm as u32;
         np_lock
             .spawn_character(CharacterSpawnPacket {
                 position: pos,
@@ -764,7 +764,7 @@ impl Map {
             .filter(|o| o.zone_id == zone_id)
             .cloned()
         {
-            if user.packet_type == PacketType::Vita {
+            if user.user_data.packet_type == PacketType::Vita {
                 let lua_code = map_data
                     .luas
                     .get(obj.data.name.as_str())

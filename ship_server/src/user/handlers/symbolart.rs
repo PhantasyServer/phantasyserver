@@ -15,14 +15,15 @@ pub async fn list_sa(user: &mut User) -> HResult {
     let Some(char_id) = user.character.as_ref().map(|c| c.character.character_id) else {
         unreachable!("User should be in state >= `PreInGame`")
     };
+    let user_id = user.get_user_id();
     let uuids = user
         .blockdata
         .sql
-        .get_symbol_art_list(user.player_id)
+        .get_symbol_art_list(user_id)
         .await?;
     user.send_packet(&Packet::SymbolArtList(SymbolArtListPacket {
         object: ObjectHeader {
-            id: user.player_id,
+            id: user_id,
             entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
@@ -34,10 +35,11 @@ pub async fn list_sa(user: &mut User) -> HResult {
 }
 
 pub async fn change_sa(user: &mut User, packet: ChangeSymbolArtPacket) -> HResult {
+    let user_id = user.get_user_id();
     let mut uuids = user
         .blockdata
         .sql
-        .get_symbol_art_list(user.player_id)
+        .get_symbol_art_list(user_id)
         .await?;
     for uuid in packet.uuids {
         let slot = uuid.slot;
@@ -57,7 +59,7 @@ pub async fn change_sa(user: &mut User, packet: ChangeSymbolArtPacket) -> HResul
     }
     user.blockdata
         .sql
-        .set_symbol_art_list(uuids, user.player_id)
+        .set_symbol_art_list(uuids, user_id)
         .await?;
     user.send_packet(&Packet::SymbolArtResult(Default::default()))
         .await?;
@@ -84,7 +86,7 @@ pub async fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPac
 }
 
 pub async fn send_sa(user: MutexGuard<'_, User>, packet: SendSymbolArtPacket) -> HResult {
-    let id = user.player_id;
+    let id = user.get_user_id();
     let map = user.get_current_map();
     let party = user.get_current_party();
     drop(user);
