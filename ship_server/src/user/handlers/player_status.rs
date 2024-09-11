@@ -6,6 +6,7 @@ pub async fn deal_damage(
     user: MutexGuard<'_, User>,
     packet: playerstatus::DealDamagePacket,
 ) -> HResult {
+    log::trace!("Got deal damage packet: {packet:?}");
     let map = user.get_current_map();
     drop(user);
     if let Some(map) = map {

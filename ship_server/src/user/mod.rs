@@ -498,6 +498,7 @@ pub async fn packet_handler(
         (US::CharacterSelect, P::CreateCharacter1) => H::login::character_create1(user).await,
         (US::CharacterSelect, P::CreateCharacter2) => H::login::character_create2(user).await,
         (US::LoggingIn, P::VitaLogin(..)) => H::login::login_request(user, match_unit.1).await,
+        (_, P::AllBlocksListRequest) => H::login::all_block_list(user).await,
         (_, P::ChallengeResponse(..)) => {
             user.packet_type = PacketType::NA;
             user.connection.change_packet_type(PacketType::NA);

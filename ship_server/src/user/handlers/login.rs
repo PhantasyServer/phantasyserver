@@ -4,7 +4,9 @@ use data_structs::master_ship::SetNicknameResult;
 use pso2packetlib::protocol::{
     self,
     items::Item,
-    login::{self, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket},
+    login::{
+        self, AllBlocksListPacket, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket,
+    },
     models::character::Race,
     ObjectHeader, Packet, PacketType,
 };
@@ -175,6 +177,42 @@ pub async fn block_list(user: &mut User) -> HResult {
     blocks.blocks[pos].unk1 = 8;
     blocks.blocks.swap(pos, 0);
     user.send_packet(&Packet::BlockList(blocks)).await?;
+    Ok(Action::Nothing)
+}
+
+pub async fn all_block_list(user: &mut User) -> HResult {
+    let mut blocks = AllBlocksListPacket {
+        blocks: Default::default(),
+        unk: 0,
+    };
+    let lock = user.blockdata.blocks.read().await;
+    for block in lock.iter() {
+        blocks.blocks.push(login::BlockInfo {
+            block_id: block.id as u16,
+            blockname: block.name.to_string().into(),
+            ip: block.ip,
+            port: block.port,
+            cur_capacity: block.players as f32 / block.max_players as f32,
+            unk4: 26,
+            unk5: 4,
+            unk6: 1,
+            unk8: 19,
+            unk10: 3,
+            unk11: 164,
+            ..Default::default()
+        })
+    }
+    drop(lock);
+    let pos = blocks
+        .blocks
+        .iter()
+        .enumerate()
+        .find(|(_, b)| b.block_id as u32 == user.blockdata.block_id)
+        .unwrap()
+        .0;
+    blocks.blocks[pos].unk1 = 8;
+    blocks.blocks.swap(pos, 0);
+    user.send_packet(&Packet::AllBlocksList(blocks)).await?;
     Ok(Action::Nothing)
 }
 
