@@ -101,7 +101,7 @@ impl Party {
             .expect("User should be in state >= `PreInGame`");
         party_init.entries[0] = party::PartyEntry {
             id: new_player_obj,
-            nickname: np_lock.nickname.clone(),
+            nickname: np_lock.user_data.nickname.clone(),
             char_name: new_char.character.name.clone(),
             class: new_char.character.classes.main_class,
             subclass: new_char.character.classes.sub_class,
@@ -155,7 +155,7 @@ impl Party {
                 .expect("User should be in state >= `PreInGame`");
             party_init.entries[i] = party::PartyEntry {
                 id: other_player_obj,
-                nickname: player.nickname.clone(),
+                nickname: player.user_data.nickname.clone(),
                 char_name: char.character.name.clone(),
                 class: char.character.classes.main_class,
                 subclass: char.character.classes.sub_class,
@@ -455,7 +455,7 @@ impl Party {
                     .expect("Users in parties should have characters");
                 detail.unk10[player_i] = party::PartyMember {
                     char_name: char.character.name.clone(),
-                    nickname: player.nickname.clone(),
+                    nickname: player.user_data.nickname.clone(),
                     id: ObjectHeader {
                         id: player.get_user_id(),
                         entity_type: ObjectType::Player,
