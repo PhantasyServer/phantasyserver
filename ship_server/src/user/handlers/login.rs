@@ -462,6 +462,8 @@ pub async fn new_character(user: &mut User, packet: login::CharacterCreatePacket
             .palette
             .set_subpalette_data(class_data.subpalettes.clone());
     }
+    // first ep1 quest
+    char_data.unlocked_quests.push(700000);
     let char_id = user
         .blockdata
         .sql
