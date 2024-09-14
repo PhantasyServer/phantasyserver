@@ -1312,6 +1312,58 @@ impl Map {
                 lua.to_value(&packets)
             })?,
         )?;
+        // unlock one quest
+        globals.set(
+            "unlock_quest",
+            scope.create_function_mut(
+                move |_, (receiver, name_id): (u32, u32)| -> Result<(), _> {
+                    if let Some(p) = self
+                        .players
+                        .iter()
+                        .find(|p| p.player_id == receiver)
+                        .and_then(|p| p.user.upgrade())
+                    {
+                        let mut lock = p.lock_blocking();
+                        let char = lock
+                            .character
+                            .as_mut()
+                            .expect("Character should be loaded for users in map");
+                        if !char.unlocked_quests.contains(&name_id) {
+                            char.unlocked_quests.push(name_id);
+                            char.unlocked_quests_notif.push(name_id);
+                        }
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        // unlock multiple quests
+        globals.set(
+            "unlock_quests",
+            scope.create_function_mut(
+                move |_, (receiver, name_id): (u32, Vec<u32>)| -> Result<(), _> {
+                    if let Some(p) = self
+                        .players
+                        .iter()
+                        .find(|p| p.player_id == receiver)
+                        .and_then(|p| p.user.upgrade())
+                    {
+                        let mut lock = p.lock_blocking();
+                        let char = lock
+                            .character
+                            .as_mut()
+                            .expect("Character should be loaded for users in map");
+                        for name in name_id {
+                            if !char.unlocked_quests.contains(&name) {
+                                char.unlocked_quests.push(name);
+                                char.unlocked_quests_notif.push(name);
+                            }
+                        }
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
 
         /* LUA FUNCTIONS END */
         Ok(())
