@@ -238,12 +238,13 @@ async fn ship_login(conn: &mut ShipConnection, sql: &Sql) -> Result<(), Error> {
         id: action.id,
         action: MasterShipAction::Ok,
     };
-    let MasterShipAction::ShipLogin { psk } = action.action else {
+    let MasterShipAction::ShipLogin(psk) = action.action else {
         response.action = MasterShipAction::Error(String::from("Invalid action"));
         conn.write(response).await?;
         return Err(Error::InvalidAction);
     };
 
+    let psk = psk.psk;
     match sql.get_ship_data(&psk).await? {
         true => {}
         false => {

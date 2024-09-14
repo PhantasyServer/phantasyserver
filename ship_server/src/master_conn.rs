@@ -1,7 +1,7 @@
 use crate::Error;
 use data_structs::master_ship::{
     MasterShipAction as MAS, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo,
-    ShipLoginResult,
+    ShipLogin, ShipLoginResult,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -28,6 +28,26 @@ pub struct MasterConnection {
     ship_id: AtomicU32,
 }
 
+fn hostkey_to_finger(key: &[u8]) -> String {
+    use base64::Engine;
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(key);
+    let hash = hasher.finalize();
+    base64::engine::general_purpose::STANDARD.encode(hash)
+}
+
+fn ident_failure(key: &[u8]) {
+    log::warn!("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+    log::warn!("@    WARNING: MASTER SERVER IDENTIFICATION HAS CHANGED!    @");
+    log::warn!("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+    log::warn!("IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!");
+    log::warn!("Someone could be eavesdropping on you right now (man-in-the-middle attack)!");
+    log::warn!("It is also possible that a host key has just been changed.");
+    log::warn!("The fingerprint for the key sent by the master server is");
+    log::warn!("SHA256:{}", hostkey_to_finger(&key));
+}
+
 impl MasterConnection {
     pub async fn new(ip: SocketAddr, psk: &[u8]) -> Result<Self, Error> {
         let socket = tokio::net::TcpStream::connect(ip).await?;
@@ -39,11 +59,35 @@ impl MasterConnection {
                 .unwrap_or(Default::default());
         let conn = ShipConnection::new_client(socket, |ip, key| {
             if let Some(host) = hostkeys.iter().find(|d| d.ip == ip) {
-                return host.key == key;
+                match host.key == key {
+                    true => return true,
+                    false => {
+                        ident_failure(key);
+                        return false;
+                    }
+                }
             }
-            let key = key.to_owned();
-            hostkeys.push(HostKey { ip, key });
-            true
+            log::warn!(
+                "The authenticity of master server '{}' can't be established.",
+                local_addr
+            );
+            log::warn!("Key fingerprint is SHA256:{}", hostkey_to_finger(&key));
+            let confirm =
+                dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                    .with_prompt("Are you sure you want to continue connecting?")
+                    .interact()
+                    .unwrap();
+            if confirm {
+                let key = key.to_owned();
+                hostkeys.push(HostKey { ip, key });
+                log::warn!(
+                    "Permanently added '{}' to the list of known master ships.",
+                    local_addr
+                );
+                true
+            } else {
+                false
+            }
         })
         .await?;
         tokio::fs::write("hostkeys.mp", rmp_serde::to_vec(&hostkeys)?).await?;
@@ -62,7 +106,7 @@ impl MasterConnection {
         tokio::spawn(async move { master_conn_impl.run_loop().await });
 
         let response = master_conn
-            .run_action(MAS::ShipLogin { psk: psk.to_vec() })
+            .run_action(MAS::ShipLogin(ShipLogin { psk: psk.to_vec() }))
             .await?;
         match response {
             MAS::ShipLoginResult(ShipLoginResult::Ok) => Ok(master_conn),

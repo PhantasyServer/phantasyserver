@@ -25,6 +25,9 @@ tokio = { version = "1.40.0", features = ["full"] }
 toml = "0.8.19"
 log = { version = "0.4.22", features = ["serde", "release_max_level_info", "std"] }
 simplelog = "0.12.2"
+dialoguer = "0.11.0"
+sha2 = "0.10.8"
+base64 = "0.22.1"
 
 # luajit doesn't compile on musl or on arm
 [target.'cfg(any(target_env = "musl", target_arch = "arm"))'.dependencies.mlua]
