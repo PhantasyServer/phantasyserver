@@ -29,8 +29,6 @@ pub struct User {
     pub accountflags: Flags,
     pub isgm: bool,
     pub last_uuid: u64,
-    pub unlocked_quests: Vec<u32>,
-    pub unlocked_quests_notif: Vec<u32>,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -49,6 +47,8 @@ pub struct CharData {
     pub inventory: Inventory,
     pub palette: Palette,
     pub flags: Flags,
+    pub unlocked_quests: Vec<u32>,
+    pub unlocked_quests_notif: Vec<u32>,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -141,7 +141,7 @@ impl Sql {
                 isgm,
                 last_uuid,
             }) => {
-                let user_data: UserData = if let Some(row) =
+                let _: UserData = if let Some(row) =
                     sqlx::query("select Data from Users where Id = ?")
                         .bind(id as i64)
                         .fetch_optional(&self.connection)
@@ -158,8 +158,6 @@ impl Sql {
                     accountflags,
                     isgm,
                     last_uuid,
-                    unlocked_quests: user_data.unlocked_quests,
-                    unlocked_quests_notif: user_data.unlocked_quests_notif,
                     ..Default::default()
                 })
             }
@@ -189,7 +187,7 @@ impl Sql {
                 isgm,
                 last_uuid,
             }) => {
-                let user_data: UserData = if let Some(row) =
+                let _: UserData = if let Some(row) =
                     sqlx::query("select Data from Users where Id = ?")
                         .bind(id as i64)
                         .fetch_optional(&self.connection)
@@ -206,8 +204,6 @@ impl Sql {
                     accountflags,
                     isgm,
                     last_uuid,
-                    unlocked_quests: user_data.unlocked_quests,
-                    unlocked_quests_notif: user_data.unlocked_quests_notif,
                     ..Default::default()
                 })
             }
@@ -364,7 +360,7 @@ impl Sql {
                     .fetch_one(&self.connection)
                     .await?;
                 let challenge_data: ChallengeData = rmp_serde::from_slice(row.try_get("Data")?)?;
-                let user_data: UserData = rmp_serde::from_slice(
+                let _: UserData = rmp_serde::from_slice(
                     sqlx::query("select Data from Users where Id = ?")
                         .bind(id as i64)
                         .fetch_one(&self.connection)
@@ -380,8 +376,6 @@ impl Sql {
                     accountflags,
                     isgm,
                     last_uuid,
-                    unlocked_quests: user_data.unlocked_quests,
-                    unlocked_quests_notif: user_data.unlocked_quests_notif,
                 })
             }
             MasterShipAction::UserLoginResult(UserLoginResult::InvalidPassword(_)) => {
@@ -582,11 +576,6 @@ impl Sql {
     pub async fn set_account_data(&self, data: User) -> Result<(), Error> {
         self.put_account_flags(data.id, data.accountflags).await?;
         self.put_uuid(data.id, data.last_uuid).await?;
-        self.update_userdata(data.id, |user_data| {
-            user_data.unlocked_quests = data.unlocked_quests;
-            user_data.unlocked_quests_notif = data.unlocked_quests_notif;
-        })
-        .await?;
         Ok(())
     }
     async fn update_userdata<F>(&self, user_id: u32, f: F) -> Result<(), Error>
