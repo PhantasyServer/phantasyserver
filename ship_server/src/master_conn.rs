@@ -45,7 +45,7 @@ fn ident_failure(key: &[u8]) {
     log::warn!("Someone could be eavesdropping on you right now (man-in-the-middle attack)!");
     log::warn!("It is also possible that a host key has just been changed.");
     log::warn!("The fingerprint for the key sent by the master server is");
-    log::warn!("SHA256:{}", hostkey_to_finger(&key));
+    log::warn!("SHA256:{}", hostkey_to_finger(key));
 }
 
 impl MasterConnection {
@@ -71,7 +71,7 @@ impl MasterConnection {
                 "The authenticity of master server '{}' can't be established.",
                 local_addr
             );
-            log::warn!("Key fingerprint is SHA256:{}", hostkey_to_finger(&key));
+            log::warn!("Key fingerprint is SHA256:{}", hostkey_to_finger(key));
             let confirm =
                 dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
                     .with_prompt("Are you sure you want to continue connecting?")
