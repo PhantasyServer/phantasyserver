@@ -52,16 +52,20 @@ jobs:
         include:
         - os: ubuntu-latest
           TARGET: aarch64-unknown-linux-gnu
+          CROSS_FLAGS: '--git https://github.com/cross-rs/cross'
         - os: ubuntu-latest
-          TARGET: armv7-unknown-linux-gnuabihf
+          TARGET: armv7-unknown-linux-gnueabihf
+          CROSS_FLAGS: '--git https://github.com/cross-rs/cross'
         - os: ubuntu-latest
           TARGET: x86_64-unknown-linux-gnu
+          CROSS_FLAGS: '--git https://github.com/cross-rs/cross'
         - os: ubuntu-latest
           TARGET: x86_64-pc-windows-gnu
-          EXTENSION: exe
+          EXTENSION: .exe
+          CROSS_FLAGS: '--git https://github.com/cross-rs/cross'
         - os: windows-latest
           TARGET: x86_64-pc-windows-msvc
-          EXTENSION: exe
+          EXTENSION: .exe
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
@@ -72,7 +76,7 @@ jobs:
     - name: Install cross
       if: ${{ success() }}
       run: |
-        cargo install cross --git https://github.com/cross-rs/cross
+        cargo install cross ${{ matrix.CROSS_FLAGS }}
     - name: Build
       if: ${{ success() }}
       run: cross build --release --target=${{ matrix.TARGET }}
