@@ -17,90 +17,75 @@ jobs:
     - name: Run tests
       if: ${{ success() }}
       run: cargo test --all-features
-  build-linux:
+  build-data:
     runs-on: ubuntu-22.04
     needs: test
     if: github.ref == 'refs/heads/master'
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
-    - name: Build
-      if: ${{ success() }}
-      run: cargo build --release
     - name: Compile data
       if: ${{ success() }}
       run: cargo run --bin=data_compiler data 
     - name: Move build artifacts
       if: ${{ success() }}
       run: |
-        mkdir output
-        mv target/release/{pso2ship_server,master_ship,data_compiler} output
-        mkdir -p data_compiled/quests
+        mkdir -p data_compiled
         mv data/com_data.mp data_compiled
         mv data/ship.toml data_compiled
         mv data/master_ship.toml data_compiled
         mv data/friend.json data_compiled
-    - name: Upload bin artifact
-      if: ${{ success() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: x86_64-linux-pso2server
-        path: ./output/*
     - name: Upload data artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
         name: data
         path: ./data_compiled/*
-  crossbuild-windows:
-    runs-on: ubuntu-22.04
+
+  build:
+    runs-on: ${{ matrix.os }}
     needs: test
     if: github.ref == 'refs/heads/master'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          TARGET: aarch64-unknown-linux-gnu
+        - os: ubuntu-latest
+          TARGET: armv7-unknown-linux-gnuabihf
+        - os: ubuntu-latest
+          TARGET: x86_64-unknown-linux-gnu
+        - os: ubuntu-latest
+          TARGET: x86_64-pc-windows-gnu
+          EXTENSION: exe
+        - os: windows-latest
+          TARGET: x86_64-pc-windows-msvc
+          EXTENSION: exe
     steps:
     - name: Pull repo
       uses: actions/checkout@v4
-    - name: Install MinGw
+    - name: Install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default --target ${{ matrix.TARGET }} -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: Install cross
       if: ${{ success() }}
-      uses: egor-tensin/setup-mingw@v2
-      with:
-        cc: 0
-    - name: Install windows target
-      if: ${{ success() }}
-      run: rustup target add x86_64-pc-windows-gnu
+      run: |
+        cargo install cross --git https://github.com/cross-rs/cross
     - name: Build
       if: ${{ success() }}
-      run: cargo build --target x86_64-pc-windows-gnu --release
+      run: cross build --release --target=${{ matrix.TARGET }}
     - name: Move build artifacts
       if: ${{ success() }}
       run: |
         mkdir output
-        mv target/x86_64-pc-windows-gnu/release/{pso2ship_server.exe,master_ship.exe,data_compiler.exe} output
+        mv target/${{ matrix.TARGET }}/release/pso2ship_server${{ matrix.EXTENSION }} output
+        mv target/${{ matrix.TARGET }}/release/master_ship${{ matrix.EXTENSION }} output
+        mv target/${{ matrix.TARGET }}/release/data_compiler${{ matrix.EXTENSION }} output
     - name: Upload bin artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
       with:
-        name: x86_64-mingw-pso2server
-        path: ./output/*
-  build-windows:
-    runs-on: windows-2022
-    needs: test
-    if: github.ref == 'refs/heads/master'
-    steps:
-    - name: Pull repo
-      uses: actions/checkout@v4
-    - name: Build
-      if: ${{ success() }}
-      run: cargo build --release
-    - name: Move build artifacts
-      if: ${{ success() }}
-      run: |
-        mkdir output
-        move target/release/pso2ship_server.exe output
-        move target/release/master_ship.exe output
-        move target/release/data_compiler.exe output
-    - name: Upload bin artifact
-      if: ${{ success() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: x86_64-windows-pso2server
+        name: ${{ matrix.TARGET }}-pso2server
         path: ./output/*
