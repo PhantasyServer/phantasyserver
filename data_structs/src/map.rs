@@ -4,7 +4,7 @@ use pso2packetlib::protocol::{
     spawn::{EventSpawnPacket, NPCSpawnPacket, ObjectSpawnPacket, TransporterSpawnPacket},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 pub type ZoneId = u32;
 
@@ -19,7 +19,6 @@ pub struct MapData {
     pub luas: HashMap<String, String>,
     pub init_map: ZoneId,
     pub zones: Vec<ZoneData>,
-    pub chunks: Vec<ZoneChunk>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -60,12 +59,37 @@ pub struct TransporterData {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
+pub struct EnemySpawn {
+    pub enemy_name: String,
+    pub spawn_category: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 pub struct ZoneData {
     pub name: String,
     pub is_special_zone: bool,
     pub zone_id: ZoneId,
     pub settings: ZoneSettings,
     pub default_location: Position,
+    pub enemies: Vec<EnemySpawn>,
+    pub chunks: Vec<ZoneChunk>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub enum EnemySpawnType {
+    #[default]
+    Disabled,
+    Automatic {
+        min: u32,
+        max: u32,
+    },
+    AutomaticWithRespawn {
+        min: u32,
+        max: u32,
+        respawn_time: Duration,
+    },
+    Manual,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -73,6 +97,6 @@ pub struct ZoneData {
 pub struct ZoneChunk {
     pub zone_id: ZoneId,
     pub chunk_id: u32,
-    pub enemy_spawn_enabled: bool,
+    pub enemy_spawn_type: EnemySpawnType,
     pub enemy_spawn_points: Vec<Position>,
 }

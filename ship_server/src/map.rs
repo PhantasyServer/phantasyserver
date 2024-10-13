@@ -16,13 +16,33 @@ use pso2packetlib::protocol::{
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
     ObjectHeader, ObjectType, Packet, PacketType,
 };
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc, Weak,
+use rand::{prelude::Distribution, seq::IteratorRandom};
+use std::{
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc, Weak,
+    },
+    time::Instant,
 };
 
 type ZoneId = u32;
 type PlayerId = u32;
+
+#[derive(Clone)]
+struct MapPlayer {
+    player_id: PlayerId,
+    zone_id: ZoneId,
+    chunk_id: u32,
+    user: Weak<Mutex<User>>,
+}
+
+#[derive(Clone)]
+struct OwnedMapPlayer {
+    player_id: PlayerId,
+    zone_id: ZoneId,
+    chunk_id: u32,
+    user: Arc<Mutex<User>>,
+}
 
 pub struct Map {
     // lua is not `Send` so i've put it in a mutex
@@ -30,7 +50,7 @@ pub struct Map {
     lua: parking_lot::Mutex<Lua>,
     map_objs: Vec<(ZoneId, ObjectHeader)>,
     data: MapData,
-    players: Vec<(PlayerId, ZoneId, Weak<Mutex<User>>)>,
+    players: Vec<MapPlayer>,
     // fighting with async recursion
     to_move: Vec<(PlayerId, String)>,
     to_lobby_move: Vec<PlayerId>,
@@ -38,6 +58,7 @@ pub struct Map {
     block_data: Option<Arc<BlockData>>,
     enemies: Vec<(u32, ZoneId, EnemyStats)>,
     enemy_level: u32,
+    chunk_spawns: Vec<(u32, Instant)>,
 }
 impl Map {
     pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
@@ -54,6 +75,7 @@ impl Map {
             block_data: None,
             enemies: vec![],
             enemy_level: 0,
+            chunk_spawns: vec![],
         };
         let map_obj = ObjectHeader {
             id: map_obj_id.fetch_add(1, Ordering::Relaxed),
@@ -232,8 +254,8 @@ impl Map {
         for player in self
             .players
             .iter()
-            .filter(|p| p.1 == zone_id)
-            .filter_map(|p| p.2.upgrade())
+            .filter(|p| p.zone_id == zone_id)
+            .filter_map(|p| p.user.upgrade())
         {
             let p = player.lock().await;
             let pid = p.get_user_id();
@@ -330,7 +352,7 @@ impl Map {
         }
         drop(np_lock);
 
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, mut player| {
             let _ = player.try_spawn_character(CharacterSpawnPacket {
                 position: pos,
                 spawn_type: CharacterSpawnType::Other,
@@ -348,8 +370,12 @@ impl Map {
             let _ = player.try_send_packet(&new_eqipment.2);
         })
         .await;
-        self.players
-            .push((np_id, zone_id, Arc::downgrade(&new_player)));
+        self.players.push(MapPlayer {
+            player_id: np_id,
+            zone_id,
+            chunk_id: 0,
+            user: Arc::downgrade(&new_player),
+        });
 
         let Some(lua) = self.data.luas.get("on_player_load").cloned() else {
             return Ok(());
@@ -359,14 +385,14 @@ impl Map {
         Ok(())
     }
     pub async fn send_palette_change(&self, sender_id: PlayerId) -> Result<(), Error> {
-        let Some((_, zone_id, player)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
             return Err(Error::NoUserInMap(
                 sender_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = *zone_id;
-        let Some(player) = player.upgrade() else {
+        let zone_id = user.zone_id;
+        let Some(player) = user.user.upgrade() else {
             return Err(Error::InvalidInput("send_palette_change"));
         };
         let new_eqipment = {
@@ -381,7 +407,7 @@ impl Map {
                     .send_cur_weapon(sender_id, &character.inventory),
             )
         };
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, mut player| {
             let _ = player.try_send_packet(&new_eqipment.0);
             let _ = player.try_send_packet(&new_eqipment.1);
         })
@@ -390,21 +416,21 @@ impl Map {
         Ok(())
     }
     pub async fn send_to_all(&self, sender_id: PlayerId, packet: &Packet) {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
             return;
         };
-        let zone_id = *zone_id;
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        let zone_id = user.zone_id;
+        exec_users(&self.players, zone_id, |_, mut player| {
             let _ = player.try_send_packet(packet);
         })
         .await;
     }
 
     pub async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
             return;
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
         let mut out_packet = match packet {
             Packet::Movement(_) => packet,
             Packet::MovementEnd(mut data) => {
@@ -451,13 +477,13 @@ impl Map {
             }
             _ => return,
         };
-        exec_users(&self.players, zone_id, |id, _, mut player| {
+        exec_users(&self.players, zone_id, |user, mut player| {
             if let Packet::MovementActionServer(ref mut data) = out_packet {
                 data.receiver.id = player.get_user_id();
             } else if let Packet::ActionUpdateServer(ref mut data) = out_packet {
                 data.receiver.id = player.get_user_id();
             }
-            if id != sender_id {
+            if user.player_id != sender_id {
                 let _ = player.try_send_packet(&out_packet);
             }
         })
@@ -465,10 +491,10 @@ impl Map {
     }
 
     pub async fn send_message(&self, mut packet: Packet, id: PlayerId) {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == id) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == id) else {
             return;
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
         if let Packet::ChatMessage(ref mut data) = packet {
             data.object = ObjectHeader {
                 id,
@@ -476,17 +502,17 @@ impl Map {
                 ..Default::default()
             };
         }
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, mut player| {
             let _ = player.try_send_packet(&packet);
         })
         .await;
     }
 
     pub async fn send_sa(&self, data: SendSymbolArtPacket, id: PlayerId) {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == id) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == id) else {
             return;
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
         let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
             object: ObjectHeader {
                 id,
@@ -499,15 +525,19 @@ impl Map {
             unk2: data.unk2,
             unk3: data.unk3,
         });
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, mut player| {
             let _ = player.try_send_packet(&packet);
         })
         .await;
     }
 
     pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
-        let (pos, _) = self.players.iter().enumerate().find(|(_, p)| p.0 == id)?;
-        let (_, zone_id, rem_player) = self.players.swap_remove(pos);
+        let (pos, _) = self
+            .players
+            .iter()
+            .enumerate()
+            .find(|(_, p)| p.player_id == id)?;
+        let user = self.players.swap_remove(pos);
         let mut packet = Packet::DespawnPlayer(protocol::objects::DespawnPlayerPacket {
             receiver: ObjectHeader {
                 id: 0,
@@ -520,14 +550,14 @@ impl Map {
                 ..Default::default()
             },
         });
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        exec_users(&self.players, user.zone_id, |_, mut player| {
             if let Packet::DespawnPlayer(data) = &mut packet {
                 data.receiver.id = player.get_user_id();
                 let _ = player.try_send_packet(&packet);
             }
         })
         .await;
-        rem_player.upgrade()
+        user.user.upgrade()
     }
     pub async fn spawn_enemy(
         &mut self,
@@ -551,7 +581,7 @@ impl Map {
         let (packet, mut packet2) = Self::prepare_enemy_packets(id, map_id, &data);
         self.enemies.push((id, zone_id, data));
 
-        exec_users(&self.players, zone_id, |_, _, mut player| {
+        exec_users(&self.players, zone_id, |_, mut player| {
             let _ = player.try_send_packet(&packet);
             if let Packet::EnemyAction(data) = &mut packet2 {
                 data.receiver = player.create_object_header();
@@ -591,8 +621,8 @@ impl Map {
             let Some(inflicter) = self
                 .players
                 .iter()
-                .find(|(id, _, _)| *id == inflicter.id)
-                .and_then(|p| p.2.upgrade())
+                .find(|u| u.player_id == inflicter.id)
+                .and_then(|p| p.user.upgrade())
             else {
                 return Err(Error::InvalidInput("deal_damage"));
             };
@@ -605,7 +635,7 @@ impl Map {
             match result {
                 BattleResult::Damaged { dmg_packet } => {
                     let mut packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, zone_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, mut player| {
                         if let Packet::DamageReceive(data) = &mut packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&packet);
@@ -627,7 +657,7 @@ impl Map {
                     let mut dmg_packet = Packet::DamageReceive(dmg_packet);
                     let mut kill_packet = Packet::EnemyKilled(kill_packet);
                     let mut exp_packets = vec![];
-                    exec_users(&self.players, zone_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, mut player| {
                         exp_packets.push(player.add_exp(exp_amount))
                     })
                     .await;
@@ -636,7 +666,7 @@ impl Map {
                         receivers: exp_packets,
                         ..Default::default()
                     });
-                    exec_users(&self.players, zone_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, mut player| {
                         if let Packet::DamageReceive(data) = &mut dmg_packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&dmg_packet);
@@ -664,8 +694,8 @@ impl Map {
             let Some(target) = self
                 .players
                 .iter_mut()
-                .find(|(id, _, _)| *id == target.id)
-                .and_then(|p| p.2.upgrade())
+                .find(|u| u.player_id == target.id)
+                .and_then(|p| p.user.upgrade())
             else {
                 return Err(Error::InvalidInput("deal_damage"));
             };
@@ -685,7 +715,7 @@ impl Map {
             match result {
                 BattleResult::Damaged { dmg_packet } => {
                     let mut packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, zone_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, mut player| {
                         if let Packet::DamageReceive(data) = &mut packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&packet);
@@ -695,7 +725,7 @@ impl Map {
                 }
                 BattleResult::Killed { dmg_packet, .. } => {
                     let mut dmg_packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, zone_id, |_, _, mut player| {
+                    exec_users(&self.players, zone_id, |_, mut player| {
                         if let Packet::DamageReceive(data) = &mut dmg_packet {
                             data.receiver = player.create_object_header();
                             let _ = player.try_send_packet(&dmg_packet);
@@ -769,18 +799,152 @@ impl Map {
         Ok(())
     }
 
-    pub async fn interaction(
+    pub async fn minimap_reveal(
         &mut self,
-        packet: protocol::objects::InteractPacket,
         sender_id: PlayerId,
+        packet: protocol::questlist::MinimapRevealRequestPacket,
     ) -> Result<(), Error> {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == sender_id) else {
+        let Some(user) = self.players.iter_mut().find(|p| p.player_id == sender_id) else {
             return Err(Error::NoUserInMap(
                 sender_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
+        user.chunk_id = packet.chunk_id;
+        let user = user.clone();
+        let Some(zone) = self
+            .data
+            .zones
+            .iter()
+            .find(|z| z.zone_id == user.zone_id)
+            .cloned()
+        else {
+            return Err(Error::NoMapInMapSet(
+                user.zone_id,
+                self.data.map_data.unk7.to_string(),
+            ));
+        };
+        if let Some(chunk) = zone.chunks.iter().find(|c| c.chunk_id == packet.chunk_id) {
+            // wow, how nested
+            match chunk.enemy_spawn_type {
+                data_structs::map::EnemySpawnType::Disabled => {}
+                data_structs::map::EnemySpawnType::Automatic { min, max } => {
+                    let count = rand::distributions::Uniform::new_inclusive(min, max)
+                        .sample(&mut rand::thread_rng());
+                    if !self.chunk_spawns.iter().any(|s| s.0 == chunk.chunk_id) {
+                        self.chunk_spawns
+                            .push((chunk.chunk_id, std::time::Instant::now()));
+                        // this is length biased
+                        let spawn_category = zone
+                            .enemies
+                            .iter()
+                            .map(|e| e.spawn_category)
+                            .choose(&mut rand::thread_rng())
+                            .unwrap_or_default();
+                        let spawn_point = chunk
+                            .enemy_spawn_points
+                            .iter()
+                            .choose(&mut rand::thread_rng());
+                        let spawn_point = match spawn_point {
+                            Some(x) => *x,
+                            None => user.user.upgrade().unwrap().lock().await.position,
+                        };
+                        for _ in 0..count {
+                            let enemy = zone
+                                .enemies
+                                .iter()
+                                .filter(|e| e.spawn_category == spawn_category)
+                                .choose(&mut rand::thread_rng());
+                            if let Some(enemy) = enemy {
+                                self.spawn_enemy(&enemy.enemy_name, spawn_point, zone_id)
+                                    .await?;
+                            }
+                        }
+                    }
+                }
+                data_structs::map::EnemySpawnType::AutomaticWithRespawn {
+                    min,
+                    max,
+                    respawn_time,
+                } => {
+                    let count = rand::distributions::Uniform::new_inclusive(min, max)
+                        .sample(&mut rand::thread_rng());
+                    let (spawn, is_first) = if let Some(spawn) =
+                        self.chunk_spawns.iter().find(|s| s.0 == chunk.chunk_id)
+                    {
+                        (spawn, false)
+                    } else {
+                        self.chunk_spawns
+                            .push((chunk.chunk_id, std::time::Instant::now()));
+                        (self.chunk_spawns.last().unwrap(), true)
+                    };
+
+                    if is_first || spawn.1.elapsed() > respawn_time {
+                        // this is length biased
+                        let spawn_category = zone
+                            .enemies
+                            .iter()
+                            .map(|e| e.spawn_category)
+                            .choose(&mut rand::thread_rng())
+                            .unwrap_or_default();
+                        let spawn_point = chunk
+                            .enemy_spawn_points
+                            .iter()
+                            .choose(&mut rand::thread_rng());
+                        let spawn_point = match spawn_point {
+                            Some(x) => *x,
+                            None => user.user.upgrade().unwrap().lock().await.position,
+                        };
+                        for _ in 0..count {
+                            let enemy = zone
+                                .enemies
+                                .iter()
+                                .filter(|e| e.spawn_category == spawn_category)
+                                .choose(&mut rand::thread_rng());
+                            if let Some(enemy) = enemy {
+                                self.spawn_enemy(&enemy.enemy_name, spawn_point, zone_id)
+                                    .await?;
+                            }
+                        }
+                    }
+                }
+                data_structs::map::EnemySpawnType::Manual => {
+                    if let Some(lua) = self.data.luas.get("spawn_enemy").cloned() {
+                        self.run_lua(user.player_id, zone_id, &packet, "spawn_enemy", &lua)
+                            .await?;
+                    };
+                }
+            }
+        }
+
+        if let Some(lua) = self.data.luas.get("on_minimap_reveal").cloned() {
+            self.run_lua(user.player_id, zone_id, &packet, "on_minimap_reveal", &lua)
+                .await?;
+            let to_move: Vec<_> = self.to_move.drain(..).collect();
+            for (player, zone) in to_move {
+                self.move_player_named(player, &zone).await?;
+            }
+            let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
+            for player in to_move {
+                self.move_to_lobby(player).await?;
+            }
+        };
+        Ok(())
+    }
+
+    pub async fn interaction(
+        &mut self,
+        packet: protocol::objects::InteractPacket,
+        sender_id: PlayerId,
+    ) -> Result<(), Error> {
+        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
+            return Err(Error::NoUserInMap(
+                sender_id,
+                self.data.map_data.unk7.to_string(),
+            ));
+        };
+        let zone_id = user.zone_id;
         let Some(lua_data) = self
             .data
             .objects
@@ -809,13 +973,13 @@ impl Map {
         player: PlayerId,
         packet: SkitItemAddRequestPacket,
     ) -> Result<(), Error> {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == player) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
         let Some(lua) = self.data.luas.get("on_questwork").cloned() else {
             return Ok(());
         };
@@ -832,13 +996,13 @@ impl Map {
         player: PlayerId,
         packet: CutsceneEndPacket,
     ) -> Result<(), Error> {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == player) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
         let Some(lua) = self.data.luas.get("on_cutscene_end").cloned() else {
             return Ok(());
         };
@@ -856,13 +1020,13 @@ impl Map {
     }
 
     pub async fn on_map_loaded(&mut self, player: PlayerId) -> Result<(), Error> {
-        let Some((_, zone_id, _)) = self.players.iter().find(|p| p.0 == player) else {
+        let Some(user) = self.players.iter().find(|p| p.player_id == player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = *zone_id;
+        let zone_id = user.zone_id;
         let Some(lua) = self.data.luas.get("on_map_loaded").cloned() else {
             return Ok(());
         };
@@ -917,8 +1081,8 @@ impl Map {
         let Some(caller) = self
             .players
             .iter()
-            .find(|p| p.0 == sender_id)
-            .and_then(|p| p.2.upgrade())
+            .find(|p| p.player_id == sender_id)
+            .and_then(|p| p.user.upgrade())
         else {
             unreachable!("Sender should exist in the current map");
         };
@@ -930,7 +1094,7 @@ impl Map {
         {
             let lua = self.lua.lock();
             let globals = lua.globals();
-            let player_ids: Vec<_> = self.players.iter().map(|p| p.0).collect();
+            let player_ids: Vec<_> = self.players.iter().map(|p| p.player_id).collect();
             globals.set("zone", zone.name.clone())?;
             globals.set("packet", lua.to_value(&packet)?)?;
             globals.set("sender", sender_id)?;
@@ -1003,8 +1167,8 @@ impl Map {
             if let Some(p) = self
                 .players
                 .iter()
-                .find(|p| p.0 == receiver)
-                .and_then(|p| p.2.upgrade())
+                .find(|p| p.player_id == receiver)
+                .and_then(|p| p.user.upgrade())
             {
                 p.lock_blocking()
                     .send_packet_block(&packet)
@@ -1084,8 +1248,8 @@ impl Map {
                 if let Some(p) = self
                     .players
                     .iter()
-                    .find(|p| p.0 == receiver)
-                    .and_then(|p| p.2.upgrade())
+                    .find(|p| p.player_id == receiver)
+                    .and_then(|p| p.user.upgrade())
                 {
                     p.lock_blocking()
                         .set_account_flag_block(flag, value != 0)
@@ -1101,8 +1265,8 @@ impl Map {
                 if let Some(p) = self
                     .players
                     .iter()
-                    .find(|p| p.0 == receiver)
-                    .and_then(|p| p.2.upgrade())
+                    .find(|p| p.player_id == receiver)
+                    .and_then(|p| p.user.upgrade())
                 {
                     p.lock_blocking()
                         .set_char_flag_block(flag, value != 0)
@@ -1142,16 +1306,31 @@ impl Map {
     }
 }
 
-async fn exec_users<F>(users: &[(PlayerId, ZoneId, Weak<Mutex<User>>)], zone_id: ZoneId, mut f: F)
+async fn exec_users<F>(users: &[MapPlayer], zone_id: ZoneId, mut f: F)
 where
-    F: FnMut(PlayerId, ZoneId, MutexGuard<User>) + Send,
+    F: FnMut(OwnedMapPlayer, MutexGuard<User>) + Send,
 {
-    for (id, user_mapid, user) in users
+    for user in users
         .iter()
-        .filter(|(_, z, _)| if zone_id == 0 { true } else { *z == zone_id })
-        .filter_map(|(i, m, p)| p.upgrade().map(|p| (*i, *m, p)))
+        .filter(|u| {
+            if zone_id == 0 {
+                true
+            } else {
+                u.zone_id == zone_id
+            }
+        })
+        .filter_map(|u| {
+            u.user.upgrade().map(|p| OwnedMapPlayer {
+                player_id: u.player_id,
+                zone_id: u.zone_id,
+                chunk_id: u.chunk_id,
+                user: p,
+            })
+        })
     {
-        f(id, user_mapid, user.lock().await)
+        let arc = user.user.clone();
+        let lock = arc.lock().await;
+        f(user, lock)
     }
 }
 

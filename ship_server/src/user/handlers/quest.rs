@@ -3,8 +3,8 @@ use crate::{mutex::MutexGuard, quests::PartyQuest, Action, User};
 use pso2packetlib::protocol::{
     flag::{CutsceneEndPacket, SkitItemAddRequestPacket},
     questlist::{
-        self, AcceptQuestPacket, AcceptStoryQuestPacket, QuestCategoryRequestPacket,
-        QuestDifficultyPacket, QuestDifficultyRequestPacket,
+        self, AcceptQuestPacket, AcceptStoryQuestPacket, MinimapRevealRequestPacket,
+        QuestCategoryRequestPacket, QuestDifficultyPacket, QuestDifficultyRequestPacket,
     },
     Packet, PacketHeader,
 };
@@ -175,6 +175,26 @@ pub async fn start_quest(user: MutexGuard<'_, User>, quest: PartyQuest) -> HResu
         player.lock().await.set_map(map.clone());
         let mut lock = map.lock().await;
         lock.init_add_player(player).await?;
+    }
+    Ok(Action::Nothing)
+}
+
+pub async fn minimap_reveal(
+    mut user: MutexGuard<'_, User>,
+    data: MinimapRevealRequestPacket,
+) -> HResult {
+    user.send_packet(&Packet::SystemMessage(
+        pso2packetlib::protocol::unk19::SystemMessagePacket {
+            message: format!("Chunk ID: {}", data.chunk_id),
+            msg_type: pso2packetlib::protocol::unk19::MessageType::EventInformationYellow,
+            ..Default::default()
+        },
+    ))
+    .await?;
+    if let Some(map) = user.get_current_map() {
+        let playerid = user.get_user_id();
+        drop(user);
+        map.lock().await.minimap_reveal(playerid, data).await?;
     }
     Ok(Action::Nothing)
 }
