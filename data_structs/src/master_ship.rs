@@ -32,9 +32,7 @@ pub struct MasterShipComm {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum MasterShipAction {
     /// (S->MS) Ship wants to login.
-    ShipLogin {
-        psk: Vec<u8>,
-    },
+    ShipLogin(ShipLogin),
     /// (MS->S) Login result.
     ShipLoginResult(ShipLoginResult),
     /// New ship wants to connect
@@ -94,6 +92,11 @@ pub enum MasterShipAction {
     Error(String),
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ShipLogin {
+    pub psk: Vec<u8>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ShipLoginResult {
     Ok,
@@ -144,7 +147,7 @@ pub enum RegisterShipResult {
     AlreadyTaken,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct UserCreds {
     pub username: String,
     pub password: String,
@@ -352,5 +355,23 @@ impl ShipConnection {
         hdkf.expand(&[], &mut output)
             .map_err(|_| Error::HKDFError)?;
         Ok(output)
+    }
+}
+
+impl std::fmt::Debug for ShipLogin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ShipLogin")
+            .field("psk", &"[REDACTED]")
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for UserCreds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UserCreds")
+            .field("username", &self.username)
+            .field("password", &"[REDACTED]")
+            .field("ip", &self.ip)
+            .finish()
     }
 }

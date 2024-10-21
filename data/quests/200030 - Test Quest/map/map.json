@@ -1157,7 +1157,36 @@
         "pos_x": 11534,
         "pos_y": 48414,
         "pos_z": 23306
-      }
+      },
+      "enemies": [
+        {
+          "enemy_name": "SoldierAnt",
+          "spawn_category": 1
+        }
+      ],
+      "chunks": [
+        {
+          "zone_id": 2,
+          "chunk_id": 22,
+          "enemy_spawn_type": {
+            "Automatic": {
+              "min": 1,
+              "max": 3
+            }
+          },
+          "enemy_spawn_points": [
+            {
+              "rot_x": 0,
+              "rot_y": 15360,
+              "rot_z": 0,
+              "rot_w": 0,
+              "pos_x": 18610,
+              "pos_y": 15652,
+              "pos_z": 22727
+            }
+          ]
+        }
+      ]
     }
   ],
   "init_map": 1

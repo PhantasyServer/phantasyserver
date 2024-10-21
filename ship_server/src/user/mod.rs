@@ -410,13 +410,7 @@ pub async fn packet_handler(
 
         // Quest List packets
         (US::InGame, P::MinimapRevealRequest(data)) => {
-            user.send_packet(&Packet::SystemMessage(Pr::unk19::SystemMessagePacket {
-                message: format!("Chunk ID: {}", data.chunk_id),
-                msg_type: Pr::unk19::MessageType::EventInformationYellow,
-                ..Default::default()
-            }))
-            .await?;
-            Ok(Action::Nothing)
+            H::quest::minimap_reveal(user_guard, data).await
         }
         (US::InGame, P::AvailableQuestsRequest(data)) => {
             H::quest::avaliable_quests(user, data).await

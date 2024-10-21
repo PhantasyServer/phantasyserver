@@ -24,8 +24,8 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
     let ip = user.get_ip()?;
     match packet {
         Packet::SegaIDLogin(packet) => {
-            user.packet_type = PacketType::JP;
-            user.connection.change_packet_type(PacketType::JP);
+            user.packet_type = PacketType::NA;
+            user.connection.change_packet_type(PacketType::NA);
             let sega_user = user
                 .blockdata
                 .sql
