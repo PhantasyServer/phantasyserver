@@ -340,7 +340,7 @@ async fn send_block_balance(
     let packet = login::BlockBalancePacket {
         ip: block.ip,
         port: block.port,
-        blockname: block.name.clone(),
+        blockname: block.name.clone().into(),
         ..Default::default()
     };
     con.write_packet_async(&Packet::BlockBalance(packet))

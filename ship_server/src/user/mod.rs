@@ -205,7 +205,7 @@ impl User {
                 id: 0,
                 segment: id as u16,
                 total_size: size as u32,
-                data: chunk.to_vec(),
+                data: chunk.to_vec().into(),
             };
             self.send_packet(&Packet::LoadItemAttributes(packet))
                 .await?;
@@ -559,7 +559,7 @@ pub async fn packet_handler(
         (US::InGame, P::MissionPassInfoRequest) => H::missionpass::mission_pass_info(user).await,
         (US::InGame, P::MissionPassRequest) => H::missionpass::mission_pass(user).await,
 
-        (US::InGame, P::Unknown((header, _))) if header.id == 0xE && header.subid == 0x12 => {
+        (US::InGame, P::AbandonQuestRequest) => {
             H::party::abandon_quest(user_guard).await
         }
 

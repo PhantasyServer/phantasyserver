@@ -48,14 +48,14 @@ impl Flags {
     }
     pub fn to_account_flags(&self) -> Packet {
         Packet::AccountFlags(AccountFlagsPacket {
-            flags: self.flags.clone(),
-            params: self.params.clone(),
+            flags: self.flags.clone().into(),
+            params: self.params.clone().into(),
         })
     }
     pub fn to_char_flags(&self) -> Packet {
         Packet::CharacterFlags(CharacterFlagsPacket {
-            flags: self.flags.clone(),
-            params: self.params.clone(),
+            flags: self.flags.clone().into(),
+            params: self.params.clone().into(),
         })
     }
 }

@@ -38,12 +38,12 @@ impl Palette {
             cur_book: self.cur_book,
             palettes: self.palettes.clone(),
             subpalettes: self.subpalettes.clone(),
-            default_pa: self.default_pas.clone(),
+            default_pa: self.default_pas.clone().into(),
         })
     }
     pub fn send_default_pa(&self) -> Packet {
         Packet::NewDefaultPAs(NewDefaultPAsPacket {
-            default: self.default_pas.clone(),
+            default: self.default_pas.clone().into(),
         })
     }
     pub fn set_palette(&mut self, packet: SetPalettePacket) -> Result<(), Error> {
@@ -116,9 +116,9 @@ impl Palette {
         Ok(())
     }
     pub fn set_default_pas(&mut self, packet: SetDefaultPAsPacket) -> Packet {
-        self.default_pas = packet.default;
+        self.default_pas = packet.default.into();
         Packet::NewDefaultPAs(NewDefaultPAsPacket {
-            default: self.default_pas.clone(),
+            default: self.default_pas.clone().into(),
         })
     }
     pub fn get_current_item(&self, inv: &Inventory) -> Result<Option<Item>, Error> {

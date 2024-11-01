@@ -13,7 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub async fn encryption_request(user: &mut User, _: login::EncryptionRequestPacket) -> HResult {
     let key = user.connection.get_key();
     user.send_packet(&Packet::EncryptionResponse(
-        login::EncryptionResponsePacket { data: key },
+        login::EncryptionResponsePacket { data: key.into() },
     ))
     .await?;
     Ok(Action::Nothing)
@@ -37,7 +37,7 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
                     user.nickname = data.nickname;
                     user.text_lang = packet.text_lang;
                     user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
-                        data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
+                        data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22].into(),
                     }))
                     .await?;
                     user.accountflags = data.accountflags;
@@ -77,7 +77,7 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
         user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
             status,
             error,
-            blockname: user.blockdata.block_name.clone(),
+            blockname: user.blockdata.block_name.clone().into(),
             ..Default::default()
         }))
         .await?;
@@ -99,7 +99,7 @@ pub async fn on_successful_login(user: &mut User) -> HResult {
     user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
         status: login::LoginStatus::Success,
         error: String::new(),
-        blockname: user.blockdata.block_name.clone(),
+        blockname: user.blockdata.block_name.clone().into(),
         player: ObjectHeader {
             id,
             entity_type: protocol::ObjectType::Player,
@@ -144,14 +144,14 @@ pub async fn set_username(user: &mut User, packet: NicknameResponsePacket) -> HR
 
 pub async fn block_list(user: &mut User) -> HResult {
     let mut blocks = BlockListPacket {
-        blocks: vec![],
+        blocks: Default::default(),
         unk: 0,
     };
     let lock = user.blockdata.blocks.read().await;
     for block in lock.iter() {
         blocks.blocks.push(login::BlockInfo {
             block_id: block.id as u16,
-            blockname: block.name.to_string(),
+            blockname: block.name.to_string().into(),
             ip: block.ip,
             port: block.port,
             cur_capacity: block.players as f32 / block.max_players as f32,
@@ -191,7 +191,7 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
             user.packet_type = x.packet_type;
             user.text_lang = x.lang;
             user.send_packet(&Packet::ChallengeRequest(login::ChallengeRequestPacket {
-                data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22],
+                data: vec![0x0C, 0x47, 0x29, 0x91, 0x27, 0x8E, 0x52, 0x22].into(),
             }))
             .await?;
             user.accountflags = x.accountflags;
@@ -209,7 +209,7 @@ pub async fn challenge_login(user: &mut User, packet: login::BlockLoginPacket) -
     user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
         status,
         error,
-        blockname: user.blockdata.block_name.clone(),
+        blockname: user.blockdata.block_name.clone().into(),
         player: ObjectHeader {
             id,
             entity_type: protocol::ObjectType::Player,
@@ -256,7 +256,7 @@ pub async fn switch_block(user: &mut User, packet: login::BlockSwitchRequestPack
 pub async fn client_ping(user: &mut User, packet: login::ClientPingPacket) -> HResult {
     let response = login::ClientPongPacket {
         client_time: packet.time,
-        server_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap(),
+        server_time: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().into(),
         unk1: 0,
     };
     user.send_packet(&Packet::ClientPong(response)).await?;

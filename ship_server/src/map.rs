@@ -771,12 +771,12 @@ impl Map {
                     .map(|s| s.as_str())
                     .unwrap_or("");
                 let globals = lua.globals();
-                globals.set("data", &*obj.data.data)?;
+                globals.set("data", obj.data.data.as_slice())?;
                 globals.set("call_type", "to_vita")?;
                 globals.set("size", obj.data.data.len())?;
                 let chunk = lua.load(lua_code);
                 chunk.exec()?;
-                obj.data.data = globals.get("data")?;
+                obj.data.data = globals.get::<Vec<u32>>("data")?.into();
                 globals.raw_remove("data")?;
                 globals.raw_remove("call_type")?;
                 globals.raw_remove("size")?;

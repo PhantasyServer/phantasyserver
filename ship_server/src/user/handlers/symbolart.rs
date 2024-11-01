@@ -76,7 +76,7 @@ pub async fn data_request(user: &mut User, packet: SymbolArtClientDataRequestPac
     if let Some(sa) = user.blockdata.sql.get_symbol_art(packet.uuid).await? {
         user.send_packet(&Packet::SymbolArtClientData(SymbolArtClientDataPacket {
             uuid: packet.uuid,
-            data: sa,
+            data: sa.into(),
         }))
         .await?;
     }
