@@ -513,7 +513,7 @@ async fn send_query(stream: TcpStream, servers: Ships) -> Result<(), Error> {
     for server in servers.read().iter() {
         ships.push(login::ShipEntry {
             id: server.id * 1000,
-            name: format!("Ship{:02}", server.id),
+            name: format!("Ship{:02}", server.id).into(),
             ip: server.ip,
             status: server.status,
             order: server.id as u16,
@@ -585,7 +585,7 @@ async fn send_block_balance(stream: TcpStream, servers: Ships) -> Result<(), Err
     let packet = login::BlockBalancePacket {
         ip: server.ip,
         port: server.port,
-        blockname: server.name.clone(),
+        blockname: server.name.clone().into(),
         ..Default::default()
     };
     con.write_packet_async(&Packet::BlockBalance(packet))
