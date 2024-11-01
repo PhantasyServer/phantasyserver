@@ -1,3 +1,5 @@
+# NOTE: this branch should not be merged directly with other branches, only cherry picked. Also this branch will be regularly rebased on develop
+
 # PhantasyServer
 
 An attempt at creating a custom PSO2 server.
