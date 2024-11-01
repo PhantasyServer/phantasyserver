@@ -205,7 +205,7 @@ impl User {
                 id: 0,
                 segment: id as u16,
                 total_size: size as u32,
-                data: chunk.to_vec(),
+                data: chunk.to_vec().into(),
             };
             self.send_packet(&Packet::LoadItemAttributes(packet))
                 .await?;

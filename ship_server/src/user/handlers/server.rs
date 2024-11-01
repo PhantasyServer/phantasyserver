@@ -165,7 +165,7 @@ pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket
             entity_type: protocol::ObjectType::Player,
             ..Default::default()
         },
-        levels: vec![1; 0xee],
+        levels: vec![1; 0xee].into(),
         ..Default::default()
     }))
     .await?;

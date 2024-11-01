@@ -10,7 +10,9 @@ pub async fn mission_pass_info(user: &mut User) -> HResult {
     //6 - gold status
     //7 - over run
     //8 - already claimed
-    let packet = missionpass::MissionPassInfoPacket { unk: temp.into() };
+    let packet = missionpass::MissionPassInfoPacket {
+        unk: temp.to_vec().into(),
+    };
     user.send_packet(&Packet::MissionPassInfo(packet)).await?;
     Ok(Action::Nothing)
 }
