@@ -1154,7 +1154,7 @@ impl Map {
     fn setup_scope<'s>(
         &'s self,
         globals: &mlua::Table,
-        scope: &mlua::Scope<'_, 's>,
+        scope: &'s mlua::Scope<'s, '_>,
         zone_id: ZoneId,
         scheduled_move: &'s mut Vec<(PlayerId, String)>,
         lobby_moves: &'s mut Vec<PlayerId>,
