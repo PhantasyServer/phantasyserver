@@ -9,5 +9,6 @@
 *.pac
 /logs/
 hostkeys.mp
+hostkeys.toml
 master_key.bin
 

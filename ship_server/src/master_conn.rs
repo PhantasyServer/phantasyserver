@@ -10,10 +10,15 @@ use std::{
 };
 use tokio::sync::mpsc::{Receiver, Sender};
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+struct HostKeyStorage {
+    keys: Vec<HostKey>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct HostKey {
     ip: Ipv4Addr,
-    key: Vec<u8>,
+    fingerprint: String,
 }
 
 struct MasterConnectionImpl {
@@ -28,16 +33,17 @@ pub struct MasterConnection {
     ship_id: AtomicU32,
 }
 
-fn hostkey_to_finger(key: &[u8]) -> String {
+fn hostkey_fingerprint(key: &[u8]) -> String {
     use base64::Engine;
     use sha2::Digest;
+
     let mut hasher = sha2::Sha256::new();
     hasher.update(key);
     let hash = hasher.finalize();
     base64::engine::general_purpose::STANDARD.encode(hash)
 }
 
-fn ident_failure(key: &[u8]) {
+fn ident_failure(fingerprint: &str) {
     log::warn!("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
     log::warn!("@    WARNING: MASTER SERVER IDENTIFICATION HAS CHANGED!    @");
     log::warn!("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
@@ -45,7 +51,7 @@ fn ident_failure(key: &[u8]) {
     log::warn!("Someone could be eavesdropping on you right now (man-in-the-middle attack)!");
     log::warn!("It is also possible that a host key has just been changed.");
     log::warn!("The fingerprint for the key sent by the master server is");
-    log::warn!("SHA256:{}", hostkey_to_finger(key));
+    log::warn!("SHA256:{fingerprint}");
 }
 
 impl MasterConnection {
@@ -54,15 +60,19 @@ impl MasterConnection {
         let IpAddr::V4(local_addr) = socket.local_addr()?.ip() else {
             unimplemented!()
         };
-        let mut hostkeys: Vec<HostKey> =
-            rmp_serde::from_slice(&tokio::fs::read("hostkeys.mp").await.unwrap_or(vec![]))
-                .unwrap_or(Default::default());
+        let mut hostkeys: HostKeyStorage = toml::from_str(
+            &tokio::fs::read_to_string("hostkeys.toml")
+                .await
+                .unwrap_or_default(),
+        )
+        .unwrap_or_default();
         let conn = ShipConnection::new_client(socket, |ip, key| {
-            if let Some(host) = hostkeys.iter().find(|d| d.ip == ip) {
-                match host.key == key {
+            let fingerprint = hostkey_fingerprint(key);
+            if let Some(host) = hostkeys.keys.iter().find(|d| d.ip == ip) {
+                match host.fingerprint == fingerprint {
                     true => return true,
                     false => {
-                        ident_failure(key);
+                        ident_failure(&fingerprint);
                         return false;
                     }
                 }
@@ -71,15 +81,14 @@ impl MasterConnection {
                 "The authenticity of master server '{}' can't be established.",
                 local_addr
             );
-            log::warn!("Key fingerprint is SHA256:{}", hostkey_to_finger(key));
+            log::warn!("Key fingerprint is SHA256:{fingerprint}",);
             let confirm =
                 dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
                     .with_prompt("Are you sure you want to continue connecting?")
                     .interact()
                     .unwrap();
             if confirm {
-                let key = key.to_owned();
-                hostkeys.push(HostKey { ip, key });
+                hostkeys.keys.push(HostKey { ip, fingerprint });
                 log::warn!(
                     "Permanently added '{}' to the list of known master ships.",
                     local_addr
@@ -90,7 +99,11 @@ impl MasterConnection {
             }
         })
         .await?;
-        tokio::fs::write("hostkeys.mp", rmp_serde::to_vec(&hostkeys)?).await?;
+        tokio::fs::write(
+            "hostkeys.toml",
+            toml::to_string_pretty(&hostkeys)?.as_bytes(),
+        )
+        .await?;
         let (send, recv) = tokio::sync::mpsc::channel(10);
         let master_conn = Self {
             send_ch: send,
