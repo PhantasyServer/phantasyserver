@@ -216,16 +216,11 @@ async fn run_action(
         Action::SendPartyInvite(invitee_id) => {
             let (_, inviter) = &clients[pos];
 
-            let mut invitee = None;
             for (_, client) in &*clients {
                 if client.lock().await.get_user_id() == invitee_id {
-                    invitee = Some(client.clone());
+                    party::Party::send_invite(inviter.clone(), client.clone()).await?;
                     break;
                 }
-            }
-
-            if let Some(invitee) = invitee {
-                party::Party::send_invite(inviter.clone(), invitee).await?;
             }
         }
     }

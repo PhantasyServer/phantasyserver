@@ -148,7 +148,6 @@ pub async fn run() -> Result<(), Error> {
     let settings = Settings::load("ship.toml").await?;
     // setup logging
     {
-        use simplelog::*;
         let _ = std::fs::create_dir_all(&settings.log_dir);
         let mut path = std::path::PathBuf::from(&settings.log_dir);
         path.push(format!(
@@ -159,6 +158,8 @@ pub async fn run() -> Result<(), Error> {
                 .as_secs()
         ));
         let log_file = std::fs::File::create(path)?;
+
+        use simplelog::*;
         CombinedLogger::init(vec![
             TermLogger::new(
                 settings.console_log_level,
