@@ -638,6 +638,35 @@ impl Party {
         })
         .await;
     }
+
+    pub async fn abandon(&mut self) {
+        self.quest = None;
+        self.questname.clear();
+        for (id, user) in self
+            .players
+            .iter()
+            .filter_map(|(i, p)| p.upgrade().map(|p| (*i, p)))
+        {
+            //TODO: there is some packet missing, because abandoning in lobby doesn't remove the
+            //quest from the client
+            let mut lock = user.lock().await;
+            let _ = lock
+                .send_packet(&Packet::Unknown((
+                    pso2packetlib::protocol::PacketHeader {
+                        id: 0xE,
+                        subid: 0x13,
+                        flag: Default::default(),
+                    },
+                    vec![0, 0, 0, 0],
+                )))
+                .await;
+            let current_map = lock
+                .get_current_map()
+                .expect("Player should have a map assigned");
+            drop(lock);
+            let _ = current_map.lock().await.move_to_lobby(id).await;
+        }
+    }
 }
 
 async fn exec_users<F>(users: &[(u32, Weak<Mutex<User>>)], mut f: F)
