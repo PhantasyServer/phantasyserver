@@ -32,10 +32,11 @@ pub async fn init_block(
         return Err(Error::NoMapFound(this_block.lobby_map.clone()));
     };
 
-    let lobby = Arc::new(Mutex::new(map::Map::new_from_data(
-        lobby.clone(),
-        &latest_mapid,
-    )?));
+    let lobby = Arc::new(Mutex::new({
+        let mut map = map::Map::new_from_data(lobby.clone(), &latest_mapid)?;
+        map.set_map_type(map::MapType::Lobby);
+        map
+    }));
 
     let block_data = Arc::new(BlockData {
         sql,
