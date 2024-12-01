@@ -28,11 +28,12 @@ pub struct Party {
 
 impl Drop for Party {
     fn drop(&mut self) {
-        log::debug!("Party {} dropped", self.id.id);
+        log::trace!("Party {} dropped", self.id.id);
     }
 }
 impl Party {
     pub fn new(partyid: u32) -> Self {
+        log::trace!("Party {partyid} created");
         Self {
             id: ObjectHeader {
                 id: partyid,

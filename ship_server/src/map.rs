@@ -104,6 +104,7 @@ impl Map {
         }
         map.init_lua()?;
         map.find_max_id();
+        log::trace!("Map {} created", map_obj.id);
         Ok(map)
     }
     pub fn set_map_type(&mut self, map_type: MapType) {
@@ -1314,6 +1315,12 @@ impl Map {
 
         /* LUA FUNCTIONS END */
         Ok(())
+    }
+}
+
+impl Drop for Map {
+    fn drop(&mut self) {
+        log::trace!("Map {} dropped", self.data.map_data.map_object.id);
     }
 }
 
