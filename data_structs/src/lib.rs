@@ -25,18 +25,22 @@ pub enum Error {
 
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
+
     #[cfg(feature = "json")]
     #[error("JSON error: {0}")]
     SerdeError(#[from] serde_json::Error),
+
     #[cfg(feature = "toml")]
     #[error("Toml Deserialization error: {0}")]
     TomlDecodeError(#[from] toml::de::Error),
+
     #[cfg(feature = "rmp")]
     #[error("MP Serialization error: {0}")]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
     #[cfg(feature = "rmp")]
     #[error("MP Deserialization error: {0}")]
     RMPDecodeError(#[from] rmp_serde::decode::Error),
+
     #[error("Invalid file format")]
     InvalidFileFormat,
     #[cfg(feature = "ship")]
@@ -74,6 +78,10 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
         let names = serde_json::from_str(&data)?;
         Ok(names)
     }
+    #[cfg(not(feature = "json"))]
+    fn load_from_json_file<T: AsRef<std::path::Path>>(_: T) -> Result<Self, Error> {
+        Err(Error::InvalidFileFormat)
+    }
     #[cfg(feature = "toml")]
     fn load_from_toml_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let data = std::fs::read_to_string(path)?;
@@ -82,7 +90,7 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     }
     #[cfg(not(feature = "toml"))]
     fn load_from_toml_file<T>(_: T) -> Result<Self, Error> {
-        unimplemented!();
+        Err(Error::InvalidFileFormat)
     }
     fn load_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let Some(ext) = path.as_ref().extension().and_then(|e| e.to_str()) else {
