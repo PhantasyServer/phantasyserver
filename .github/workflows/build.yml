@@ -76,7 +76,7 @@ jobs:
     - name: Install cross
       if: ${{ success() }}
       run: |
-        cargo install cross ${{ matrix.CROSS_FLAGS }}
+        RUSTFLAGS="" cargo install cross ${{ matrix.CROSS_FLAGS }}
     - name: Build
       if: ${{ success() }}
       run: cross build --release --target=${{ matrix.TARGET }}
