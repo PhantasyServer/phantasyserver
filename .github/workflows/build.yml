@@ -75,8 +75,10 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install cross
       if: ${{ success() }}
+      env:
+        RUSTFLAGS: ""
       run: |
-        RUSTFLAGS="" cargo install cross ${{ matrix.CROSS_FLAGS }}
+        cargo install cross ${{ matrix.CROSS_FLAGS }}
     - name: Build
       if: ${{ success() }}
       run: cross build --release --target=${{ matrix.TARGET }}
