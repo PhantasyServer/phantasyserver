@@ -4,8 +4,9 @@
 pub mod sql;
 use data_structs::{
     master_ship::{
-        MasterShipAction, MasterShipComm, RegisterShipResult, ServerDataResult, SetNicknameResult,
-        ShipConnection, ShipInfo, ShipLoginResult, UserLoginResult,
+        start_discovery_loop, MasterShipAction, MasterShipComm, RegisterShipResult,
+        ServerDataResult, SetNicknameResult, ShipConnection, ShipInfo, ShipLoginResult,
+        UserLoginResult,
     },
     SerDeFile, ServerData,
 };
@@ -165,10 +166,12 @@ pub async fn run() -> Result<(), Error> {
         ships: servers,
         srv_data: server_data,
     });
+    start_discovery_loop(15000).await?;
     tokio::spawn(make_keys(ms_data.clone()));
     make_query(ms_data.clone()).await?;
     make_block_balance(ms_data.clone()).await?;
     ship_receiver(ms_data).await?;
+
     Ok(())
 }
 

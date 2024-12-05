@@ -177,15 +177,18 @@ pub async fn run() -> Result<(), Error> {
     log::info!("Starting server...");
     let key = settings.load_key()?;
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
-    log::info!("Connecting to master ship...");
-    let master_conn = MasterConnection::new(
-        tokio::net::lookup_host(settings.master_ship)
+
+    let master_ip = if let Some(ip) = settings.master_ship.as_ref() {
+        tokio::net::lookup_host(ip)
             .await?
             .next()
-            .expect("No IPs found for master ship"),
-        settings.master_ship_psk.as_bytes(),
-    )
-    .await?;
+            .expect("No IPs found for master ship")
+    } else {
+        log::warn!("No master ship IP provided, discovering...");
+        data_structs::master_ship::try_discover().await?
+    };
+    log::info!("Connecting to master ship...");
+    let master_conn = MasterConnection::new(master_ip, settings.master_ship_psk.as_bytes()).await?;
     log::info!("Connected to master ship");
     let total_max_players = settings.blocks.iter().map(|b| b.max_players).sum();
     log::info!("Registering ship");
@@ -220,7 +223,7 @@ pub async fn run() -> Result<(), Error> {
     }
     log::info!("Registed ship");
 
-    let mut server_data = if let Some(data_path) = settings.data_file {
+    let mut server_data = Arc::new(if let Some(data_path) = settings.data_file {
         log::info!("Loading server data...");
         ServerData::load_from_mp_comp(data_path)?
     } else {
@@ -241,10 +244,11 @@ pub async fn run() -> Result<(), Error> {
             master_ship::MasterShipAction::Error(e) => return Err(Error::MSError(e)),
             _ => return Err(Error::MSUnexpected),
         }
-    };
+    });
     log::info!("Loaded server data");
-    let quests = Arc::new(Quests::load(std::mem::take(&mut server_data.quests)));
-    let server_data = Arc::new(server_data);
+    let quests = Arc::new(Quests::load(std::mem::take(
+        &mut Arc::get_mut(&mut server_data).unwrap().quests,
+    )));
 
     let sql = Arc::new(sql::Sql::new(&settings.db_name, master_conn).await?);
     make_block_balance(server_statuses.clone(), settings.balance_port).await?;

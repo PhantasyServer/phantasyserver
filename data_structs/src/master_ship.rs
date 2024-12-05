@@ -15,13 +15,16 @@ use pso2packetlib::{
     protocol::login::{LoginAttempt, ShipStatus, UserInfoPacket},
     AsciiString,
 };
-use rand_core::OsRng;
+use rand_core::{OsRng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     time::Duration,
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::UdpSocket,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MasterShipComm {
@@ -390,6 +393,37 @@ impl ShipConnection {
     }
     pub fn set_deferred_fmt(&mut self, format: SerializerFormat) {
         self.deferred_fmt = Some(format);
+    }
+}
+
+pub async fn start_discovery_loop(port: u16) -> Result<(), Error> {
+    let socket = UdpSocket::bind("0.0.0.0:12750").await?;
+    tokio::spawn(async move {
+        loop {
+            let mut buf = [0; 2];
+            let Ok((_, ip)) = socket.recv_from(&mut buf).await else {
+                continue;
+            };
+            buf = port.to_le_bytes();
+            let _ = socket.send_to(&buf, ip).await;
+        }
+    });
+    Ok(())
+}
+
+pub async fn try_discover() -> Result<SocketAddr, Error> {
+    let socket = UdpSocket::bind("0.0.0.0:0").await?;
+    socket.set_broadcast(true)?;
+    let mut buf = [0; 2];
+    rand_core::OsRng.fill_bytes(&mut buf);
+    socket.send_to(&buf, "255.255.255.255:12750").await?;
+    match tokio::time::timeout(Duration::from_secs(5), socket.recv_from(&mut buf)).await {
+        Ok(x) => {
+            let mut addr = x?.1;
+            addr.set_port(u16::from_le_bytes(buf));
+            Ok(addr)
+        }
+        Err(_) => Err(Error::NoDiscoverResponse),
     }
 }
 

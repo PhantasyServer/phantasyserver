@@ -22,6 +22,8 @@ pub enum Error {
     UnknownHostkey(Vec<u8>),
     #[error("Operation timed out")]
     Timeout,
+    #[error("No ship discovery response")]
+    NoDiscoverResponse,
 
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
