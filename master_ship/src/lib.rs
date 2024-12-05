@@ -452,6 +452,9 @@ pub async fn run_action(
             }
         }
         MasterShipAction::SetNicknameResult(_) => {}
+        MasterShipAction::SetFormat(_) => {
+            response.action = MasterShipAction::Ok;
+        }
     }
     Ok(response)
 }

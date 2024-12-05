@@ -1,7 +1,7 @@
 use crate::Error;
 use data_structs::master_ship::{
-    MasterShipAction as MAS, MasterShipComm, RegisterShipResult, ShipConnection, ShipInfo,
-    ShipLogin, ShipLoginResult,
+    MasterShipAction as MAS, MasterShipComm, RegisterShipResult, SerializerFormat, ShipConnection,
+    ShipInfo, ShipLogin, ShipLoginResult,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -139,7 +139,25 @@ impl MasterConnection {
             None => Err(Error::MSNoResponse),
         }
     }
+    async fn try_format(&self, format: SerializerFormat) -> Result<bool, Error> {
+        match self.run_action(MAS::SetFormat(format)).await? {
+            MAS::Ok => Ok(true),
+            MAS::Error(_) => Ok(false),
+            _ => Err(Error::MSUnexpected),
+        }
+    }
+    async fn try_formats(&self, formats: &[SerializerFormat]) -> Result<(), Error> {
+        for f in formats {
+            if self.try_format(f.clone()).await? {
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
     pub async fn register_ship(&self, mut info: ShipInfo) -> Result<RegisterShipResult, Error> {
+        use SerializerFormat as SF;
+        self.try_formats(&[SF::MessagePackUnnamed, SF::MessagePack])
+            .await?;
         self.ship_id
             .swap(info.id, std::sync::atomic::Ordering::Relaxed);
         info.ip = self.local_addr;
