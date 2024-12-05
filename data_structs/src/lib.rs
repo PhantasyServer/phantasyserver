@@ -41,6 +41,9 @@ pub enum Error {
     #[error("MP Deserialization error: {0}")]
     RMPDecodeError(#[from] rmp_serde::decode::Error),
 
+    #[error("bincode error: {0}")]
+    BincodeError(#[from] bincode::Error),
+
     #[error("Invalid file format")]
     InvalidFileFormat,
     #[cfg(feature = "ship")]
@@ -132,6 +135,11 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     fn save_to_json_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
         let file = std::fs::File::create(path)?;
         serde_json::to_writer_pretty(file, self)?;
+        Ok(())
+    }
+    fn save_bin_comp<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
+        let file = zstd::Encoder::new(std::fs::File::create(path)?, 0)?.auto_finish();
+        bincode::serialize_into(file, self)?;
         Ok(())
     }
 }
