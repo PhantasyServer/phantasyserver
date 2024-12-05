@@ -12,3 +12,6 @@ file_log_level = "INFO"
 
 # Level of console logging
 console_log_level = "DEBUG"
+
+# Location of the compiled server data file
+data_file = "data/com_data.mp"

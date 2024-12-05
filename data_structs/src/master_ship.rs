@@ -88,6 +88,8 @@ pub enum MasterShipAction {
     /// Delete ship from the list. Parameter is the id of the ship
     UnregisterShip(u32),
     SetFormat(SerializerFormat),
+    ServerDataRequest,
+    ServerDataResponse(ServerDataResult),
     Ok,
     /// Error has occured
     Error(String),
@@ -153,6 +155,12 @@ pub struct UserCreds {
     pub username: String,
     pub password: String,
     pub ip: Ipv4Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum ServerDataResult {
+    Ok(Box<crate::ServerData>),
+    NotAvailable,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -403,13 +411,24 @@ impl std::fmt::Debug for UserCreds {
     }
 }
 
+impl std::fmt::Debug for ServerDataResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut print = f.debug_tuple("ServerDataResult");
+        match self {
+            ServerDataResult::Ok(_) => print.field(&"ServerDataResult::Ok(data)"),
+            ServerDataResult::NotAvailable => print.field(&"ServerDataResult::NotAvailable"),
+        };
+        print.finish()
+    }
+}
+
 impl SerializerFormat {
     fn serialize<T: Serialize>(&self, data: &T) -> Result<Vec<u8>, Error> {
         match self {
             Self::Json => Ok(serde_json::to_vec(data)?),
             Self::MessagePack => Ok(rmp_serde::to_vec_named(data)?),
             Self::MessagePackUnnamed => Ok(rmp_serde::to_vec(data)?),
-            Self::Bincode => Ok(bincode::serialize(data)?)
+            Self::Bincode => Ok(bincode::serialize(data)?),
         }
     }
     fn deserialize<T: DeserializeOwned>(&self, data: &[u8]) -> Result<T, Error> {
