@@ -109,3 +109,12 @@ pub async fn accept_invite(user: MutexGuard<'_, User>, packet: AcceptInvitePacke
     }
     Ok(Action::Nothing)
 }
+
+pub async fn abandon_quest(user: MutexGuard<'_, User>) -> HResult {
+    let party = user.get_current_party();
+    drop(user);
+    if let Some(party) = party {
+        party.write().await.abandon().await
+    }
+    Ok(Action::Nothing)
+}

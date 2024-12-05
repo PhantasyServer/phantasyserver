@@ -14,13 +14,13 @@ max_ship_id = 10
 # Location of the RSA key file (if omitted key is generated in memory).
 key_file = "keypair.pem"
 
-# Address of the master ship
+# Address of the master ship (can be omitted if the ship can be discovered)
 master_ship = "localhost:15000"
 
 # PSK to authenticate with master ship
 master_ship_psk = "master_ship_psk"
 
-# Location of the compiled server data file
+# Location of the compiled server data file (can be omitted if the master ship provides it)
 data_file = "data/com_data.mp"
 
 # Location of the logs directory

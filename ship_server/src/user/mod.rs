@@ -554,6 +554,10 @@ pub async fn packet_handler(
         (US::InGame, P::MissionPassInfoRequest) => H::missionpass::mission_pass_info(user).await,
         (US::InGame, P::MissionPassRequest) => H::missionpass::mission_pass(user).await,
 
+        (US::InGame, P::Unknown((header, _))) if header.id == 0xE && header.subid == 0x12 => {
+            H::party::abandon_quest(user_guard).await
+        }
+
         (state, data) => {
             log::debug!(
                 "Client {} in state ({state}) sent unhandled packet: {data:?}",

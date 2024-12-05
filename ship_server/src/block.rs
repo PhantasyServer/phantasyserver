@@ -32,10 +32,11 @@ pub async fn init_block(
         return Err(Error::NoMapFound(this_block.lobby_map.clone()));
     };
 
-    let lobby = Arc::new(Mutex::new(map::Map::new_from_data(
-        lobby.clone(),
-        &latest_mapid,
-    )?));
+    let lobby = Arc::new(Mutex::new({
+        let mut map = map::Map::new_from_data(lobby.clone(), &latest_mapid)?;
+        map.set_map_type(map::MapType::Lobby);
+        map
+    }));
 
     let block_data = Arc::new(BlockData {
         sql,
@@ -216,16 +217,11 @@ async fn run_action(
         Action::SendPartyInvite(invitee_id) => {
             let (_, inviter) = &clients[pos];
 
-            let mut invitee = None;
             for (_, client) in &*clients {
                 if client.lock().await.get_user_id() == invitee_id {
-                    invitee = Some(client.clone());
+                    party::Party::send_invite(inviter.clone(), client.clone()).await?;
                     break;
                 }
-            }
-
-            if let Some(invitee) = invitee {
-                party::Party::send_invite(inviter.clone(), invitee).await?;
             }
         }
     }

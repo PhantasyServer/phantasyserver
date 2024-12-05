@@ -74,6 +74,8 @@ pub enum Error {
     NoDamageInfo(u32),
     #[error("Unknown enemy hitbox {0}:{1}")]
     NoHitboxInfo(String, u32),
+    #[error("No ship data available")]
+    NoShipData,
 
     // passthrough errors
     #[error("SQL error: {0}")]
@@ -148,7 +150,6 @@ pub async fn run() -> Result<(), Error> {
     let settings = Settings::load("ship.toml").await?;
     // setup logging
     {
-        use simplelog::*;
         let _ = std::fs::create_dir_all(&settings.log_dir);
         let mut path = std::path::PathBuf::from(&settings.log_dir);
         path.push(format!(
@@ -159,6 +160,8 @@ pub async fn run() -> Result<(), Error> {
                 .as_secs()
         ));
         let log_file = std::fs::File::create(path)?;
+
+        use simplelog::*;
         CombinedLogger::init(vec![
             TermLogger::new(
                 settings.console_log_level,
@@ -173,21 +176,19 @@ pub async fn run() -> Result<(), Error> {
 
     log::info!("Starting server...");
     let key = settings.load_key()?;
-    log::info!("Loading server data...");
-    let mut server_data = ServerData::load_from_mp_comp(settings.data_file)?;
-    log::info!("Loaded server data");
-    let quests = Arc::new(Quests::load(std::mem::take(&mut server_data.quests)));
-    let server_data = Arc::new(server_data);
     let server_statuses = Arc::new(RwLock::new(Vec::<BlockInfo>::new()));
-    log::info!("Connecting to master ship...");
-    let master_conn = MasterConnection::new(
-        tokio::net::lookup_host(settings.master_ship)
+
+    let master_ip = if let Some(ip) = settings.master_ship.as_ref() {
+        tokio::net::lookup_host(ip)
             .await?
             .next()
-            .expect("No IPs found for master ship"),
-        settings.master_ship_psk.as_bytes(),
-    )
-    .await?;
+            .expect("No IPs found for master ship")
+    } else {
+        log::warn!("No master ship IP provided, discovering...");
+        data_structs::master_ship::try_discover().await?
+    };
+    log::info!("Connecting to master ship...");
+    let master_conn = MasterConnection::new(master_ip, settings.master_ship_psk.as_bytes()).await?;
     log::info!("Connected to master ship");
     let total_max_players = settings.blocks.iter().map(|b| b.max_players).sum();
     log::info!("Registering ship");
@@ -221,6 +222,33 @@ pub async fn run() -> Result<(), Error> {
         }
     }
     log::info!("Registed ship");
+
+    let mut server_data = Arc::new(if let Some(data_path) = settings.data_file {
+        log::info!("Loading server data...");
+        ServerData::load_from_mp_comp(data_path)?
+    } else {
+        log::warn!("No server data file provided, receiving from master ship...");
+        match master_conn
+            .run_action(master_ship::MasterShipAction::ServerDataRequest)
+            .await?
+        {
+            master_ship::MasterShipAction::ServerDataResponse(server_data_result) => {
+                match server_data_result {
+                    master_ship::ServerDataResult::Ok(server_data) => *server_data,
+                    master_ship::ServerDataResult::NotAvailable => {
+                        log::error!("No data available from master ship!");
+                        return Err(Error::NoShipData);
+                    }
+                }
+            }
+            master_ship::MasterShipAction::Error(e) => return Err(Error::MSError(e)),
+            _ => return Err(Error::MSUnexpected),
+        }
+    });
+    log::info!("Loaded server data");
+    let quests = Arc::new(Quests::load(std::mem::take(
+        &mut Arc::get_mut(&mut server_data).unwrap().quests,
+    )));
 
     let sql = Arc::new(sql::Sql::new(&settings.db_name, master_conn).await?);
     make_block_balance(server_statuses.clone(), settings.balance_port).await?;

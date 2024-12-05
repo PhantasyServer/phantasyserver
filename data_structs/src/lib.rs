@@ -22,21 +22,30 @@ pub enum Error {
     UnknownHostkey(Vec<u8>),
     #[error("Operation timed out")]
     Timeout,
+    #[error("No ship discovery response")]
+    NoDiscoverResponse,
 
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
+
     #[cfg(feature = "json")]
     #[error("JSON error: {0}")]
     SerdeError(#[from] serde_json::Error),
+
     #[cfg(feature = "toml")]
     #[error("Toml Deserialization error: {0}")]
     TomlDecodeError(#[from] toml::de::Error),
+
     #[cfg(feature = "rmp")]
     #[error("MP Serialization error: {0}")]
     RMPEncodeError(#[from] rmp_serde::encode::Error),
     #[cfg(feature = "rmp")]
     #[error("MP Deserialization error: {0}")]
     RMPDecodeError(#[from] rmp_serde::decode::Error),
+
+    #[error("bincode error: {0}")]
+    BincodeError(#[from] bincode::Error),
+
     #[error("Invalid file format")]
     InvalidFileFormat,
     #[cfg(feature = "ship")]
@@ -74,6 +83,10 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
         let names = serde_json::from_str(&data)?;
         Ok(names)
     }
+    #[cfg(not(feature = "json"))]
+    fn load_from_json_file<T: AsRef<std::path::Path>>(_: T) -> Result<Self, Error> {
+        Err(Error::InvalidFileFormat)
+    }
     #[cfg(feature = "toml")]
     fn load_from_toml_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let data = std::fs::read_to_string(path)?;
@@ -82,7 +95,7 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     }
     #[cfg(not(feature = "toml"))]
     fn load_from_toml_file<T>(_: T) -> Result<Self, Error> {
-        unimplemented!();
+        Err(Error::InvalidFileFormat)
     }
     fn load_file<T: AsRef<std::path::Path>>(path: T) -> Result<Self, Error> {
         let Some(ext) = path.as_ref().extension().and_then(|e| e.to_str()) else {
@@ -124,6 +137,11 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
     fn save_to_json_file<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
         let file = std::fs::File::create(path)?;
         serde_json::to_writer_pretty(file, self)?;
+        Ok(())
+    }
+    fn save_bin_comp<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
+        let file = zstd::Encoder::new(std::fs::File::create(path)?, 0)?.auto_finish();
+        bincode::serialize_into(file, self)?;
         Ok(())
     }
 }

@@ -50,14 +50,14 @@ impl<T> Mutex<T> {
     }
 }
 
-impl<'a, T> Deref for MutexGuard<'a, T> {
+impl<T> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.guard
     }
 }
-impl<'a, T> DerefMut for MutexGuard<'a, T> {
+impl<T> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.guard
     }
@@ -147,7 +147,7 @@ impl<T> RwLock<T> {
     }
 }
 
-impl<'a, T> Deref for RwReadGuard<'a, T> {
+impl<T> Deref for RwReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -155,14 +155,14 @@ impl<'a, T> Deref for RwReadGuard<'a, T> {
     }
 }
 
-impl<'a, T> Deref for RwWriteGuard<'a, T> {
+impl<T> Deref for RwWriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
         &self.guard
     }
 }
-impl<'a, T> DerefMut for RwWriteGuard<'a, T> {
+impl<T> DerefMut for RwWriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.guard
     }

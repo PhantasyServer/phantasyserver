@@ -44,6 +44,11 @@ struct OwnedMapPlayer {
     user: Arc<Mutex<User>>,
 }
 
+pub enum MapType {
+    Lobby,
+    QuestMap,
+}
+
 pub struct Map {
     // lua is not `Send` so i've put it in a mutex
     // this mutex shouldn't block, because `Map` is under a mutex itself.
@@ -59,6 +64,7 @@ pub struct Map {
     enemies: Vec<(u32, ZoneId, EnemyStats)>,
     enemy_level: u32,
     chunk_spawns: Vec<(u32, Instant)>,
+    map_type: MapType,
 }
 impl Map {
     pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
@@ -76,6 +82,7 @@ impl Map {
             enemies: vec![],
             enemy_level: 0,
             chunk_spawns: vec![],
+            map_type: MapType::QuestMap,
         };
         let map_obj = ObjectHeader {
             id: map_obj_id.fetch_add(1, Ordering::Relaxed),
@@ -97,7 +104,11 @@ impl Map {
         }
         map.init_lua()?;
         map.find_max_id();
+        log::trace!("Map {} created", map_obj.id);
         Ok(map)
+    }
+    pub fn set_map_type(&mut self, map_type: MapType) {
+        self.map_type = map_type;
     }
     pub fn set_block_data(&mut self, data: Arc<BlockData>) {
         self.block_data = Some(data);
@@ -233,15 +244,16 @@ impl Map {
         self.add_player(player, map.zone_id).await
     }
     pub async fn move_to_lobby(&mut self, id: PlayerId) -> Result<(), Error> {
+        if matches!(self.map_type, MapType::Lobby) {
+            return Ok(());
+        }
         let Some(player) = self.remove_player(id).await else {
             return Err(Error::NoUserInMap(id, self.data.map_data.unk7.to_string()));
         };
         let lobby = player.lock().await.get_blockdata().lobby.clone();
         player.lock().await.set_map(lobby.clone());
-        // thanks rust (something, something temporary value)
-        #[allow(clippy::let_and_return)]
-        let result = lobby.lock().await.init_add_player(player).await;
-        result
+        let mut lock = lobby.lock().await;
+        lock.init_add_player(player).await
     }
 
     async fn add_player(
@@ -1303,6 +1315,12 @@ impl Map {
 
         /* LUA FUNCTIONS END */
         Ok(())
+    }
+}
+
+impl Drop for Map {
+    fn drop(&mut self) {
+        log::trace!("Map {} dropped", self.data.map_data.map_object.id);
     }
 }
 

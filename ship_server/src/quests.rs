@@ -333,6 +333,9 @@ impl Quests {
         else {
             return Err(Error::InvalidInput("get_quest"));
         };
+        if packet.diff >= 8 {
+            return Err(Error::InvalidInput("get_quest"));
+        }
         let mut map = Map::new_from_data(quest.map.clone(), map_obj_id)?;
         map.set_enemy_level(quest.difficulties.diffs[packet.diff as usize].monster_level as _);
         let map = Arc::new(Mutex::new(map));

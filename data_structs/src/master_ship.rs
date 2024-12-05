@@ -15,13 +15,16 @@ use pso2packetlib::{
     protocol::login::{LoginAttempt, ShipStatus, UserInfoPacket},
     AsciiString,
 };
-use rand_core::OsRng;
-use serde::{Deserialize, Serialize};
+use rand_core::{OsRng, RngCore};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     time::Duration,
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::UdpSocket,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MasterShipComm {
@@ -87,6 +90,9 @@ pub enum MasterShipAction {
     },
     /// Delete ship from the list. Parameter is the id of the ship
     UnregisterShip(u32),
+    SetFormat(SerializerFormat),
+    ServerDataRequest,
+    ServerDataResponse(ServerDataResult),
     Ok,
     /// Error has occured
     Error(String),
@@ -154,12 +160,28 @@ pub struct UserCreds {
     pub ip: Ipv4Addr,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub enum ServerDataResult {
+    Ok(Box<crate::ServerData>),
+    NotAvailable,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum SerializerFormat {
+    Json,
+    MessagePack,
+    MessagePackUnnamed,
+    Bincode,
+}
+
 #[cfg(feature = "ship")]
 pub struct ShipConnection {
     stream: tokio::net::TcpStream,
     raw_read_buffer: Vec<u8>,
     length: u32,
     aes: Aes256Gcm,
+    format: SerializerFormat,
+    deferred_fmt: Option<SerializerFormat>,
 }
 
 #[cfg(feature = "ship")]
@@ -197,6 +219,8 @@ impl ShipConnection {
             raw_read_buffer: vec![],
             length: 0,
             aes: Aes256Gcm::new(&shared_secret.into()),
+            format: SerializerFormat::Json,
+            deferred_fmt: None,
         })
     }
     pub async fn new_client<F>(mut stream: tokio::net::TcpStream, check: F) -> Result<Self, Error>
@@ -249,6 +273,8 @@ impl ShipConnection {
             raw_read_buffer: vec![],
             length: 0,
             aes: Aes256Gcm::new(&shared_secret.into()),
+            format: SerializerFormat::Json,
+            deferred_fmt: None,
         })
     }
     pub async fn read(&mut self) -> Result<MasterShipComm, Error> {
@@ -279,12 +305,15 @@ impl ShipConnection {
         }
     }
     pub async fn write(&mut self, data: MasterShipComm) -> Result<(), Error> {
-        let data = self.encrypt(&rmp_serde::to_vec(&data)?)?;
+        let data = self.encrypt(&self.format.serialize(&data)?)?;
         self.stream.write_all(&data).await?;
+        if let Some(fmt) = self.deferred_fmt.take() {
+            self.format = fmt;
+        }
         Ok(())
     }
     pub fn write_blocking(&mut self, data: MasterShipComm) -> Result<(), Error> {
-        let mut data = self.encrypt(&rmp_serde::to_vec(&data)?)?;
+        let mut data = self.encrypt(&self.format.serialize(&data)?)?;
         loop {
             match self.stream.try_write(&data) {
                 Ok(n) => {
@@ -296,6 +325,9 @@ impl ShipConnection {
             if data.is_empty() {
                 break;
             }
+        }
+        if let Some(fmt) = self.deferred_fmt.take() {
+            self.format = fmt;
         }
         Ok(())
     }
@@ -312,7 +344,7 @@ impl ShipConnection {
             output_data.extend(self.raw_read_buffer.drain(..self.length as usize));
             self.length = 0;
             let output_data = self.decrypt(&output_data)?;
-            return Ok(Some(rmp_serde::from_slice(&output_data)?));
+            return Ok(Some(self.format.deserialize(&output_data)?));
         }
         Ok(None)
     }
@@ -356,6 +388,43 @@ impl ShipConnection {
             .map_err(|_| Error::HKDFError)?;
         Ok(output)
     }
+    pub fn set_format(&mut self, format: SerializerFormat) {
+        self.format = format;
+    }
+    pub fn set_deferred_fmt(&mut self, format: SerializerFormat) {
+        self.deferred_fmt = Some(format);
+    }
+}
+
+pub async fn start_discovery_loop(port: u16) -> Result<(), Error> {
+    let socket = UdpSocket::bind("0.0.0.0:12750").await?;
+    tokio::spawn(async move {
+        loop {
+            let mut buf = [0; 2];
+            let Ok((_, ip)) = socket.recv_from(&mut buf).await else {
+                continue;
+            };
+            buf = port.to_le_bytes();
+            let _ = socket.send_to(&buf, ip).await;
+        }
+    });
+    Ok(())
+}
+
+pub async fn try_discover() -> Result<SocketAddr, Error> {
+    let socket = UdpSocket::bind("0.0.0.0:0").await?;
+    socket.set_broadcast(true)?;
+    let mut buf = [0; 2];
+    rand_core::OsRng.fill_bytes(&mut buf);
+    socket.send_to(&buf, "255.255.255.255:12750").await?;
+    match tokio::time::timeout(Duration::from_secs(5), socket.recv_from(&mut buf)).await {
+        Ok(x) => {
+            let mut addr = x?.1;
+            addr.set_port(u16::from_le_bytes(buf));
+            Ok(addr)
+        }
+        Err(_) => Err(Error::NoDiscoverResponse),
+    }
 }
 
 impl std::fmt::Debug for ShipLogin {
@@ -373,5 +442,34 @@ impl std::fmt::Debug for UserCreds {
             .field("password", &"[REDACTED]")
             .field("ip", &self.ip)
             .finish()
+    }
+}
+
+impl std::fmt::Debug for ServerDataResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut print = f.debug_tuple("ServerDataResult");
+        match self {
+            ServerDataResult::Ok(_) => print.field(&"ServerDataResult::Ok(data)"),
+            ServerDataResult::NotAvailable => print.field(&"ServerDataResult::NotAvailable"),
+        };
+        print.finish()
+    }
+}
+
+impl SerializerFormat {
+    fn serialize<T: Serialize>(&self, data: &T) -> Result<Vec<u8>, Error> {
+        match self {
+            Self::Json => Ok(serde_json::to_vec(data)?),
+            Self::MessagePack => Ok(rmp_serde::to_vec_named(data)?),
+            Self::MessagePackUnnamed => Ok(rmp_serde::to_vec(data)?),
+            Self::Bincode => Ok(bincode::serialize(data)?),
+        }
+    }
+    fn deserialize<T: DeserializeOwned>(&self, data: &[u8]) -> Result<T, Error> {
+        match self {
+            Self::Json => Ok(serde_json::from_slice(data)?),
+            Self::MessagePack | Self::MessagePackUnnamed => Ok(rmp_serde::from_slice(data)?),
+            Self::Bincode => Ok(bincode::deserialize(data)?),
+        }
     }
 }

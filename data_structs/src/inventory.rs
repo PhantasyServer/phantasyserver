@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ItemName {
-    #[serde(flatten)]
     pub id: ItemId,
     pub en_name: String,
     pub jp_name: String,

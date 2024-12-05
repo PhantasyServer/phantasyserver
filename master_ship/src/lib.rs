@@ -2,9 +2,13 @@
 #![warn(clippy::future_not_send)]
 #![allow(clippy::await_holding_lock)]
 pub mod sql;
-use data_structs::master_ship::{
-    MasterShipAction, MasterShipComm, RegisterShipResult, SetNicknameResult, ShipConnection,
-    ShipInfo, ShipLoginResult, UserLoginResult,
+use data_structs::{
+    master_ship::{
+        start_discovery_loop, MasterShipAction, MasterShipComm, RegisterShipResult,
+        ServerDataResult, SetNicknameResult, ShipConnection, ShipInfo, ShipLoginResult,
+        UserLoginResult,
+    },
+    SerDeFile, ServerData,
 };
 use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
@@ -25,23 +29,27 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-type Ships = Arc<RwLock<Vec<ShipInfo>>>;
-type Sql = Arc<sql::Sql>;
-
 #[derive(Serialize, Deserialize)]
 #[serde(default)]
-pub struct Settings {
-    pub db_name: String,
-    pub registration_enabled: bool,
-    pub log_dir: String,
-    pub file_log_level: log::LevelFilter,
-    pub console_log_level: log::LevelFilter,
+struct Settings {
+    db_name: String,
+    registration_enabled: bool,
+    log_dir: String,
+    file_log_level: log::LevelFilter,
+    console_log_level: log::LevelFilter,
+    data_path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Keys {
-    pub ip: Ipv4Addr,
-    pub key: Vec<u8>,
+struct Keys {
+    ip: Ipv4Addr,
+    key: Vec<u8>,
+}
+
+struct MSData {
+    ships: RwLock<Vec<ShipInfo>>,
+    sql: sql::Sql,
+    srv_data: Option<ServerData>,
 }
 
 impl Settings {
@@ -66,6 +74,7 @@ impl Default for Settings {
             log_dir: String::from("logs"),
             file_log_level: log::LevelFilter::Info,
             console_log_level: log::LevelFilter::Debug,
+            data_path: None,
         }
     }
 }
@@ -107,6 +116,10 @@ pub enum Error {
 
 static IS_RUNNING: AtomicBool = AtomicBool::new(true);
 
+async fn load_data(path: &str) -> Result<ServerData, Error> {
+    Ok(ServerData::load_from_mp_comp(path)?)
+}
+
 pub async fn run() -> Result<(), Error> {
     let settings = Settings::load("master_ship.toml").await?;
     // setup logging
@@ -135,12 +148,30 @@ pub async fn run() -> Result<(), Error> {
     }
     log::info!("Starting master ship...");
     tokio::spawn(ctrl_c_handler());
-    let sql = Arc::new(sql::Sql::new(&settings.db_name, settings.registration_enabled).await?);
-    let servers = Arc::new(RwLock::new(vec![]));
-    tokio::spawn(make_keys(servers.clone()));
-    make_query(servers.clone()).await?;
-    make_block_balance(servers.clone()).await?;
-    ship_receiver(servers, sql).await?;
+    let sql = sql::Sql::new(&settings.db_name, settings.registration_enabled).await?;
+    let servers = RwLock::new(vec![]);
+    let server_data = if let Some(path) = settings.data_path {
+        match load_data(&path).await {
+            Ok(d) => Some(d),
+            Err(e) => {
+                log::warn!("Failed to load server data: {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let ms_data = Arc::new(MSData {
+        sql,
+        ships: servers,
+        srv_data: server_data,
+    });
+    start_discovery_loop(15000).await?;
+    tokio::spawn(make_keys(ms_data.clone()));
+    make_query(ms_data.clone()).await?;
+    make_block_balance(ms_data.clone()).await?;
+    ship_receiver(ms_data).await?;
+
     Ok(())
 }
 
@@ -157,7 +188,7 @@ pub async fn load_key() -> SigningKey {
     SigningKey::from_slice(&data).unwrap()
 }
 
-pub async fn ship_receiver(servers: Ships, sql: Sql) -> Result<(), Error> {
+async fn ship_receiver(ms_data: Arc<MSData>) -> Result<(), Error> {
     let listener = TcpListener::bind(("0.0.0.0", 15000)).await?;
     log::info!("Loading signing key...");
     let signing_key = load_key().await;
@@ -174,8 +205,7 @@ pub async fn ship_receiver(servers: Ships, sql: Sql) -> Result<(), Error> {
         };
         let (socket, _) = result?;
         log::info!("New connection");
-        let servers = servers.clone();
-        let sql = sql.clone();
+        let ms_data = ms_data.clone();
         let signing_key = signing_key.clone();
         let hostkey = hostkey.clone();
         tokio::spawn(async move {
@@ -186,13 +216,13 @@ pub async fn ship_receiver(servers: Ships, sql: Sql) -> Result<(), Error> {
                     return;
                 }
             };
-            connection_handler(conn, servers, sql).await
+            connection_handler(conn, ms_data).await
         });
     }
 }
 
-async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: Sql) {
-    match ship_login(&mut conn, &sql).await {
+async fn connection_handler(mut conn: ShipConnection, ms_data: Arc<MSData>) {
+    match ship_login(&mut conn, &ms_data).await {
         Ok(_) => {}
         Err(e) => {
             log::warn!("Login error: {e}");
@@ -201,7 +231,7 @@ async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: Sql) 
     };
     loop {
         match conn.read_for(Duration::from_secs(1)).await {
-            Ok(d) => match run_action(&servers, &sql, d).await {
+            Ok(d) => match run_action(&ms_data, d).await {
                 Ok(a) => match conn.write(a).await {
                     Ok(_) => {}
                     Err(e) => {
@@ -217,7 +247,7 @@ async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: Sql) 
                 log::info!("Ship disconnected");
                 let Ok(ip) = conn.get_ip() else { return };
                 let std::net::IpAddr::V4(ip) = ip else { return };
-                let mut lock = async_write(&servers).await;
+                let mut lock = async_write(&ms_data.ships).await;
                 if let Some((i, _)) = lock.iter().enumerate().find(|(_, s)| s.ip == ip) {
                     lock.swap_remove(i);
                 }
@@ -232,7 +262,7 @@ async fn connection_handler(mut conn: ShipConnection, servers: Ships, sql: Sql) 
     }
 }
 
-async fn ship_login(conn: &mut ShipConnection, sql: &Sql) -> Result<(), Error> {
+async fn ship_login(conn: &mut ShipConnection, ms_data: &MSData) -> Result<(), Error> {
     let action = conn.read_for(Duration::from_secs(10)).await?;
     let mut response = MasterShipComm {
         id: action.id,
@@ -245,15 +275,15 @@ async fn ship_login(conn: &mut ShipConnection, sql: &Sql) -> Result<(), Error> {
     };
 
     let psk = psk.psk;
-    match sql.get_ship_data(&psk).await? {
+    match ms_data.sql.get_ship_data(&psk).await? {
         true => {}
         false => {
-            if !sql.registration_enabled() {
+            if !ms_data.sql.registration_enabled() {
                 response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::UnknownShip);
                 conn.write(response).await?;
                 return Err(Error::UnknownShip);
             }
-            sql.put_ship_data(&psk).await?;
+            ms_data.sql.put_ship_data(&psk).await?;
         }
     };
 
@@ -263,18 +293,15 @@ async fn ship_login(conn: &mut ShipConnection, sql: &Sql) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn run_action(
-    ships: &Ships,
-    sql: &Sql,
-    action: MasterShipComm,
-) -> Result<MasterShipComm, Error> {
+async fn run_action(ms_data: &MSData, action: MasterShipComm) -> Result<MasterShipComm, Error> {
     let mut response = MasterShipComm {
         id: action.id,
         action: MasterShipAction::Ok,
     };
+    let sql = &ms_data.sql;
     match action.action {
         MasterShipAction::RegisterShip(ship) => {
-            let mut lock = async_write(ships).await;
+            let mut lock = async_write(&ms_data.ships).await;
             for known_ship in lock.iter() {
                 if known_ship.id == ship.id {
                     response.action =
@@ -287,7 +314,7 @@ pub async fn run_action(
         }
         MasterShipAction::RegisterShipResult(_) => {}
         MasterShipAction::UnregisterShip(id) => {
-            let mut lock = async_write(ships).await;
+            let mut lock = async_write(&ms_data.ships).await;
             if let Some(pos) = lock.iter().enumerate().find(|x| x.1.id == id).map(|x| x.0) {
                 lock.swap_remove(pos);
             }
@@ -452,11 +479,25 @@ pub async fn run_action(
             }
         }
         MasterShipAction::SetNicknameResult(_) => {}
+        MasterShipAction::SetFormat(_) => {
+            response.action = MasterShipAction::Ok;
+        }
+        MasterShipAction::ServerDataRequest => {
+            if let Some(data) = ms_data.srv_data.as_ref() {
+                response.action = MasterShipAction::ServerDataResponse(ServerDataResult::Ok(
+                    Box::new(data.clone()),
+                ));
+            } else {
+                response.action =
+                    MasterShipAction::ServerDataResponse(ServerDataResult::NotAvailable);
+            }
+        }
+        MasterShipAction::ServerDataResponse(_) => {}
     }
     Ok(response)
 }
 
-pub async fn make_keys(servers: Ships) -> io::Result<()> {
+async fn make_keys(servers: Arc<MSData>) -> io::Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", 11000)).await?;
     loop {
         match listener.accept().await {
@@ -471,7 +512,7 @@ pub async fn make_keys(servers: Ships) -> io::Result<()> {
     }
 }
 
-pub async fn make_query(servers: Ships) -> io::Result<()> {
+async fn make_query(servers: Arc<MSData>) -> io::Result<()> {
     let mut info_listeners: Vec<TcpListener> = vec![];
     for i in 0..10 {
         // pc ships
@@ -486,7 +527,7 @@ pub async fn make_query(servers: Ships) -> io::Result<()> {
     Ok(())
 }
 
-async fn query_listener(listener: TcpListener, servers: Ships) {
+async fn query_listener(listener: TcpListener, servers: Arc<MSData>) {
     loop {
         match listener.accept().await {
             Ok((s, _)) => {
@@ -500,7 +541,7 @@ async fn query_listener(listener: TcpListener, servers: Ships) {
     }
 }
 
-async fn send_query(stream: TcpStream, servers: Ships) -> Result<(), Error> {
+async fn send_query(stream: TcpStream, servers: Arc<MSData>) -> Result<(), Error> {
     log::debug!("Sending query information...");
     stream.set_nodelay(true)?;
     let mut con = Connection::<Packet>::new_async(
@@ -510,7 +551,7 @@ async fn send_query(stream: TcpStream, servers: Ships) -> Result<(), Error> {
         PublicKey::None,
     );
     let mut ships = vec![];
-    for server in servers.read().iter() {
+    for server in servers.ships.read().iter() {
         ships.push(login::ShipEntry {
             id: server.id * 1000,
             name: format!("Ship{:02}", server.id),
@@ -527,7 +568,7 @@ async fn send_query(stream: TcpStream, servers: Ships) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn make_block_balance(server_statuses: Ships) -> Result<(), Error> {
+async fn make_block_balance(server_statuses: Arc<MSData>) -> Result<(), Error> {
     let mut listeners = vec![];
     for i in 0..10 {
         //pc balance
@@ -542,7 +583,7 @@ pub async fn make_block_balance(server_statuses: Ships) -> Result<(), Error> {
     Ok(())
 }
 
-async fn block_listener(listener: TcpListener, server_statuses: Ships) {
+async fn block_listener(listener: TcpListener, server_statuses: Arc<MSData>) {
     loop {
         match listener.accept().await {
             Ok((s, _)) => {
@@ -556,7 +597,7 @@ async fn block_listener(listener: TcpListener, server_statuses: Ships) {
     }
 }
 
-async fn send_block_balance(stream: TcpStream, servers: Ships) -> Result<(), Error> {
+async fn send_block_balance(stream: TcpStream, servers: Arc<MSData>) -> Result<(), Error> {
     log::debug!("Sending block balance...");
     stream.set_nodelay(true)?;
     let port = stream.local_addr()?.port();
@@ -571,7 +612,7 @@ async fn send_block_balance(stream: TcpStream, servers: Ships) -> Result<(), Err
         PrivateKey::None,
         PublicKey::None,
     );
-    let servers = servers.read();
+    let servers = servers.ships.read();
     let Some(server) = servers.iter().find(|x| x.id == id) else {
         con.write_packet_async(&Packet::LoginResponse(login::LoginResponsePacket {
             status: login::LoginStatus::Failure,
@@ -593,10 +634,10 @@ async fn send_block_balance(stream: TcpStream, servers: Ships) -> Result<(), Err
     Ok(())
 }
 
-async fn send_keys(mut stream: TcpStream, servers: Ships) -> Result<(), Error> {
+async fn send_keys(mut stream: TcpStream, servers: Arc<MSData>) -> Result<(), Error> {
     log::debug!("Sending keys...");
     stream.set_nodelay(true)?;
-    let lock = servers.read();
+    let lock = servers.ships.read();
     let mut data = vec![];
     for ship in lock.iter() {
         let mut key = vec![0x06, 0x02, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00];
