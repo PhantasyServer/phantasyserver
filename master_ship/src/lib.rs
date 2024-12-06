@@ -10,6 +10,7 @@ use data_structs::{
     },
     SerDeFile, ServerData,
 };
+use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
@@ -20,7 +21,7 @@ use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{
     io,
-    net::Ipv4Addr,
+    net::{IpAddr, Ipv4Addr},
     sync::{atomic::AtomicBool, Arc},
     time::Duration,
 };
@@ -93,6 +94,8 @@ pub enum Error {
     NoUser,
     #[error("Unable to hash the password")]
     HashError,
+    #[error("Failed to get network interfaces: {0}")]
+    NetworkInterfacesError(#[from] network_interface::Error),
 
     #[error("IO error: {0}")]
     IOError(#[from] std::io::Error),
@@ -112,6 +115,12 @@ pub enum Error {
     UTF8Error(#[from] std::str::Utf8Error),
     #[error("Client connection error: {0}")]
     ConnError(#[from] pso2packetlib::connection::ConnectionError),
+}
+
+enum AddrType {
+    Loopback,
+    Local,
+    Global,
 }
 
 static IS_RUNNING: AtomicBool = AtomicBool::new(true);
@@ -246,7 +255,7 @@ async fn connection_handler(mut conn: ShipConnection, ms_data: Arc<MSData>) {
             {
                 log::info!("Ship disconnected");
                 let Ok(ip) = conn.get_ip() else { return };
-                let std::net::IpAddr::V4(ip) = ip else { return };
+                let IpAddr::V4(ip) = ip else { return };
                 let mut lock = async_write(&ms_data.ships).await;
                 if let Some((i, _)) = lock.iter().enumerate().find(|(_, s)| s.ip == ip) {
                     lock.swap_remove(i);
@@ -606,6 +615,14 @@ async fn send_block_balance(stream: TcpStream, servers: Arc<MSData>) -> Result<(
     } else {
         (port - 12000) / 100
     } as u32;
+    let remote_ip = match stream.peer_addr()?.ip() {
+        IpAddr::V4(ipv4_addr) => ipv4_addr,
+        IpAddr::V6(_) => return Err(Error::InvalidData),
+    };
+    let local_ip = match stream.local_addr()?.ip() {
+        IpAddr::V4(ipv4_addr) => ipv4_addr,
+        IpAddr::V6(_) => return Err(Error::InvalidData),
+    };
     let mut con = Connection::<Packet>::new_async(
         stream,
         PacketType::Classic,
@@ -623,8 +640,11 @@ async fn send_block_balance(stream: TcpStream, servers: Arc<MSData>) -> Result<(
         return Ok(());
     };
 
+    let ship_ip = server.ip;
+    let send_ip = get_addr(remote_ip, local_ip, ship_ip)?;
+
     let packet = login::BlockBalancePacket {
-        ip: server.ip,
+        ip: send_ip,
         port: server.port,
         blockname: server.name.clone(),
         ..Default::default()
@@ -637,6 +657,14 @@ async fn send_block_balance(stream: TcpStream, servers: Arc<MSData>) -> Result<(
 async fn send_keys(mut stream: TcpStream, servers: Arc<MSData>) -> Result<(), Error> {
     log::debug!("Sending keys...");
     stream.set_nodelay(true)?;
+    let remote_ip = match stream.peer_addr()?.ip() {
+        IpAddr::V4(ipv4_addr) => ipv4_addr,
+        IpAddr::V6(_) => return Err(Error::InvalidData),
+    };
+    let local_ip = match stream.local_addr()?.ip() {
+        IpAddr::V4(ipv4_addr) => ipv4_addr,
+        IpAddr::V6(_) => return Err(Error::InvalidData),
+    };
     let lock = servers.ships.read();
     let mut data = vec![];
     for ship in lock.iter() {
@@ -647,7 +675,8 @@ async fn send_keys(mut stream: TcpStream, servers: Arc<MSData>) -> Result<(), Er
         e.resize(4, 0);
         key.append(&mut e);
         key.append(&mut ship.key.n.to_vec());
-        data.push(Keys { ip: ship.ip, key })
+        let send_ip = get_addr(remote_ip, local_ip, ship.ip)?;
+        data.push(Keys { ip: send_ip, key })
     }
     let mut data = rmp_serde::to_vec(&data)?;
     let mut out_data = Vec::with_capacity(data.len());
@@ -667,4 +696,55 @@ where
             None => tokio::task::yield_now().await,
         }
     }
+}
+
+fn get_addr_type(chk_addr: Ipv4Addr) -> Result<AddrType, Error> {
+    if chk_addr.is_loopback() {
+        return Ok(AddrType::Loopback);
+    }
+    let interfaces = NetworkInterface::show()?;
+    for addr in interfaces.into_iter().flat_map(|i| i.addr.into_iter()) {
+        let IpAddr::V4(local_addr) = addr.ip() else {
+            continue;
+        };
+        let Some(IpAddr::V4(mask)) = addr.netmask() else {
+            continue;
+        };
+        let local_addr = local_addr.octets();
+        let mask = mask.octets();
+        let chk_addr = chk_addr.octets();
+        let mut masked_local_addr = [0; 4];
+        let mut masked_chk_addr = [0; 4];
+        masked_local_addr
+            .iter_mut()
+            .zip(local_addr.iter().zip(mask.iter()).map(|(a, b)| a & b))
+            .for_each(|(a, b)| *a = b);
+        masked_chk_addr
+            .iter_mut()
+            .zip(chk_addr.iter().zip(mask.iter()).map(|(a, b)| a & b))
+            .for_each(|(a, b)| *a = b);
+        if masked_chk_addr == masked_local_addr {
+            return Ok(AddrType::Local);
+        }
+    }
+    Ok(AddrType::Global)
+}
+
+fn get_addr(remote_ip: Ipv4Addr, local_ip: Ipv4Addr, ship_ip: Ipv4Addr) -> Result<Ipv4Addr, Error> {
+    let remote_addr_type = get_addr_type(remote_ip)?;
+    let ship_addr_type = get_addr_type(ship_ip)?;
+    let send_ip = match (remote_addr_type, ship_addr_type) {
+        // if the ship is connected via global ip then it is reachable by anyone
+        (_, AddrType::Global) => ship_ip,
+        // if the client is connected via loopback then it is the same pc, thus any ship ip works
+        (AddrType::Loopback, _) => ship_ip,
+        // ship is on the same pc as the master ship, so return connected to address
+        (AddrType::Local, AddrType::Loopback) => local_ip,
+        // assume that the ship is in the same network as the client
+        (AddrType::Local, AddrType::Local) => ship_ip,
+        // if the ship is local or on the same pc
+        (AddrType::Global, _) => local_ip,
+    };
+
+    Ok(send_ip)
 }
