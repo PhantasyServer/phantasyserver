@@ -23,7 +23,7 @@ An attempt at creating a custom PSO2 server.
      5) You'll find your binaries under `target/release`
  2) Copy the `master_ship.toml` and `ship.toml` config files to the directory with the binaries
  3) Enable auto ship registration by setting `registration_enabled = true` in the `master_ship.toml`
- 4) Set the `master_ship` key in the `ship.toml` config to the *local* IP address of your machine (NOT `localhost`)
+ 4) Set the `master_ship` key in the `ship.toml` config to the IP address of the master ship (can be `127.0.0.1`, but not `localhost` due to IPv6)
  5) Start the `master_ship` then `pso2ship_server`
 
 ### Patching the PC version
