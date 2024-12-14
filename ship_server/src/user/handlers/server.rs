@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, Error, User};
+use crate::{mutex::MutexGuard, party, Action, Error, User, UserState};
 use pso2packetlib::protocol::{
     self,
     flag::{FlagType, SetFlagPacket},
@@ -10,6 +10,37 @@ use pso2packetlib::protocol::{
     },
     Packet,
 };
+use std::sync::atomic::Ordering;
+
+pub async fn initial_load(mut user: MutexGuard<'_, User>) -> HResult {
+    let conn_id = user.conn_id;
+    let blockdata = user.blockdata.clone();
+
+    user.set_map(blockdata.lobby.clone());
+    let party_id = blockdata.latest_partyid.fetch_add(1, Ordering::Relaxed);
+    drop(user);
+
+    let clients = blockdata.clients.lock().await;
+    let Some((_, user)) = clients
+        .iter()
+        .find(|(c_conn_id, _)| *c_conn_id == conn_id)
+        .cloned()
+    else {
+        unreachable!();
+    };
+    drop(clients);
+
+    party::Party::init_player(user.clone(), party_id).await?;
+    blockdata
+        .lobby
+        .lock()
+        .await
+        .init_add_player(user.clone())
+        .await?;
+    let mut user_lock = user.lock().await;
+    user_lock.state = UserState::InGame;
+    Ok(Action::Nothing)
+}
 
 pub async fn move_to_bridge(user: MutexGuard<'_, User>, _: BridgeTransportPacket) -> HResult {
     let map = user.get_current_map();

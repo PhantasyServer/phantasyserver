@@ -132,6 +132,7 @@ struct BlockData {
     latest_partyid: AtomicU32,
     server_data: Arc<ServerData>,
     quests: Arc<Quests>,
+    clients: Mutex<Vec<(usize, Arc<Mutex<User>>)>>,
 }
 
 #[derive(Default, Clone)]
@@ -139,10 +140,6 @@ enum Action {
     #[default]
     Nothing,
     Disconnect,
-    InitialLoad,
-
-    // party related
-    SendPartyInvite(u32),
 }
 
 // feel free to suggest log level changes

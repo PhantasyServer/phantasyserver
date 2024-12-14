@@ -51,12 +51,14 @@ pub struct User {
     uuid: u64,
     pub state: UserState,
     battle_stats: PlayerStats,
+    conn_id: usize,
 }
 
 impl User {
     pub(crate) fn new(
         stream: tokio::net::TcpStream,
         blockdata: Arc<BlockData>,
+        conn_id: usize,
     ) -> Result<(User, ConnectionRead<Packet>), Error> {
         stream.set_nodelay(true)?;
         let mut con = Connection::new_async(
@@ -99,6 +101,7 @@ impl User {
                 uuid: 1,
                 state: UserState::LoggingIn,
                 battle_stats: Default::default(),
+                conn_id,
             },
             read,
         ))
@@ -373,7 +376,7 @@ pub async fn packet_handler(
 
     match match_unit {
         // Server packets
-        (US::PreInGame, P::InitialLoad) => Ok(Action::InitialLoad),
+        (US::PreInGame, P::InitialLoad) => H::server::initial_load(user_guard).await,
         (_, P::ServerPong) => {
             user.failed_pings = 0;
             Ok(Action::Nothing)
@@ -426,7 +429,9 @@ pub async fn packet_handler(
         }
 
         // Party packets
-        (US::InGame, P::PartyInviteRequest(data)) => Ok(Action::SendPartyInvite(data.invitee.id)),
+        (US::InGame, P::PartyInviteRequest(data)) => {
+            H::party::send_invite(user_guard, data.invitee.id).await
+        }
         (US::InGame, P::AcceptInvite(data)) => H::party::accept_invite(user_guard, data).await,
         (US::InGame, P::LeaveParty) => H::party::leave_party(user_guard).await,
         (US::InGame, P::NewPartySettings(data)) => {

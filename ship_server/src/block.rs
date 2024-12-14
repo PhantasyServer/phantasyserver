@@ -1,17 +1,14 @@
 use crate::{
     map,
     mutex::{Mutex, RwLock},
-    party, sql,
-    user::{User, UserState},
+    sql,
+    user::User,
     Action, BlockData, BlockInfo, Error,
 };
 use pso2packetlib::{connection::ConnectionError, PrivateKey};
 use std::{
     io,
-    sync::{
-        atomic::{AtomicU32, Ordering},
-        Arc,
-    },
+    sync::{atomic::AtomicU32, Arc},
 };
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -49,6 +46,7 @@ pub async fn init_block(
         latest_partyid: AtomicU32::new(0),
         server_data: this_block.server_data,
         quests: this_block.quests,
+        clients: Mutex::new(vec![]),
     });
     // we are the only owner of the map, so this never blocks
     block_data
@@ -56,7 +54,6 @@ pub async fn init_block(
         .lock_blocking()
         .set_block_data(block_data.clone());
 
-    let mut clients = vec![];
     let mut conn_id = 0usize;
     let (send, mut recv) = mpsc::channel(10);
 
@@ -69,7 +66,6 @@ pub async fn init_block(
                 new_conn_handler(
                     stream,
                     &block_data,
-                    &mut clients,
                     send.clone(),
                     this_block.id,
                     &mut conn_id,
@@ -77,7 +73,7 @@ pub async fn init_block(
                 .await?;
             }
             Some((id, action)) = recv.recv() => {
-                match run_action(&mut clients, id, action, &block_data).await {
+                match run_action(&block_data, id, action, &block_data).await {
                     Ok(_) => {}
                     Err(e) => log::warn!("Client error: {e}"),
                 };
@@ -89,7 +85,6 @@ pub async fn init_block(
 async fn new_conn_handler(
     s: TcpStream,
     block_data: &Arc<BlockData>,
-    clients: &mut Vec<(usize, Arc<Mutex<User>>)>,
     send: mpsc::Sender<(usize, Action)>,
     block_id: u32,
     conn_id_ref: &mut usize,
@@ -105,10 +100,11 @@ async fn new_conn_handler(
     }
     drop(lock);
 
-    let (client, mut read) = User::new(s, block_data.clone())?;
-    let client = Arc::new(Mutex::new(client));
-    clients.push((*conn_id_ref, client.clone()));
     let conn_id = *conn_id_ref;
+    let (client, mut read) = User::new(s, block_data.clone(), conn_id)?;
+    let client = Arc::new(Mutex::new(client));
+    let mut clients = block_data.clients.lock().await;
+    clients.push((conn_id, client.clone()));
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
         loop {
@@ -148,9 +144,6 @@ async fn new_conn_handler(
                     send.send((conn_id, Action::Disconnect)).await.unwrap();
                     return;
                 }
-                Ok(a) => {
-                    send.send((conn_id, a)).await.unwrap();
-                }
                 Err(Error::IOError(e)) if matches!(e.kind(), io::ErrorKind::Interrupted) => {}
                 Err(Error::IOError(e))
                     if matches!(
@@ -175,11 +168,15 @@ async fn new_conn_handler(
 }
 
 async fn run_action(
-    clients: &mut Vec<(usize, Arc<Mutex<User>>)>,
+    block: &BlockData,
     conn_id: usize,
     action: Action,
     block_data: &Arc<BlockData>,
 ) -> Result<(), Error> {
+    if let Action::Nothing = action {
+        return Ok(());
+    }
+    let mut clients = block.clients.lock().await;
     let Some((pos, _)) = clients
         .iter()
         .enumerate()
@@ -196,32 +193,6 @@ async fn run_action(
             let mut lock = block_data.blocks.write().await;
             if let Some(block) = lock.iter_mut().find(|x| x.id == block_data.block_id) {
                 block.players -= 1;
-            }
-        }
-        Action::InitialLoad => {
-            let (_, user) = &clients[pos];
-            let mut user_lock = user.lock().await;
-            user_lock.set_map(block_data.lobby.clone());
-            drop(user_lock);
-            let party_id = block_data.latest_partyid.fetch_add(1, Ordering::Relaxed);
-            party::Party::init_player(user.clone(), party_id).await?;
-            block_data
-                .lobby
-                .lock()
-                .await
-                .init_add_player(user.clone())
-                .await?;
-            let mut user_lock = user.lock().await;
-            user_lock.state = UserState::InGame;
-        }
-        Action::SendPartyInvite(invitee_id) => {
-            let (_, inviter) = &clients[pos];
-
-            for (_, client) in &*clients {
-                if client.lock().await.get_user_id() == invitee_id {
-                    party::Party::send_invite(inviter.clone(), client.clone()).await?;
-                    break;
-                }
             }
         }
     }

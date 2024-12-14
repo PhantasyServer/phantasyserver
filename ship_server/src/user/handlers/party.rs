@@ -118,3 +118,28 @@ pub async fn abandon_quest(user: MutexGuard<'_, User>) -> HResult {
     }
     Ok(Action::Nothing)
 }
+
+pub async fn send_invite(user: MutexGuard<'_, User>, invitee_id: u32) -> HResult {
+    let conn_id = user.conn_id;
+    let blockdata = user.blockdata.clone();
+
+    drop(user);
+
+    let clients = blockdata.clients.lock().await;
+    let Some((_, inviter)) = clients
+        .iter()
+        .find(|(c_conn_id, _)| *c_conn_id == conn_id)
+        .cloned()
+    else {
+        unreachable!();
+    };
+
+    for (_, client) in &*clients {
+        if client.lock().await.get_user_id() == invitee_id {
+            party::Party::send_invite(inviter.clone(), client.clone()).await?;
+            break;
+        }
+    }
+
+    Ok(Action::Nothing)
+}
