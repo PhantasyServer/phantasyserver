@@ -55,13 +55,13 @@ fn ident_failure(fingerprint: &str) {
 }
 
 impl MasterConnection {
-    pub async fn new(ip: SocketAddr, psk: &[u8]) -> Result<Self, Error> {
+    pub async fn new(ip: SocketAddr, psk: &[u8], key_file: &str) -> Result<Self, Error> {
         let socket = tokio::net::TcpStream::connect(ip).await?;
         let IpAddr::V4(local_addr) = socket.local_addr()?.ip() else {
             unimplemented!()
         };
         let mut hostkeys: HostKeyStorage = toml::from_str(
-            &tokio::fs::read_to_string("hostkeys.toml")
+            &tokio::fs::read_to_string(key_file)
                 .await
                 .unwrap_or_default(),
         )

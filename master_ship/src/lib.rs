@@ -2,6 +2,7 @@
 #![warn(clippy::future_not_send)]
 #![allow(clippy::await_holding_lock)]
 pub mod sql;
+use clap::Parser;
 use data_structs::{
     master_ship::{
         start_discovery_loop, MasterShipAction, MasterShipComm, RegisterShipResult,
@@ -41,6 +42,35 @@ struct Settings {
     data_path: Option<String>,
 }
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Location of the settings file
+    #[arg(short, long)]
+    settings_file: Option<String>,
+    /// Don't create settings file if it doesn't exist
+    #[arg(long, default_value_t = false)]
+    dont_create_settings: bool,
+    /// Path to the DB file
+    #[arg(short('D'), long)]
+    db_path: Option<String>,
+    /// If specified then auto registration will be enabled
+    #[arg(short, long)]
+    registration_enabled: Option<bool>,
+    /// Location of the logs directory
+    #[arg(short, long)]
+    log_dir: Option<String>,
+    /// Log level of log files
+    #[arg(short, long)]
+    file_log_level: Option<log::LevelFilter>,
+    /// Log level of console
+    #[arg(short, long)]
+    console_log_level: Option<log::LevelFilter>,
+    /// Location of complied server data file
+    #[arg(short, long)]
+    data_path: Option<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct Keys {
     ip: Ipv4Addr,
@@ -53,17 +83,39 @@ struct MSData {
     srv_data: Option<ServerData>,
 }
 
+macro_rules! args_to_settings {
+    ($arg:expr => $set:expr) => {
+        if let Some(x) = $arg {
+            $set = x;
+        }
+    };
+}
+
 impl Settings {
     pub async fn load(path: &str) -> Result<Settings, Error> {
-        let string = match tokio::fs::read_to_string(path).await {
-            Ok(s) => s,
+        let args = Args::parse();
+        let path = if let Some(path) = &args.settings_file {
+            path
+        } else {
+            path
+        };
+        let mut settings = match tokio::fs::read_to_string(path).await {
+            Ok(s) => toml::from_str(&s)?,
             Err(_) => {
                 let settings = Settings::default();
-                tokio::fs::write(path, toml::to_string_pretty(&settings)?).await?;
-                return Ok(settings);
+                if args.dont_create_settings {
+                    tokio::fs::write(path, toml::to_string_pretty(&settings)?).await?;
+                }
+                settings
             }
         };
-        Ok(toml::from_str(&string)?)
+        args_to_settings!(args.db_path => settings.db_name);
+        args_to_settings!(args.registration_enabled => settings.registration_enabled);
+        args_to_settings!(args.log_dir => settings.log_dir);
+        args_to_settings!(args.file_log_level => settings.file_log_level);
+        args_to_settings!(args.console_log_level => settings.console_log_level);
+        settings.data_path = args.data_path.or(settings.data_path);
+        Ok(settings)
     }
 }
 

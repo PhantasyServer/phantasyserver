@@ -28,6 +28,7 @@ simplelog = "0.12.2"
 dialoguer = "0.11.0"
 sha2 = "0.10.8"
 base64 = "0.22.1"
+clap = { version = "4.5.23", features = ["derive"] }
 
 # luajit doesn't compile on musl or on arm
 [target.'cfg(any(target_env = "musl", target_arch = "arm"))'.dependencies.mlua]

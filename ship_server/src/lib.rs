@@ -185,7 +185,12 @@ pub async fn run() -> Result<(), Error> {
         data_structs::master_ship::try_discover().await?
     };
     log::info!("Connecting to master ship...");
-    let master_conn = MasterConnection::new(master_ip, settings.master_ship_psk.as_bytes()).await?;
+    let master_conn = MasterConnection::new(
+        master_ip,
+        settings.master_ship_psk.as_bytes(),
+        &settings.hostkeys_file,
+    )
+    .await?;
     log::info!("Connected to master ship");
     let total_max_players = settings.blocks.iter().map(|b| b.max_players).sum();
     log::info!("Registering ship");
