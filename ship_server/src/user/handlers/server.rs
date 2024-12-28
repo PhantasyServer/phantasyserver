@@ -6,7 +6,7 @@ use pso2packetlib::protocol::{
     server::{
         BridgeToLobbyPacket, BridgeTransportPacket, CafeToLobbyPacket, CafeTransportPacket,
         CampshipDownPacket, CasinoToLobbyPacket, CasinoTransportPacket, MapLoadedPacket,
-        ToCampshipPacket,
+        StoryToLobbyPacket, ToCampshipPacket,
     },
     Packet,
 };
@@ -226,5 +226,24 @@ pub async fn to_campship(user: MutexGuard<'_, User>, _: ToCampshipPacket) -> HRe
         .ok_or_else(|| Error::InvalidInput("to_campship"))?;
     player.lock().await.set_map(quest_map.clone());
     quest_map.lock().await.init_add_player(player).await?;
+    Ok(Action::Nothing)
+}
+
+pub async fn move_from_story(user: MutexGuard<'_, User>, _: StoryToLobbyPacket) -> HResult {
+    let Some(map) = user.get_current_map() else {
+        unreachable!("User should be in state >= 'PreInGame'");
+    };
+    let lobby = user.blockdata.lobby.clone();
+    let id = user.get_user_id();
+    drop(user);
+    let player = map
+        .lock()
+        .await
+        .remove_player(id)
+        .await
+        .ok_or_else(|| Error::InvalidInput("move_from_story"))?;
+    player.lock().await.set_map(lobby.clone());
+    lobby.lock().await.init_add_player(player).await?;
+
     Ok(Action::Nothing)
 }

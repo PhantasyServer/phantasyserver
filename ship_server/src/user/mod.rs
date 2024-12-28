@@ -387,6 +387,7 @@ pub async fn packet_handler(
         (US::InGame, P::BridgeTransport(data)) => H::server::move_to_bridge(user_guard, data).await,
         (US::InGame, P::CafeToLobby(data)) => H::server::move_from_cafe(user_guard, data).await,
         (US::InGame, P::CafeTransport(data)) => H::server::move_to_cafe(user_guard, data).await,
+        (US::InGame, P::StoryToLobby(data)) => H::server::move_from_story(user_guard, data).await,
 
         // Object packets
         (US::InGame, P::Movement(data)) => H::object::movement(user_guard, data).await,
