@@ -297,7 +297,7 @@ pub async fn character_list(user: &mut User) -> HResult {
         .sql
         .get_characters(user.get_user_id())
         .await?;
-    for character in characters {
+    for (i, character) in characters.into_iter().enumerate() {
         packet.characters.push(character.character);
         let Packet::LoadEquiped(equiped) = character.inventory.send_equiped(0) else {
             unreachable!();
@@ -308,6 +308,7 @@ pub async fn character_list(user: &mut User) -> HResult {
                 items[item.unk as usize] = item.item;
             }
         }
+        packet.play_times[i] = character.play_time.as_secs() as u32;
         packet.equiped_items.push(items);
     }
     user.send_packet(&Packet::CharacterListResponse(packet))
@@ -486,6 +487,7 @@ pub async fn start_game(user: &mut User, packet: login::StartGamePacket) -> HRes
         .get_character(user.get_user_id(), packet.char_id)
         .await?;
     user.character = Some(char);
+    user.session_start = std::time::Instant::now();
     user.send_packet(&Packet::LoadingScreenTransition).await?;
     user.state = UserState::PreInGame;
     user.battle_stats = PlayerStats::build(user)?;

@@ -46,6 +46,8 @@ pub struct User {
     battle_stats: PlayerStats,
     conn_id: usize,
     pub user_data: sql::User,
+
+    session_start: Instant,
 }
 
 impl User {
@@ -95,7 +97,8 @@ impl User {
                     isgm: false,
                     last_uuid: 1,
                     ..Default::default()
-            }
+                },
+                session_start: Instant::now(),
             },
             read,
         ))
@@ -554,9 +557,7 @@ pub async fn packet_handler(
         (US::InGame, P::MissionPassInfoRequest) => H::missionpass::mission_pass_info(user).await,
         (US::InGame, P::MissionPassRequest) => H::missionpass::mission_pass(user).await,
 
-        (US::InGame, P::AbandonQuestRequest) => {
-            H::party::abandon_quest(user_guard).await
-        }
+        (US::InGame, P::AbandonQuestRequest) => H::party::abandon_quest(user_guard).await,
 
         (state, data) => {
             log::debug!(
@@ -595,9 +596,11 @@ impl Drop for User {
     fn drop(&mut self) {
         let player_id = self.user_data.id;
         log::debug!("Dropping user {player_id}");
-        if let Some(char) = self.character.take() {
+        if let Some(mut char) = self.character.take() {
             let sql = self.blockdata.sql.clone();
             let data = std::mem::take(&mut self.user_data);
+            let spent = self.session_start.elapsed();
+            char.play_time += spent;
             tokio::spawn(async move {
                 let _ = sql.update_character(&char).await;
                 let _ = sql.update_account_storage(player_id, &char.inventory).await;

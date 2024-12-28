@@ -13,7 +13,7 @@ use pso2packetlib::{
     AsciiString,
 };
 use sqlx::{migrate::MigrateDatabase, Executor, Row};
-use std::net::Ipv4Addr;
+use std::{net::Ipv4Addr, time::Duration};
 
 pub struct Sql {
     connection: sqlx::SqlitePool,
@@ -49,6 +49,7 @@ pub struct CharData {
     pub flags: Flags,
     pub unlocked_quests: Vec<u32>,
     pub unlocked_quests_notif: Vec<u32>,
+    pub play_time: Duration,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
