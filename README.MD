@@ -64,11 +64,18 @@ new = "{master ship ip}"
 
  1) Install [FAGDec](https://github.com/TeamFAPS/PSVita-RE-tools) and [RePatch](https://github.com/dots-tb/rePatch-reDux0) on Vita
  2) Download both 6.30 and 6.31 patches (NoPayStation will help you)
- 3) Copy the 6.30 patch to the `patch` folder on Vita
- 4) Using FAGDec decrypt the `eboot.bin` to the ELF file
- 5) Using VitaShell decrypt the `eboot.bin`
- 6) Transform the server's public key to the compatible format: `openssl rsa -in keypair.pem -outform MS\ PUBLICKEYBLOB -pubout -out publickey.blob`
- 7) Find and replace the RSA key in the `eboot.bin.elf` using any HEX editor (search for `0x06, 0x02, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00, 0x52, 0x53, 0x41, 0x31`)
- 8) Using `vita-elf-inject` recreate the bin file: `vita-elf-inject eboot.bin.elf eboot.bin`
- 9) Replace the 6.30 patch with 6.31 patch on the Vita
- 10) Place the new `eboot.bin` in the `rePatch/PCSG00141/` folder
+
+Now you have two options:
+ - Option a: Using the injector
+  3) Copy the 6.30 patch to any location on Vita
+  4) Using VitaShell and `Open decrypted` option copy the `eboot.bin` to the `rePatch/PCSG00141/` folder
+  5) Install the [injector](https://github.com/PhantasyServer/pso2-rsa-injector-vita)
+ - Option b: Manual way
+  3) Copy the 6.30 patch to the `patch` folder on Vita
+  4) Using FAGDec decrypt the `eboot.bin` to the ELF file
+  5) Using VitaShell decrypt the `eboot.bin`
+  6) Transform the server's public key to the compatible format: `openssl rsa -in keypair.pem -outform MS\ PUBLICKEYBLOB -pubout -out publickey.blob`
+  7) Find and replace the RSA key in the `eboot.bin.elf` using any HEX editor (search for `0x06, 0x02, 0x00, 0x00, 0x00, 0xA4, 0x00, 0x00, 0x52, 0x53, 0x41, 0x31`)
+  8) Using `vita-elf-inject` recreate the bin file: `vita-elf-inject eboot.bin.elf eboot.bin`
+  9) Replace the 6.30 patch with 6.31 patch on the Vita
+  10) Place the new `eboot.bin` in the `rePatch/PCSG00141/` folder
