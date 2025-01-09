@@ -3,6 +3,7 @@ name = "pso2ship_server"
 version = "0.1.0"
 edition = "2021"
 default-run = "pso2ship_server"
+rust-version = "1.81"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

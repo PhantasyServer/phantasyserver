@@ -25,12 +25,18 @@ struct MasterConnectionImpl {
     id: u32,
     conn: ShipConnection,
     receive_ch: Receiver<(MAS, Sender<MAS>)>,
+    action_ch: Receiver<ConnectionAction>,
 }
 
 pub struct MasterConnection {
     send_ch: Sender<(MAS, Sender<MAS>)>,
+    action_ch: Sender<ConnectionAction>,
     local_addr: Ipv4Addr,
     ship_id: AtomicU32,
+}
+
+enum ConnectionAction {
+    SetFormat(SerializerFormat),
 }
 
 fn hostkey_fingerprint(key: &[u8]) -> String {
@@ -105,16 +111,19 @@ impl MasterConnection {
         )
         .await?;
         let (send, recv) = tokio::sync::mpsc::channel(10);
+        let (ac_send, ac_recv) = tokio::sync::mpsc::channel(10);
         let master_conn = Self {
             send_ch: send,
             local_addr,
             ship_id: 0.into(),
+            action_ch: ac_send,
         };
 
         let master_conn_impl = MasterConnectionImpl {
             id: 1,
             conn,
             receive_ch: recv,
+            action_ch: ac_recv,
         };
         tokio::spawn(async move { master_conn_impl.run_loop().await });
 
@@ -149,15 +158,19 @@ impl MasterConnection {
     async fn try_formats(&self, formats: &[SerializerFormat]) -> Result<(), Error> {
         for f in formats {
             if self.try_format(f.clone()).await? {
+                self.action_ch
+                    .send(ConnectionAction::SetFormat(f.clone()))
+                    .await
+                    .unwrap();
                 return Ok(());
             }
         }
         Ok(())
     }
     pub async fn register_ship(&self, mut info: ShipInfo) -> Result<RegisterShipResult, Error> {
-        use SerializerFormat as SF;
-        self.try_formats(&[SF::MessagePackUnnamed, SF::MessagePack])
-            .await?;
+        // use SerializerFormat as SF;
+        // self.try_formats(&[SF::MessagePackUnnamed, SF::MessagePack])
+        //     .await?;
         self.ship_id
             .swap(info.id, std::sync::atomic::Ordering::Relaxed);
         info.ip = self.local_addr;
@@ -198,6 +211,11 @@ impl MasterConnectionImpl {
                         Err(e) => log::error!("Failed to send a request to a master server: {e}"),
                     }
                 },
+                Some(action) = self.action_ch.recv() => {
+                    match action {
+                        ConnectionAction::SetFormat(ac) => self.conn.set_format(ac),
+                    }
+                }
             }
         }
     }
@@ -209,7 +227,7 @@ impl Drop for MasterConnection {
         if ship_id != 0 {
             let (send, _) = tokio::sync::mpsc::channel(1);
             self.send_ch
-                .blocking_send((MAS::UnregisterShip(ship_id), send))
+                .try_send((MAS::UnregisterShip(ship_id), send))
                 .expect("Channel shouldn't be closed");
         }
     }

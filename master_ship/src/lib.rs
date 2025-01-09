@@ -83,6 +83,12 @@ struct MSData {
     srv_data: Option<ServerData>,
 }
 
+struct Ship {
+    conn: ShipConnection,
+    ms_data: Arc<MSData>,
+    authed: bool,
+}
+
 macro_rules! args_to_settings {
     ($arg:expr => $set:expr) => {
         if let Some(x) = $arg {
@@ -282,18 +288,16 @@ async fn ship_receiver(ms_data: Arc<MSData>) -> Result<(), Error> {
     }
 }
 
-async fn connection_handler(mut conn: ShipConnection, ms_data: Arc<MSData>) {
-    match ship_login(&mut conn, &ms_data).await {
-        Ok(_) => {}
-        Err(e) => {
-            log::warn!("Login error: {e}");
-            return;
-        }
+async fn connection_handler(conn: ShipConnection, ms_data: Arc<MSData>) {
+    let mut ship = Ship {
+        conn,
+        ms_data,
+        authed: false,
     };
     loop {
-        match conn.read_for(Duration::from_secs(1)).await {
-            Ok(d) => match run_action(&ms_data, d).await {
-                Ok(a) => match conn.write(a).await {
+        match ship.conn.read_for(Duration::from_secs(1)).await {
+            Ok(d) => match run_action(&mut ship, d).await {
+                Ok(a) => match ship.conn.write(a).await {
                     Ok(_) => {}
                     Err(e) => {
                         log::warn!("Write error: {e}");
@@ -306,9 +310,9 @@ async fn connection_handler(mut conn: ShipConnection, ms_data: Arc<MSData>) {
                 if e.kind() == io::ErrorKind::ConnectionAborted =>
             {
                 log::info!("Ship disconnected");
-                let Ok(ip) = conn.get_ip() else { return };
+                let Ok(ip) = ship.conn.get_ip() else { return };
                 let IpAddr::V4(ip) = ip else { return };
-                let mut lock = async_write(&ms_data.ships).await;
+                let mut lock = async_write(&ship.ms_data.ships).await;
                 if let Some((i, _)) = lock.iter().enumerate().find(|(_, s)| s.ip == ip) {
                     lock.swap_remove(i);
                 }
@@ -323,46 +327,38 @@ async fn connection_handler(mut conn: ShipConnection, ms_data: Arc<MSData>) {
     }
 }
 
-async fn ship_login(conn: &mut ShipConnection, ms_data: &MSData) -> Result<(), Error> {
-    let action = conn.read_for(Duration::from_secs(10)).await?;
+async fn run_action(ship: &mut Ship, action: MasterShipComm) -> Result<MasterShipComm, Error> {
     let mut response = MasterShipComm {
         id: action.id,
         action: MasterShipAction::Ok,
     };
-    let MasterShipAction::ShipLogin(psk) = action.action else {
-        response.action = MasterShipAction::Error(String::from("Invalid action"));
-        conn.write(response).await?;
-        return Err(Error::InvalidAction);
-    };
-
-    let psk = psk.psk;
-    match ms_data.sql.get_ship_data(&psk).await? {
-        true => {}
-        false => {
-            if !ms_data.sql.registration_enabled() {
-                response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::UnknownShip);
-                conn.write(response).await?;
-                return Err(Error::UnknownShip);
-            }
-            ms_data.sql.put_ship_data(&psk).await?;
-        }
-    };
-
-    response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::Ok);
-    conn.write(response).await?;
-
-    Ok(())
-}
-
-async fn run_action(ms_data: &MSData, action: MasterShipComm) -> Result<MasterShipComm, Error> {
-    let mut response = MasterShipComm {
-        id: action.id,
-        action: MasterShipAction::Ok,
-    };
-    let sql = &ms_data.sql;
+    let sql = &ship.ms_data.sql;
+    let ships = &ship.ms_data.ships;
     match action.action {
+        MasterShipAction::ShipLogin(psk) if !ship.authed => {
+            let psk = psk.psk;
+            match sql.get_ship_data(&psk).await? {
+                true => {
+                    ship.authed = true;
+                }
+                false => {
+                    if !sql.registration_enabled() {
+                        response.action =
+                            MasterShipAction::ShipLoginResult(ShipLoginResult::UnknownShip);
+                        return Ok(response);
+                    }
+                    sql.put_ship_data(&psk).await?;
+                    ship.authed = true;
+                }
+            };
+
+            response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::Ok);
+        }
+        _ if !ship.authed => {
+            response.action = MasterShipAction::Error(String::from("Unauthenticated"));
+        }
         MasterShipAction::RegisterShip(ship) => {
-            let mut lock = async_write(&ms_data.ships).await;
+            let mut lock = async_write(&ships).await;
             for known_ship in lock.iter() {
                 if known_ship.id == ship.id {
                     response.action =
@@ -375,7 +371,7 @@ async fn run_action(ms_data: &MSData, action: MasterShipComm) -> Result<MasterSh
         }
         MasterShipAction::RegisterShipResult(_) => {}
         MasterShipAction::UnregisterShip(id) => {
-            let mut lock = async_write(&ms_data.ships).await;
+            let mut lock = async_write(&ships).await;
             if let Some(pos) = lock.iter().enumerate().find(|x| x.1.id == id).map(|x| x.0) {
                 lock.swap_remove(pos);
             }
@@ -540,11 +536,12 @@ async fn run_action(ms_data: &MSData, action: MasterShipComm) -> Result<MasterSh
             }
         }
         MasterShipAction::SetNicknameResult(_) => {}
-        MasterShipAction::SetFormat(_) => {
+        MasterShipAction::SetFormat(fmt) => {
+            ship.conn.set_deferred_fmt(fmt);
             response.action = MasterShipAction::Ok;
         }
         MasterShipAction::ServerDataRequest => {
-            if let Some(data) = ms_data.srv_data.as_ref() {
+            if let Some(data) = ship.ms_data.srv_data.as_ref() {
                 response.action = MasterShipAction::ServerDataResponse(ServerDataResult::Ok(
                     Box::new(data.clone()),
                 ));
