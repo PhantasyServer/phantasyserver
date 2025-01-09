@@ -87,6 +87,7 @@ struct Ship {
     conn: ShipConnection,
     ms_data: Arc<MSData>,
     authed: bool,
+    pings: u8,
 }
 
 macro_rules! args_to_settings {
@@ -293,15 +294,16 @@ async fn connection_handler(conn: ShipConnection, ms_data: Arc<MSData>) {
         conn,
         ms_data,
         authed: false,
+        pings: 0,
     };
     loop {
-        match ship.conn.read_for(Duration::from_secs(1)).await {
+        match ship.conn.read_for(Duration::from_secs(5 * 60)).await {
             Ok(d) => match run_action(&mut ship, d).await {
                 Ok(a) => match ship.conn.write(a).await {
                     Ok(_) => {}
                     Err(e) => {
                         log::warn!("Write error: {e}");
-                        return;
+                        break;
                     }
                 },
                 Err(e) => log::warn!("Action error: {e}"),
@@ -310,20 +312,32 @@ async fn connection_handler(conn: ShipConnection, ms_data: Arc<MSData>) {
                 if e.kind() == io::ErrorKind::ConnectionAborted =>
             {
                 log::info!("Ship disconnected");
-                let Ok(ip) = ship.conn.get_ip() else { return };
-                let IpAddr::V4(ip) = ip else { return };
-                let mut lock = async_write(&ship.ms_data.ships).await;
-                if let Some((i, _)) = lock.iter().enumerate().find(|(_, s)| s.ip == ip) {
-                    lock.swap_remove(i);
-                }
-                return;
+                break;
             }
-            Err(data_structs::Error::Timeout) => {}
+            Err(data_structs::Error::Timeout) => {
+                if ship.pings > 5 {
+                    break;
+                }
+                ship.pings += 1;
+                let _ = ship
+                    .conn
+                    .write(MasterShipComm {
+                        id: 0,
+                        action: MasterShipAction::Ping,
+                    })
+                    .await;
+            }
             Err(e) => {
                 log::warn!("Read error: {e}");
                 return;
             }
         }
+    }
+    let Ok(ip) = ship.conn.get_ip() else { return };
+    let IpAddr::V4(ip) = ip else { return };
+    let mut lock = async_write(&ship.ms_data.ships).await;
+    if let Some((i, _)) = lock.iter().enumerate().find(|(_, s)| s.ip == ip) {
+        lock.swap_remove(i);
     }
 }
 
@@ -334,6 +348,7 @@ async fn run_action(ship: &mut Ship, action: MasterShipComm) -> Result<MasterShi
     };
     let sql = &ship.ms_data.sql;
     let ships = &ship.ms_data.ships;
+    ship.pings = 0;
     match action.action {
         MasterShipAction::ShipLogin(psk) if !ship.authed => {
             let psk = psk.psk;
@@ -354,11 +369,12 @@ async fn run_action(ship: &mut Ship, action: MasterShipComm) -> Result<MasterShi
 
             response.action = MasterShipAction::ShipLoginResult(ShipLoginResult::Ok);
         }
+        MasterShipAction::Ping => {}
         _ if !ship.authed => {
             response.action = MasterShipAction::Error(String::from("Unauthenticated"));
         }
         MasterShipAction::RegisterShip(ship) => {
-            let mut lock = async_write(&ships).await;
+            let mut lock = async_write(ships).await;
             for known_ship in lock.iter() {
                 if known_ship.id == ship.id {
                     response.action =
@@ -371,7 +387,7 @@ async fn run_action(ship: &mut Ship, action: MasterShipComm) -> Result<MasterShi
         }
         MasterShipAction::RegisterShipResult(_) => {}
         MasterShipAction::UnregisterShip(id) => {
-            let mut lock = async_write(&ships).await;
+            let mut lock = async_write(ships).await;
             if let Some(pos) = lock.iter().enumerate().find(|x| x.1.id == id).map(|x| x.0) {
                 lock.swap_remove(pos);
             }
@@ -551,6 +567,7 @@ async fn run_action(ship: &mut Ship, action: MasterShipComm) -> Result<MasterShi
             }
         }
         MasterShipAction::ServerDataResponse(_) => {}
+        MasterShipAction::Pong => {}
     }
     Ok(response)
 }

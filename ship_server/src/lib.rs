@@ -185,7 +185,7 @@ pub async fn run() -> Result<(), Error> {
         data_structs::master_ship::try_discover().await?
     };
     log::info!("Connecting to master ship...");
-    let master_conn = MasterConnection::new(
+    let mut master_conn = MasterConnection::new(
         master_ip,
         settings.master_ship_psk.as_bytes(),
         &settings.hostkeys_file,
@@ -224,6 +224,7 @@ pub async fn run() -> Result<(), Error> {
         }
     }
     log::info!("Registed ship");
+    let mut notif_channel = master_conn.take_notif_ch().unwrap();
 
     let mut server_data = Arc::new(if let Some(data_path) = settings.data_file {
         log::info!("Loading server data...");
@@ -287,7 +288,47 @@ pub async fn run() -> Result<(), Error> {
     drop(blockstatus_lock);
 
     log::info!("Server started.");
-    tokio::signal::ctrl_c().await?;
+    loop {
+        tokio::select! {
+            biased;
+            Some(action) = notif_channel.recv() => {
+                // this will later be used for other notification (e.g. EQs)
+                #[allow(clippy::single_match)]
+                match action {
+                    master_ship::MasterShipAction::Ping => {
+                        sql.run_action(master_ship::MasterShipAction::Pong).await?;
+                    }
+                    _ => {}
+                }
+            }
+            _ = tokio::signal::ctrl_c() => {
+                break;
+            }
+        };
+    }
+    /*
+       tokio::select! {
+           // we opt out of random selection because the listener is rarely accepting
+           biased;
+           result = listener.accept() => {
+               let (stream, _) = result?;
+               new_conn_handler(
+                   stream,
+                   &block_data,
+                   send.clone(),
+                   this_block.id,
+                   &mut conn_id,
+               )
+               .await?;
+           }
+           Some((id, action)) = recv.recv() => {
+               match run_action(&block_data, id, action, &block_data).await {
+                   Ok(_) => {}
+                   Err(e) => log::warn!("Client error: {e}"),
+               };
+           }
+       };
+    */
 
     Ok(())
 }

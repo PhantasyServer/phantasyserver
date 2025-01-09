@@ -26,11 +26,13 @@ struct MasterConnectionImpl {
     conn: ShipConnection,
     receive_ch: Receiver<(MAS, Sender<MAS>)>,
     action_ch: Receiver<ConnectionAction>,
+    notif_ch: Sender<MAS>,
 }
 
 pub struct MasterConnection {
     send_ch: Sender<(MAS, Sender<MAS>)>,
     action_ch: Sender<ConnectionAction>,
+    notif_cf: Option<Receiver<MAS>>,
     local_addr: Ipv4Addr,
     ship_id: AtomicU32,
 }
@@ -112,11 +114,13 @@ impl MasterConnection {
         .await?;
         let (send, recv) = tokio::sync::mpsc::channel(10);
         let (ac_send, ac_recv) = tokio::sync::mpsc::channel(10);
+        let (notif_send, notif_recv) = tokio::sync::mpsc::channel(10);
         let master_conn = Self {
             send_ch: send,
             local_addr,
             ship_id: 0.into(),
             action_ch: ac_send,
+            notif_cf: Some(notif_recv),
         };
 
         let master_conn_impl = MasterConnectionImpl {
@@ -124,6 +128,7 @@ impl MasterConnection {
             conn,
             receive_ch: recv,
             action_ch: ac_recv,
+            notif_ch: notif_send,
         };
         tokio::spawn(async move { master_conn_impl.run_loop().await });
 
@@ -180,6 +185,9 @@ impl MasterConnection {
             _ => Err(Error::MSUnexpected),
         }
     }
+    pub fn take_notif_ch(&mut self) -> Option<Receiver<MAS>> {
+        self.notif_cf.take()
+    }
 }
 
 impl MasterConnectionImpl {
@@ -195,13 +203,18 @@ impl MasterConnectionImpl {
                             return
                         }
                     };
-                    let Some((pos, _)) = channels.iter().enumerate().find(|(_, (id,_))| *id == result.id) else {
-                        log::error!("Master server sent unhandled response: {result:?}");
-                        return;
-                    };
-                    log::trace!("Master ship sent: {result:?}");
-                    let (_, ch) = channels.swap_remove(pos);
-                    let _ = ch.send(result.action).await;
+                    if result.id == 0 {
+                        log::trace!("Master ship notification: {result:?}");
+                        let _ = self.notif_ch.send(result.action).await;
+                    } else {
+                        let Some((pos, _)) = channels.iter().enumerate().find(|(_, (id,_))| *id == result.id) else {
+                            log::error!("Master server sent unhandled response: {result:?}");
+                            return;
+                        };
+                        log::trace!("Master ship sent: {result:?}");
+                        let (_, ch) = channels.swap_remove(pos);
+                        let _ = ch.send(result.action).await;
+                    }
                 },
                 Some((action, chan)) = self.receive_ch.recv() => {
                     let id = self.id;

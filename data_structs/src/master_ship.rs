@@ -93,6 +93,8 @@ pub enum MasterShipAction {
     SetFormat(SerializerFormat),
     ServerDataRequest,
     ServerDataResponse(ServerDataResult),
+    Ping,
+    Pong,
     Ok,
     /// Error has occured
     Error(String),
