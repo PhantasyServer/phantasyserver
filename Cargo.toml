@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["ship_server", "data_compiler", "data_structs", "master_ship"]
+members = ["ship_server", "data_compiler", "data_structs", "master_ship", "cmd-derive"]
 exclude = ["ppac_reader"]
 resolver = "2"
 

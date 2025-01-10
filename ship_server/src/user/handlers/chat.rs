@@ -6,15 +6,65 @@ use pso2packetlib::protocol::{
     chat::MessageChannel, flag::FlagType, items::ItemId, playerstatus, ObjectType, Packet,
 };
 
+#[derive(Debug, cmd_derive::ChatCommand)]
+enum ChatCommand {
+    /// Returns memory usage.
+    #[alias("mem")]
+    MemUsage,
+    /// Starts a concert with the provided ID (only for caller).
+    #[alias("start_con")]
+    StartConcert { concert_id: String },
+    /// Plays a cutscene with the provided ID.
+    #[alias("start_cut")]
+    StartCutscene { cutscene_id: String },
+    /// Sends an SetTag packet from a concert object.
+    #[alias("send_con")]
+    SendAsConcertObj { action: String },
+    /// Returns current position.
+    #[alias("get_pos")]
+    GetPosition,
+    /// Returns a list of objects that are `distance` units away from the player (set to 1.0 if
+    /// not provided)
+    #[alias("get_close_obj")]
+    #[default]
+    GetCloseObjects { distance: f64 },
+    /// Sets specified account flags to a specified value. Range can be in form of "flag_start-flag_end" or "flag_id".
+    #[alias("set_acc_flags")]
+    SetAccountFlags { range: String, value: u8 },
+    /// Sets specified character flags to a specified value. Range can be in form of "flag_start-flag_end" or "flag_id".
+    #[alias("set_char_flags")]
+    SetCharacterFlags { range: String, value: u8 },
+    /// Adds a new item to the player inventory.
+    AddItem { item_type: u16, id: u16, subid: u16 },
+    /// Sets a character level to a specified level.
+    #[alias("change_lvl")]
+    #[alias("set_lvl")]
+    ChangeLevel { new_level: u16 },
+    /// Displays the players current stats.
+    #[alias("calc_stats")]
+    CalculatePlayerStats,
+    /// Forces a specified quest to start.
+    ForceQuest { quest_id: u32, difficulty_id: u16 },
+    /// Spawns a new enemy at the players location.
+    SpawnEnemy { enemy_name: String },
+    #[help]
+    Help(String),
+}
+
 pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResult {
     let Packet::ChatMessage(ref data) = packet else {
         unreachable!()
     };
     if data.message.starts_with('!') {
-        let mut args = data.message.split(' ');
-        let cmd = args.next().expect("Should always contain some data");
+        let args = data.message.strip_prefix("!").unwrap();
+        let cmd = ChatCommand::parse(args, user.user_data.isgm);
+        let Ok(cmd) = cmd else {
+            let err = cmd.unwrap_err();
+            user.send_system_msg(&err).await?;
+            return Ok(Action::Nothing);
+        };
         match cmd {
-            "!mem" => {
+            ChatCommand::MemUsage => {
                 let mem_data_msg = if let Some(mem) = memory_stats() {
                     format!(
                         "Physical memory: {}\nVirtual memory: {}",
@@ -26,13 +76,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 };
                 user.send_system_msg(&mem_data_msg).await?;
             }
-            "!start_con" => {
-                let name = args.next();
-                if name.is_none() {
-                    user.send_system_msg("No concert name provided").await?;
-                    return Ok(Action::Nothing);
-                }
-                let name = name.unwrap();
+            ChatCommand::StartConcert { concert_id } => {
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
                     receiver: pso2packetlib::protocol::ObjectHeader {
                         id: user.get_user_id(),
@@ -49,31 +93,21 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                         entity_type: ObjectType::Object,
                         ..Default::default()
                     },
-                    attribute: format!("Start({name})").into(),
+                    attribute: format!("Start({concert_id})").into(),
                     ..Default::default()
                 });
                 user.send_packet(&packet).await?;
             }
-            "!start_cutscene" => {
-                let Some(name) = args.next() else {
-                    user.send_system_msg("No cutscene name provided").await?;
-                    return Ok(Action::Nothing);
-                };
+            ChatCommand::StartCutscene { cutscene_id } => {
                 user.send_packet(&Packet::StartCutscene(
                     pso2packetlib::protocol::questlist::StartCutscenePacket {
-                        scene_name: name.to_string().into(),
+                        scene_name: cutscene_id.into(),
                         ..Default::default()
                     },
                 ))
                 .await?;
             }
-            "!send_con" => {
-                let name = args.next();
-                if name.is_none() {
-                    user.send_system_msg("No action provided").await?;
-                    return Ok(Action::Nothing);
-                }
-                let name = name.unwrap();
+            ChatCommand::SendAsConcertObj { action } => {
                 let packet = Packet::SetTag(pso2packetlib::protocol::objects::SetTagPacket {
                     receiver: pso2packetlib::protocol::ObjectHeader {
                         id: user.get_user_id(),
@@ -90,24 +124,28 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                         entity_type: ObjectType::Player,
                         ..Default::default()
                     },
-                    attribute: name.into(),
+                    attribute: action.into(),
                     ..Default::default()
                 });
                 user.send_packet(&packet).await?;
             }
-            "!get_pos" => {
+            ChatCommand::GetPosition => {
                 let pos = user.position;
                 let pos: pso2packetlib::protocol::models::EulerPosition = pos.into();
                 user.send_system_msg(&format!("{pos:?}")).await?;
             }
-            "!get_close_obj" => {
-                let dist = args.next().and_then(|n| n.parse().ok()).unwrap_or(1.0);
+            ChatCommand::GetCloseObjects { distance } => {
+                let distance = if distance == f64::default() {
+                    1.0
+                } else {
+                    distance
+                };
                 let Some(map) = user.get_current_map() else {
                     unreachable!("User should be in state >= `InGame`")
                 };
                 let mapid = user.zone_id;
                 let lock = map.lock().await;
-                let objs = lock.get_close_objects(mapid, |p| user.position.dist_2d(p) < dist);
+                let objs = lock.get_close_objects(mapid, |p| user.position.dist_2d(p) < distance);
                 let user_pos = user.position;
                 for obj in objs {
                     user.send_system_msg(&format!(
@@ -119,21 +157,17 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     .await?;
                 }
             }
-            "!set_acc_flag" => set_flag_parse(&mut user, FlagType::Account, &mut args).await?,
-            "!set_char_flag" => set_flag_parse(&mut user, FlagType::Character, &mut args).await?,
-            "!add_item" => {
-                let Some(item_type) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No item type provided").await?;
-                    return Ok(Action::Nothing);
-                };
-                let Some(id) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No id provided").await?;
-                    return Ok(Action::Nothing);
-                };
-                let Some(subid) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No subid provided").await?;
-                    return Ok(Action::Nothing);
-                };
+            ChatCommand::SetAccountFlags { range, value } => {
+                set_flag_parse(&mut user, FlagType::Account, &range, value).await?
+            }
+            ChatCommand::SetCharacterFlags { range, value } => {
+                set_flag_parse(&mut user, FlagType::Character, &range, value).await?
+            }
+            ChatCommand::AddItem {
+                item_type,
+                id,
+                subid,
+            } => {
                 let item_id = ItemId {
                     id,
                     subid,
@@ -147,23 +181,23 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                     .add_default_item(&mut user.user_data.last_uuid, item_id);
                 user.send_packet(&packet).await?;
             }
-            "!change_lvl" => {
-                let Some(level) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No level provided").await?;
-                    return Ok(Action::Nothing);
-                };
-                let Some(exp) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No EXP provided").await?;
-                    return Ok(Action::Nothing);
-                };
+            ChatCommand::ChangeLevel { new_level } => {
+                let srv_data = user.blockdata.server_data.clone();
                 let Some(char) = user.character.as_mut() else {
                     user.send_system_msg("No character loaded").await?;
                     return Ok(Action::Nothing);
                 };
+                let exp = if new_level > 1 && new_level < 100 {
+                    srv_data.player_stats.stats[char.character.classes.main_class as usize]
+                        [new_level as usize - 2]
+                        .exp_to_next
+                } else {
+                    0
+                };
                 let stats = char.character.get_level_mut();
                 let diff = (exp as i64 - stats.exp as i64).abs();
-                stats.level1 = level;
-                stats.exp = exp;
+                stats.level1 = new_level;
+                stats.exp = exp as _;
                 let stats = char.character.get_level();
                 let stats2 = char.character.get_sublevel();
                 let userexp = playerstatus::EXPReceiver {
@@ -188,42 +222,38 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 });
                 user.send_packet(&packet).await?;
             }
-            "!calc_stats" => {
+            ChatCommand::CalculatePlayerStats => {
                 let msg = format!("Stats: {:?}", user.battle_stats);
                 user.send_system_msg(&msg).await?;
             }
-            "!force_quest" => {
-                let Some(quest_id) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No quest id provided").await?;
-                    return Ok(Action::Nothing);
-                };
-                let Some(diff) = args.next().and_then(|a| a.parse().ok()) else {
-                    user.send_system_msg("No difficulty provided").await?;
-                    return Ok(Action::Nothing);
-                };
+            ChatCommand::ForceQuest {
+                quest_id,
+                difficulty_id,
+            } => {
                 let packet = pso2packetlib::protocol::questlist::AcceptQuestPacket {
                     quest_obj: pso2packetlib::protocol::ObjectHeader {
                         id: quest_id,
                         entity_type: ObjectType::Quest,
                         ..Default::default()
                     },
-                    diff,
+                    diff: difficulty_id,
                     ..Default::default()
                 };
                 super::quest::set_quest(user, packet).await?;
             }
-            "!spawn_enemy" => {
-                let Some(name) = args.next() else {
-                    user.send_system_msg("No enemy name provided").await?;
-                    return Ok(Action::Nothing);
-                };
+            ChatCommand::SpawnEnemy { enemy_name } => {
                 let map_id = user.get_zone_id();
                 let map = user.get_current_map().unwrap();
                 let pos = user.position;
                 drop(user);
-                map.lock().await.spawn_enemy(name, pos, map_id).await?;
+                map.lock()
+                    .await
+                    .spawn_enemy(&enemy_name, pos, map_id)
+                    .await?;
             }
-            _ => user.send_system_msg("Unknown command").await?,
+            ChatCommand::Help(msg) => {
+                user.send_system_msg(&msg).await?;
+            }
         }
         return Ok(Action::Nothing);
     }
@@ -251,16 +281,9 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
 async fn set_flag_parse<'a>(
     user: &mut User,
     ftype: FlagType,
-    args: &mut (impl Iterator<Item = &'a str> + Send),
+    range: &str,
+    val: u8,
 ) -> Result<(), crate::Error> {
-    let range = match args.next() {
-        Some(r) => r,
-        None => {
-            user.send_system_msg("No range provided").await?;
-            return Ok(());
-        }
-    };
-    let val = args.next().and_then(|a| a.parse().ok()).unwrap_or(0);
     if range.contains('-') {
         let mut split = range.split('-');
         let lower = split.next().and_then(|r| r.parse().ok());
