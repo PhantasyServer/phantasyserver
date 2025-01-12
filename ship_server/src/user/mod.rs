@@ -41,7 +41,8 @@ pub struct User {
     pub party_invites: Vec<PartyInvite>,
     pub party_ignore: Pr::party::RejectStatus,
     pub map_id: u32,
-    pub zone_id: u32,
+    // offset of the zone in map zones list
+    pub zone_pos: usize,
     firstload: bool,
     pub state: UserState,
     battle_stats: PlayerStats,
@@ -88,7 +89,7 @@ impl User {
                 party_invites: vec![],
                 party_ignore: Default::default(),
                 map_id: 0,
-                zone_id: 0,
+                zone_pos: 0,
                 firstload: true,
                 state: UserState::LoggingIn,
                 battle_stats: Default::default(),
@@ -174,9 +175,6 @@ impl User {
     pub const fn get_map_id(&self) -> u32 {
         self.map_id
     }
-    pub const fn get_zone_id(&self) -> u32 {
-        self.zone_id
-    }
     pub const fn get_stats(&self) -> &PlayerStats {
         &self.battle_stats
     }
@@ -244,9 +242,10 @@ impl User {
     ) -> Result<Action, Error> {
         let id = user.get_user_id();
         let map = user.get_current_map();
+        let zone = user.zone_pos;
         drop(user);
         if let Some(map) = map {
-            map.lock().await.send_movement(packet, id).await;
+            map.lock().await.send_movement(zone, packet, id).await;
         }
         Ok(Action::Nothing)
     }

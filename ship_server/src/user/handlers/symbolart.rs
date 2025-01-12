@@ -16,11 +16,7 @@ pub async fn list_sa(user: &mut User) -> HResult {
         unreachable!("User should be in state >= `PreInGame`")
     };
     let user_id = user.get_user_id();
-    let uuids = user
-        .blockdata
-        .sql
-        .get_symbol_art_list(user_id)
-        .await?;
+    let uuids = user.blockdata.sql.get_symbol_art_list(user_id).await?;
     user.send_packet(&Packet::SymbolArtList(SymbolArtListPacket {
         object: ObjectHeader {
             id: user_id,
@@ -36,11 +32,7 @@ pub async fn list_sa(user: &mut User) -> HResult {
 
 pub async fn change_sa(user: &mut User, packet: ChangeSymbolArtPacket) -> HResult {
     let user_id = user.get_user_id();
-    let mut uuids = user
-        .blockdata
-        .sql
-        .get_symbol_art_list(user_id)
-        .await?;
+    let mut uuids = user.blockdata.sql.get_symbol_art_list(user_id).await?;
     for uuid in packet.uuids {
         let slot = uuid.slot;
         let uuid = uuid.uuid;
@@ -89,11 +81,12 @@ pub async fn send_sa(user: MutexGuard<'_, User>, packet: SendSymbolArtPacket) ->
     let id = user.get_user_id();
     let map = user.get_current_map();
     let party = user.get_current_party();
+    let zone = user.zone_pos;
     drop(user);
     match packet.area {
         MessageChannel::Map => {
             if let Some(map) = map {
-                map.lock().await.send_sa(packet, id).await;
+                map.lock().await.send_sa(zone, packet, id).await;
             }
         }
 

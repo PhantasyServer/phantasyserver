@@ -57,10 +57,11 @@ pub async fn set_default_pa(user: &mut User, packet: SetDefaultPAsPacket) -> HRe
 async fn send_palette_update(mut user: MutexGuard<'_, User>) -> Result<(), crate::Error> {
     let id = user.get_user_id();
     let map = user.map.clone();
+    let zone = user.zone_pos;
     PlayerStats::update(&mut user)?;
     drop(user);
     if let Some(map) = map {
-        map.lock().await.send_palette_change(id).await?;
+        map.lock().await.send_palette_change(zone, id).await?;
     }
     Ok(())
 }

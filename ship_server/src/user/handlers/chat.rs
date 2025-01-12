@@ -143,7 +143,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 let Some(map) = user.get_current_map() else {
                     unreachable!("User should be in state >= `InGame`")
                 };
-                let zoneid = user.zone_id;
+                let zoneid = user.zone_pos;
                 let lock = map.lock().await;
                 let objs = lock.get_close_objects(zoneid, |p| user.position.dist_2d(p) < distance);
                 let user_pos = user.position;
@@ -242,14 +242,11 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
                 super::quest::set_quest(user, packet).await?;
             }
             ChatCommand::SpawnEnemy { enemy_name } => {
-                let map_id = user.get_map_id();
                 let map = user.get_current_map().unwrap();
                 let pos = user.position;
+                let zone = user.zone_pos;
                 drop(user);
-                map.lock()
-                    .await
-                    .spawn_enemy(&enemy_name, pos, map_id)
-                    .await?;
+                map.lock().await.spawn_enemy(zone, &enemy_name, pos).await?;
             }
             ChatCommand::Help(msg) => {
                 user.send_system_msg(&msg).await?;
@@ -261,9 +258,10 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
     match data.channel {
         MessageChannel::Map => {
             let map = user.get_current_map();
+            let zone = user.zone_pos;
             drop(user);
             if let Some(map) = map {
-                map.lock().await.send_message(packet, id).await;
+                map.lock().await.send_message(zone, packet, id).await;
             }
         }
         MessageChannel::Party => {

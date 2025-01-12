@@ -120,8 +120,12 @@ pub async fn set_quest(user: MutexGuard<'_, User>, packet: AcceptQuestPacket) ->
 pub async fn questwork(user: MutexGuard<'_, User>, packet: SkitItemAddRequestPacket) -> HResult {
     if let Some(map) = user.get_current_map() {
         let playerid = user.get_user_id();
+        let zone = user.zone_pos;
         drop(user);
-        map.lock().await.on_questwork(playerid, packet).await?;
+        map.lock()
+            .await
+            .on_questwork(zone, playerid, packet)
+            .await?;
     }
 
     Ok(Action::Nothing)
@@ -130,8 +134,12 @@ pub async fn questwork(user: MutexGuard<'_, User>, packet: SkitItemAddRequestPac
 pub async fn cutscene_end(user: MutexGuard<'_, User>, packet: CutsceneEndPacket) -> HResult {
     if let Some(map) = user.get_current_map() {
         let playerid = user.get_user_id();
+        let zone = user.zone_pos;
         drop(user);
-        map.lock().await.on_cutscene_end(playerid, packet).await?;
+        map.lock()
+            .await
+            .on_cutscene_end(zone, playerid, packet)
+            .await?;
     }
 
     Ok(Action::Nothing)
@@ -191,8 +199,12 @@ pub async fn minimap_reveal(
     .await?;
     if let Some(map) = user.get_current_map() {
         let playerid = user.get_user_id();
+        let zone = user.zone_pos;
         drop(user);
-        map.lock().await.minimap_reveal(playerid, data).await?;
+        map.lock()
+            .await
+            .minimap_reveal(zone, playerid, data)
+            .await?;
     }
     Ok(Action::Nothing)
 }

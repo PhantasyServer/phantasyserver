@@ -8,9 +8,10 @@ pub async fn deal_damage(
 ) -> HResult {
     log::trace!("Got deal damage packet: {packet:?}");
     let map = user.get_current_map();
+    let zone = user.zone_pos;
     drop(user);
     if let Some(map) = map {
-        map.lock().await.deal_damage(packet).await?;
+        map.lock().await.deal_damage(zone, packet).await?;
     }
     Ok(Action::Nothing)
 }

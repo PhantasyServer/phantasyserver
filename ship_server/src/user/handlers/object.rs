@@ -30,9 +30,10 @@ pub async fn movement(mut user: MutexGuard<'_, User>, packet: objects::MovementP
 pub async fn action(user: MutexGuard<'_, User>, packet: objects::InteractPacket) -> HResult {
     let id = user.get_user_id();
     let map = user.get_current_map();
+    let zone = user.zone_pos;
     drop(user);
     if let Some(map) = map {
-        map.lock().await.interaction(packet, id).await?;
+        map.lock().await.interaction(zone, packet, id).await?;
     }
     Ok(Action::Nothing)
 }

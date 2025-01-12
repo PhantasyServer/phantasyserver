@@ -182,8 +182,9 @@ pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket
 
     let map = user.map.clone().unwrap();
     let player_id = user.get_user_id();
+    let zone = user.zone_pos;
     drop(user_guard);
-    map.lock().await.on_map_loaded(player_id).await?;
+    map.lock().await.on_map_loaded(zone, player_id).await?;
 
     Ok(Action::Nothing)
 }

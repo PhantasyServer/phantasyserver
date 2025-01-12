@@ -3,7 +3,7 @@ use crate::{
     mutex::{Mutex, MutexGuard},
     BlockData, Error, User,
 };
-use data_structs::map::{MapData, ZoneData};
+use data_structs::map::{EventData, MapData, NPCData, ObjectData, TransporterData, ZoneData};
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
     self,
@@ -19,6 +19,7 @@ use pso2packetlib::protocol::{
 };
 use rand::{prelude::Distribution, seq::IteratorRandom};
 use std::{
+    collections::HashMap,
     sync::{
         atomic::{AtomicU32, Ordering},
         Arc, Weak,
@@ -42,6 +43,8 @@ struct OwnedMapPlayer {
 }
 
 struct Zone {
+    zone_pos: usize,
+    lua: Arc<parking_lot::Mutex<LuaState>>,
     srv_zone_id: ZoneId,
     obj: ObjectHeader,
     players: Vec<MapPlayer>,
@@ -49,6 +52,14 @@ struct Zone {
     chunk_spawns: Vec<(u32, Instant)>,
     minimap_status: RevealedRegions,
     data: ZoneData,
+    objects: Objects,
+}
+
+struct Objects {
+    objects: Vec<ObjectData>,
+    events: Vec<EventData>,
+    npcs: Vec<NPCData>,
+    transporters: Vec<TransporterData>,
 }
 
 pub enum MapType {
@@ -56,48 +67,76 @@ pub enum MapType {
     QuestMap,
 }
 
-pub struct Map {
-    // lua is not `Send` so i've put it in a mutex
-    // this mutex shouldn't block, because `Map` is under a mutex itself.
-    lua: parking_lot::Mutex<Lua>,
-    zones: Vec<Zone>,
-    data: MapData,
+struct LuaState {
+    lua: Lua,
     // fighting with async recursion
     to_move: Vec<(PlayerId, String)>,
     to_lobby_move: Vec<PlayerId>,
+    procs: HashMap<String, String>,
+}
+
+pub struct Map {
+    // lua is not `Send` so i've put it in a mutex
+    // this mutex shouldn't block, because `Map` is under a mutex itself.
+    lua: Arc<parking_lot::Mutex<LuaState>>,
+    zones: Box<[Zone]>,
+    player_cache: Vec<(u32, usize)>,
+    data: MapData,
     max_id: u32,
     block_data: Option<Arc<BlockData>>,
     enemy_level: u32,
     map_type: MapType,
 }
 impl Map {
-    pub fn new_from_data(data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
+    pub fn new_from_data(mut data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
         // will be increased as needed
         let lua_libs = StdLib::NONE;
-        let mut map = Self {
-            lua: Lua::new_with(lua_libs, mlua::LuaOptions::default())?.into(),
-            zones: vec![],
-            data,
+        let lua = Arc::new(parking_lot::Mutex::new(LuaState {
+            lua: Lua::new_with(lua_libs, mlua::LuaOptions::default())?,
             to_move: vec![],
             to_lobby_move: vec![],
-            max_id: 0,
-            block_data: None,
-            enemy_level: 0,
-            map_type: MapType::QuestMap,
-        };
+            procs: HashMap::new(),
+        }));
         let map_obj = ObjectHeader {
             id: map_obj_id.fetch_add(1, Ordering::Relaxed),
             entity_type: ObjectType::Map,
             ..Default::default()
         };
-        map.data.map_data.map_object = map_obj;
-        map.data.map_data.settings = map.data.zones[0].settings.clone();
-        map.data.map_data.other_settings.clear();
-        for zone in std::mem::take(&mut map.data.zones) {
+        data.map_data.map_object = map_obj;
+        data.map_data.settings = data.zones[0].settings.clone();
+        data.map_data.other_settings.clear();
+        let mut zones = vec![];
+        for (i, zone) in std::mem::take(&mut data.zones).into_iter().enumerate() {
             if !zone.is_special_zone {
-                map.data.map_data.other_settings.push(zone.settings.clone());
+                data.map_data.other_settings.push(zone.settings.clone());
             }
-            map.zones.push(Zone {
+            let objects = data
+                .objects
+                .iter()
+                .filter(|o| o.zone_id == zone.zone_id)
+                .cloned()
+                .collect();
+            let events = data
+                .events
+                .iter()
+                .filter(|o| o.zone_id == zone.zone_id)
+                .cloned()
+                .collect();
+            let npcs = data
+                .npcs
+                .iter()
+                .filter(|o| o.zone_id == zone.zone_id)
+                .cloned()
+                .collect();
+            let transporters = data
+                .transporters
+                .iter()
+                .filter(|o| o.zone_id == zone.zone_id)
+                .cloned()
+                .collect();
+            zones.push(Zone {
+                zone_pos: i,
+                lua: lua.clone(),
                 srv_zone_id: zone.zone_id,
                 players: vec![],
                 obj: ObjectHeader {
@@ -109,8 +148,24 @@ impl Map {
                 chunk_spawns: vec![],
                 minimap_status: Default::default(),
                 data: zone,
+                objects: Objects {
+                    objects,
+                    events,
+                    npcs,
+                    transporters,
+                },
             });
         }
+        let mut map = Self {
+            lua: lua.clone(),
+            zones: zones.into(),
+            player_cache: vec![],
+            data,
+            max_id: 0,
+            block_data: None,
+            enemy_level: 0,
+            map_type: MapType::QuestMap,
+        };
         log::trace!("Map data: {:?}", map.data.map_data);
         map.init_lua()?;
         map.find_max_id();
@@ -205,6 +260,7 @@ impl Map {
                 .into(),
             );
         }
+        self.lua.lock().procs = std::mem::take(&mut self.data.luas);
         Ok(())
     }
 
@@ -221,12 +277,14 @@ impl Map {
         drop(np_lock);
         self.add_player(new_player, self.data.init_map).await
     }
+
     pub async fn move_player_named(&mut self, id: PlayerId, name: &str) -> Result<(), Error> {
         let Some(zone) = self.zones.iter().find(|z| z.data.name == name) else {
             return Err(Error::InvalidInput("move_player_named"));
         };
         self.move_player(id, zone.srv_zone_id).await
     }
+
     async fn move_player(&mut self, id: PlayerId, srv_zone_id: ZoneId) -> Result<(), Error> {
         let Some(player) = self.remove_player(id).await else {
             return Err(Error::NoUserInMap(id, self.data.map_data.unk7.to_string()));
@@ -252,6 +310,7 @@ impl Map {
         drop(lock);
         self.add_player(player, srv_zone_id).await
     }
+
     pub async fn move_to_lobby(&mut self, id: PlayerId) -> Result<(), Error> {
         if matches!(self.map_type, MapType::Lobby) {
             return Ok(());
@@ -264,436 +323,125 @@ impl Map {
         let mut lock = lobby.lock().await;
         lock.init_add_player(player).await
     }
+
     async fn add_player(
         &mut self,
         new_player: Arc<Mutex<User>>,
         srv_zone_id: ZoneId,
     ) -> Result<(), Error> {
-        let Some(zone) = self.zones.iter_mut().find(|z| z.srv_zone_id == srv_zone_id) else {
+        let Some((pos, zone)) = self
+            .zones
+            .iter_mut()
+            .enumerate()
+            .find(|(_, z)| z.srv_zone_id == srv_zone_id)
+        else {
             return Err(Error::InvalidInput("add_player"));
         };
+        let p_id = new_player.lock().await.get_user_id();
         zone.add_player(new_player.clone()).await?;
-        let mut lock = new_player.lock().await;
-        Self::load_objects(&self.lua, &self.data, srv_zone_id, &mut lock)?;
-        let Some(lua) = self.data.luas.get("on_player_load").cloned() else {
-            return Ok(());
-        };
-        self.run_lua(
-            lock.get_user_id(),
-            srv_zone_id,
-            &Packet::None,
-            "on_player_load",
-            &lua,
-        )
-        .await?;
+        self.player_cache.push((p_id, pos));
         Ok(())
     }
-    fn find_player(&self, id: PlayerId) -> Option<(usize, &MapPlayer)> {
-        self.zones
+
+    pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
+        let zone_pos = self.find_player(id)?;
+        let (player_pos, _) = self
+            .player_cache
             .iter()
             .enumerate()
-            .flat_map(|(i, z)| z.players.iter().map(move |p| (i, p)))
-            .find(|(_, p)| p.player_id == id)
+            .find(|(_, (i, _))| *i == id)?;
+        self.player_cache.remove(player_pos);
+        self.zones[zone_pos].remove_player(id).await
     }
 
-    pub async fn send_palette_change(&self, sender_id: PlayerId) -> Result<(), Error> {
-        let Some((zone_pos, user)) = self.find_player(sender_id) else {
-            return Err(Error::NoUserInMap(
-                sender_id,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
-        let Some(player) = user.user.upgrade() else {
-            return Err(Error::InvalidInput("send_palette_change"));
-        };
-        let new_eqipment = {
-            let p = player.lock().await;
-            let Some(character) = &p.character else {
-                unreachable!("Users in map should have characters")
-            };
-            (
-                character.palette.send_change_palette(sender_id),
-                character
-                    .palette
-                    .send_cur_weapon(sender_id, &character.inventory),
-            )
-        };
-        exec_users(&self.zones[zone_pos].players, |_, mut player| {
-            let _ = player.try_send_packet(&new_eqipment.0);
-            let _ = player.try_send_packet(&new_eqipment.1);
-        })
-        .await;
-
-        Ok(())
+    fn find_player(&self, id: PlayerId) -> Option<usize> {
+        self.player_cache
+            .iter()
+            .find(|(p_id, _)| *p_id == id)
+            .map(|(_, z_pos)| *z_pos)
     }
-    pub async fn send_to_all(&self, sender_id: PlayerId, packet: &Packet) {
-        let Some((zone_pos, _)) = self.find_player(sender_id) else {
-            return;
-        };
+
+    pub async fn send_palette_change(
+        &self,
+        zone_pos: usize,
+        sender_id: PlayerId,
+    ) -> Result<(), Error> {
+        self.zones[zone_pos].send_palette_change(sender_id).await
+    }
+    pub async fn send_to_all(&self, zone_pos: usize, packet: &Packet) {
         exec_users(&self.zones[zone_pos].players, |_, mut player| {
             let _ = player.try_send_packet(packet);
         })
         .await;
     }
 
-    pub async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {
-        let Some((zone_pos, _)) = self.find_player(sender_id) else {
-            return;
-        };
-        let mut out_packet = match packet {
-            Packet::Movement(_) => packet,
-            Packet::MovementEnd(mut data) => {
-                if data.unk1.id == 0 && data.unk2.id != 0 {
-                    data.unk1 = data.unk2;
-                }
-                Packet::MovementEnd(data)
-            }
-            Packet::MovementAction(data) => {
-                let packet = protocol::objects::MovementActionServerPacket {
-                    performer: data.performer,
-                    receiver: ObjectHeader {
-                        id: 0,
-                        entity_type: ObjectType::Player,
-                        ..Default::default()
-                    },
-                    unk3: data.unk3,
-                    unk4: data.unk4,
-                    unk5: data.unk5,
-                    unk6: data.unk6,
-                    action: data.action,
-                    unk7: data.unk7,
-                    unk8: data.unk8,
-                    unk9: data.unk9,
-                    unk10: data.unk10,
-                };
-                Packet::MovementActionServer(packet)
-            }
-            Packet::ActionUpdate(data) => {
-                let packet = protocol::objects::ActionUpdateServerPacket {
-                    performer: data.performer,
-                    unk2: data.unk2,
-                    receiver: ObjectHeader {
-                        id: 0,
-                        entity_type: ObjectType::Player,
-                        ..Default::default()
-                    },
-                };
-                Packet::ActionUpdateServer(packet)
-            }
-            Packet::ActionEnd(mut data) => {
-                data.unk1 = data.performer;
-                Packet::ActionEnd(data)
-            }
-            _ => return,
-        };
-        exec_users(&self.zones[zone_pos].players, |user, mut player| {
-            if let Packet::MovementActionServer(ref mut data) = out_packet {
-                data.receiver.id = player.get_user_id();
-            } else if let Packet::ActionUpdateServer(ref mut data) = out_packet {
-                data.receiver.id = player.get_user_id();
-            }
-            if user.player_id != sender_id {
-                let _ = player.try_send_packet(&out_packet);
-            }
-        })
-        .await;
+    pub async fn send_movement(&self, zone_pos: usize, packet: Packet, sender_id: PlayerId) {
+        self.zones[zone_pos].send_movement(packet, sender_id).await;
     }
 
-    pub async fn send_message(&self, mut packet: Packet, id: PlayerId) {
-        let Some((zone_pos, _)) = self.find_player(id) else {
-            return;
-        };
-        if let Packet::ChatMessage(ref mut data) = packet {
-            data.object = ObjectHeader {
-                id,
-                entity_type: ObjectType::Player,
-                ..Default::default()
-            };
-        }
-        exec_users(&self.zones[zone_pos].players, |_, mut player| {
-            let _ = player.try_send_packet(&packet);
-        })
-        .await;
+    pub async fn send_message(&self, zone_pos: usize, packet: Packet, id: PlayerId) {
+        self.zones[zone_pos].send_message(packet, id).await;
     }
 
-    pub async fn send_sa(&self, data: SendSymbolArtPacket, id: PlayerId) {
-        let Some((zone_pos, _)) = self.find_player(id) else {
-            return;
-        };
-        let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
-            object: ObjectHeader {
-                id,
-                entity_type: ObjectType::Player,
-                ..Default::default()
-            },
-            uuid: data.uuid,
-            area: data.area,
-            unk1: data.unk1,
-            unk2: data.unk2,
-            unk3: data.unk3,
-        });
-        exec_users(&self.zones[zone_pos].players, |_, mut player| {
-            let _ = player.try_send_packet(&packet);
-        })
-        .await;
+    pub async fn send_sa(&self, zone_pos: usize, data: SendSymbolArtPacket, id: PlayerId) {
+        self.zones[zone_pos].send_sa(data, id).await;
     }
 
-    pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
-        let Some((zone_pos, _)) = self.find_player(id) else {
-            return None;
-        };
-        self.zones[zone_pos].remove_player(id).await
-    }
     pub async fn spawn_enemy(
         &mut self,
+        zone_pos: usize,
         name: &str,
         pos: Position,
-        zone_id: ZoneId,
     ) -> Result<(), Error> {
         let Some(block_data) = self.block_data.to_owned() else {
             return Err(Error::NoEnemyData(name.to_string()));
         };
-        let id = self.max_id + 1;
-        self.max_id += 1;
-        let data = EnemyStats::build(name, self.enemy_level, pos, &block_data.server_data)?;
-        let (packet, mut packet2) = Zone::prepare_enemy_packets(id, &data);
-        let zone = self
-            .zones
-            .iter_mut()
-            .find(|z| z.srv_zone_id == zone_id)
-            .unwrap();
-        zone.enemies.push((id, data));
-
-        exec_users(&zone.players, |_, mut player| {
-            let _ = player.try_send_packet(&packet);
-            if let Packet::EnemyAction(data) = &mut packet2 {
-                data.receiver = player.create_object_header();
-                data.action_starter = player.create_object_header();
-                let _ = player.try_send_packet(&packet2);
-            }
-        })
-        .await;
-
+        self.zones[zone_pos]
+            .spawn_enemy(&block_data, &mut self.max_id, self.enemy_level, name, pos)
+            .await?;
         Ok(())
     }
-    pub async fn deal_damage(&mut self, dmg: DealDamagePacket) -> Result<(), Error> {
+    pub async fn deal_damage(
+        &mut self,
+        zone_pos: usize,
+        dmg: DealDamagePacket,
+    ) -> Result<(), Error> {
         let Some(block_data) = self.block_data.to_owned() else {
             return Err(Error::InvalidInput("deal_damage"));
         };
-        let Some(zone) = self.zones.iter_mut().find(|z| {
-            z.players.iter().any(|p| p.player_id == dmg.inflicter.id)
-                || z.enemies.iter().any(|e| e.0 == dmg.inflicter.id)
-        }) else {
-            return Err(Error::InvalidInput("deal_damage"));
-        };
-
-        zone.deal_damage(block_data, dmg).await
-    }
-    fn load_objects(
-        lua: &parking_lot::Mutex<Lua>,
-        map_data: &MapData,
-        zone_id: ZoneId,
-        user: &mut User,
-    ) -> Result<(), Error> {
-        let lua = lua.lock();
-        for mut obj in map_data
-            .objects
-            .iter()
-            .filter(|o| o.zone_id == zone_id)
-            .cloned()
-        {
-            if user.user_data.packet_type == PacketType::Vita {
-                let lua_code = map_data
-                    .luas
-                    .get(obj.data.name.as_str())
-                    .map(|s| s.as_str())
-                    .unwrap_or("");
-                let globals = lua.globals();
-                globals.set("data", obj.data.data.as_slice())?;
-                globals.set("call_type", "to_vita")?;
-                globals.set("size", obj.data.data.len())?;
-                let chunk = lua.load(lua_code);
-                chunk.exec()?;
-                obj.data.data = globals.get::<Vec<u32>>("data")?.into();
-                globals.raw_remove("data")?;
-                globals.raw_remove("call_type")?;
-                globals.raw_remove("size")?;
-            }
-            user.try_send_packet(&Packet::ObjectSpawn(obj.data))?;
-        }
-        for npc in map_data
-            .npcs
-            .iter()
-            .filter(|o| o.zone_id == zone_id)
-            .cloned()
-        {
-            user.try_send_packet(&Packet::NPCSpawn(npc.data))?;
-        }
-        for event in map_data
-            .events
-            .iter()
-            .filter(|e| e.zone_id == zone_id)
-            .cloned()
-        {
-            user.try_send_packet(&Packet::EventSpawn(event.data))?;
-        }
-        for tele in map_data
-            .transporters
-            .iter()
-            .filter(|t| t.zone_id == zone_id)
-            .cloned()
-        {
-            user.try_send_packet(&Packet::TransporterSpawn(tele.data))?;
-        }
-
-        Ok(())
+        self.zones[zone_pos].deal_damage(block_data, dmg).await
     }
 
     pub async fn minimap_reveal(
         &mut self,
+        zone_pos: usize,
         sender_id: PlayerId,
         packet: protocol::questlist::MinimapRevealRequestPacket,
     ) -> Result<(), Error> {
-        let Some((zone_pos, user)) = self.find_player(sender_id) else {
-            return Err(Error::NoMapInMapSet(
-                self.data.map_data.map_object.id,
-                self.data.map_data.unk7.to_string(),
-            ));
+        let Some(block_data) = self.block_data.to_owned() else {
+            return Err(Error::InvalidInput("minimap_reveal: no block data"));
         };
-        let user = user.clone();
-        let zone = &mut self.zones[zone_pos];
-        let zone_id = zone.srv_zone_id;
 
-        if let Some(chunk) = zone
-            .data
-            .chunks
-            .iter()
-            .find(|c| c.chunk_id == packet.chunk_id)
-        {
-            // wow, how nested
-            match chunk.enemy_spawn_type {
-                data_structs::map::EnemySpawnType::Disabled => {}
-                data_structs::map::EnemySpawnType::Automatic { min, max } => {
-                    let count = rand::distributions::Uniform::new_inclusive(min, max)
-                        .sample(&mut rand::thread_rng());
-                    if !zone.chunk_spawns.iter().any(|s| s.0 == chunk.chunk_id) {
-                        zone.chunk_spawns
-                            .push((chunk.chunk_id, std::time::Instant::now()));
-                        // this is length biased
-                        let spawn_category = zone
-                            .data
-                            .enemies
-                            .iter()
-                            .map(|e| e.spawn_category)
-                            .choose(&mut rand::thread_rng())
-                            .unwrap_or_default();
-                        let spawn_point = chunk
-                            .enemy_spawn_points
-                            .iter()
-                            .choose(&mut rand::thread_rng());
-                        let spawn_point = match spawn_point {
-                            Some(x) => *x,
-                            None => user.user.upgrade().unwrap().lock().await.position,
-                        };
-                        for _ in 0..count {
-                            let enemy = self.zones[zone_pos]
-                                .data
-                                .enemies
-                                .iter()
-                                .filter(|e| e.spawn_category == spawn_category)
-                                .choose(&mut rand::thread_rng());
-                            if let Some(enemy) = enemy {
-                                let enemy_name = enemy.enemy_name.clone();
-                                self.spawn_enemy(&enemy_name, spawn_point, zone_id).await?;
-                            }
-                        }
-                    }
-                }
-                data_structs::map::EnemySpawnType::AutomaticWithRespawn {
-                    min,
-                    max,
-                    respawn_time,
-                } => {
-                    let count = rand::distributions::Uniform::new_inclusive(min, max)
-                        .sample(&mut rand::thread_rng());
-                    let (spawn, is_first) = if let Some(spawn) =
-                        zone.chunk_spawns.iter().find(|s| s.0 == chunk.chunk_id)
-                    {
-                        (spawn, false)
-                    } else {
-                        zone.chunk_spawns
-                            .push((chunk.chunk_id, std::time::Instant::now()));
-                        (zone.chunk_spawns.last().unwrap(), true)
-                    };
+        self.zones[zone_pos]
+            .minimap_reveal(
+                sender_id,
+                &block_data,
+                &mut self.max_id,
+                self.enemy_level,
+                &packet,
+            )
+            .await?;
 
-                    if is_first || spawn.1.elapsed() > respawn_time {
-                        // this is length biased
-                        let spawn_category = zone
-                            .data
-                            .enemies
-                            .iter()
-                            .map(|e| e.spawn_category)
-                            .choose(&mut rand::thread_rng())
-                            .unwrap_or_default();
-                        let spawn_point = chunk
-                            .enemy_spawn_points
-                            .iter()
-                            .choose(&mut rand::thread_rng());
-                        let spawn_point = match spawn_point {
-                            Some(x) => *x,
-                            None => user.user.upgrade().unwrap().lock().await.position,
-                        };
-                        for _ in 0..count {
-                            let enemy = self.zones[zone_pos]
-                                .data
-                                .enemies
-                                .iter()
-                                .filter(|e| e.spawn_category == spawn_category)
-                                .choose(&mut rand::thread_rng());
-                            if let Some(enemy) = enemy {
-                                let enemy_name = enemy.enemy_name.clone();
-                                self.spawn_enemy(&enemy_name, spawn_point, zone_id).await?;
-                            }
-                        }
-                    }
-                }
-                data_structs::map::EnemySpawnType::Manual => {
-                    if let Some(lua) = self.data.luas.get("spawn_enemy").cloned() {
-                        self.run_lua(user.player_id, zone_id, &packet, "spawn_enemy", &lua)
-                            .await?;
-                    };
-                }
-            }
-        }
-
-        self.zones[zone_pos].minimap_reveal(&packet).await?;
-
-        if let Some(lua) = self.data.luas.get("on_minimap_reveal").cloned() {
-            self.run_lua(user.player_id, zone_id, &packet, "on_minimap_reveal", &lua)
-                .await?;
-            let to_move: Vec<_> = self.to_move.drain(..).collect();
-            for (player, zone) in to_move {
-                self.move_player_named(player, &zone).await?;
-            }
-            let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
-            for player in to_move {
-                self.move_to_lobby(player).await?;
-            }
-        };
+        self.check_move_lua().await?;
         Ok(())
     }
 
     pub async fn interaction(
         &mut self,
+        zone_pos: usize,
         packet: protocol::objects::InteractPacket,
         sender_id: PlayerId,
     ) -> Result<(), Error> {
-        let Some((zone_pos, _)) = self.find_player(sender_id) else {
-            return Err(Error::NoUserInMap(
-                sender_id,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
         let zone_id = self.zones[zone_pos].srv_zone_id;
         let Some(lua_data) = self
             .data
@@ -709,94 +457,58 @@ impl Map {
                     .map(|x| (x.data.object.id, &x.data.name)),
             )
             .find(|(id, _)| *id == packet.object1.id)
-            .and_then(|(_, name)| self.data.luas.get(name.as_str()))
+            .and_then(|(_, name)| self.lua.lock().procs.get(name.as_str()).cloned())
         else {
             return Ok(());
         };
-        let lua_data = lua_data.clone();
-        self.run_lua(sender_id, zone_id, &packet, "interaction", &lua_data)
+        self.run_lua(sender_id, zone_pos, &packet, "interaction", &lua_data)
             .await?;
         Ok(())
     }
     pub async fn on_questwork(
         &mut self,
+        zone_pos: usize,
         player: PlayerId,
         packet: SkitItemAddRequestPacket,
     ) -> Result<(), Error> {
-        let Some((zone_pos, _)) = self.find_player(player) else {
-            return Err(Error::NoUserInMap(
-                player,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
-        let zone_id = self.zones[zone_pos].srv_zone_id;
-        let Some(lua) = self.data.luas.get("on_questwork").cloned() else {
+        let Some(lua) = self.lua.lock().procs.get("on_questwork").cloned() else {
             return Ok(());
         };
-        self.run_lua(player, zone_id, &packet, "on_questwork", &lua)
+        self.run_lua(player, zone_pos, &packet, "on_questwork", &lua)
             .await?;
-        let to_move: Vec<_> = self.to_move.drain(..).collect();
-        for (player, zone) in to_move {
-            self.move_player_named(player, &zone).await?;
-        }
+        self.check_move_lua().await?;
         Ok(())
     }
     pub async fn on_cutscene_end(
         &mut self,
+        zone_pos: usize,
         player: PlayerId,
         packet: CutsceneEndPacket,
     ) -> Result<(), Error> {
-        let Some((zone_pos, _)) = self.find_player(player) else {
-            return Err(Error::NoUserInMap(
-                player,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
-        let zone_id = self.zones[zone_pos].srv_zone_id;
-        let Some(lua) = self.data.luas.get("on_cutscene_end").cloned() else {
+        let Some(lua) = self.lua.lock().procs.get("on_cutscene_end").cloned() else {
             return Ok(());
         };
-        self.run_lua(player, zone_id, &packet, "on_cutscene_end", &lua)
+        self.run_lua(player, zone_pos, &packet, "on_cutscene_end", &lua)
             .await?;
-        let to_move: Vec<_> = self.to_move.drain(..).collect();
-        for (player, zone) in to_move {
-            self.move_player_named(player, &zone).await?;
-        }
-        let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
-        for player in to_move {
-            self.move_to_lobby(player).await?;
-        }
+        self.check_move_lua().await?;
         Ok(())
     }
 
-    pub async fn on_map_loaded(&mut self, player: PlayerId) -> Result<(), Error> {
-        let Some((zone_pos, _)) = self.find_player(player) else {
-            return Err(Error::NoUserInMap(
-                player,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
-        let zone_id = self.zones[zone_pos].srv_zone_id;
-        let Some(lua) = self.data.luas.get("on_map_loaded").cloned() else {
+    pub async fn on_map_loaded(&mut self, zone_pos: usize, player: PlayerId) -> Result<(), Error> {
+        let Some(lua) = self.lua.lock().procs.get("on_map_loaded").cloned() else {
             return Ok(());
         };
-        self.run_lua(player, zone_id, &Packet::None, "on_map_loaded", &lua)
+        self.run_lua(player, zone_pos, &Packet::None, "on_map_loaded", &lua)
             .await?;
-        let to_move: Vec<_> = self.to_move.drain(..).collect();
-        for (player, zone) in to_move {
-            self.move_player_named(player, &zone).await?;
-        }
-        let to_move: Vec<_> = self.to_lobby_move.drain(..).collect();
-        for player in to_move {
-            self.move_to_lobby(player).await?;
-        }
+        self.check_move_lua().await?;
         Ok(())
     }
-    pub fn get_close_objects<F>(&self, zone_id: ZoneId, pred: F) -> Vec<ObjectSpawnPacket>
+    pub fn get_close_objects<F>(&self, zone_pos: usize, pred: F) -> Vec<ObjectSpawnPacket>
     where
         F: Fn(&Position) -> bool,
     {
         let mut obj = vec![];
+        let zone_id = self.zones[zone_pos].srv_zone_id;
         for self_obj in self.data.objects.iter().filter(|o| o.zone_id == zone_id) {
             if pred(&self_obj.data.position) {
                 obj.push(self_obj.data.clone());
@@ -809,328 +521,27 @@ impl Map {
     async fn run_lua<S: serde::Serialize + Sync>(
         &mut self,
         sender_id: PlayerId,
-        zone_id: ZoneId,
+        zone_id: usize,
         packet: &S,
         call_type: &str,
         lua_data: &str,
     ) -> Result<(), Error> {
-        spawn_blocking(|| self.run_lua_blocking(sender_id, zone_id, packet, call_type, lua_data))
-            .await?
+        spawn_blocking(|| {
+            self.zones[zone_id].run_lua_blocking(sender_id, packet, call_type, lua_data)
+        })
+        .await?
     }
-    fn run_lua_blocking<S: serde::Serialize + Sync>(
-        &mut self,
-        sender_id: PlayerId,
-        zone_id: ZoneId,
-        packet: &S,
-        call_type: &str,
-        lua_data: &str,
-    ) -> Result<(), Error> {
-        let mut scheduled_move = vec![];
-        let mut lobby_moves = vec![];
-
-        let Some(zone) = self.zones.iter().find(|z| z.srv_zone_id == zone_id) else {
-            return Err(Error::InvalidInput("run_lua, zone"));
-        };
-        let Some(caller) = zone
-            .players
-            .iter()
-            .find(|p| p.player_id == sender_id)
-            .and_then(|p| p.user.upgrade())
-        else {
-            unreachable!("Sender should exist in the current map");
-        };
-        let caller_lock = caller.lock_blocking();
-        let zone_set = &zone.data;
-        drop(caller_lock);
-        {
-            let lua = self.lua.lock();
-            let globals = lua.globals();
-            let player_ids: Vec<_> = zone.players.iter().map(|p| p.player_id).collect();
-            globals.set("zone", zone_set.name.clone())?;
-            globals.set("packet", lua.to_value(&packet)?)?;
-            globals.set("sender", sender_id)?;
-            globals.set("players", player_ids)?;
-            globals.set("call_type", call_type)?;
-            lua.scope(|scope| {
-                self.setup_scope(
-                    &globals,
-                    scope,
-                    zone_id,
-                    &mut scheduled_move,
-                    &mut lobby_moves,
-                )?;
-
-                /* LUA FUNCTIONS */
-
-                // get account flag
-                globals.set(
-                    "get_account_flag",
-                    scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
-                        Ok(caller.lock_blocking().get_account_flags().get(flag as _))
-                    })?,
-                )?;
-                // get character flag
-                globals.set(
-                    "get_character_flag",
-                    scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
-                        if let Some(f) = caller.lock_blocking().get_char_flags() {
-                            Ok(f.get(flag as _))
-                        } else {
-                            unreachable!("Users in maps should have loaded characters")
-                        }
-                    })?,
-                )?;
-
-                /* LUA FUNCTIONS END */
-
-                let chunk = lua.load(lua_data);
-                chunk.exec()?;
-                Ok(())
-            })?;
-            globals.raw_remove("packet")?;
-            globals.raw_remove("sender")?;
-            globals.raw_remove("players")?;
-            globals.raw_remove("call_type")?;
-            globals.raw_remove("zone")?;
+    async fn check_move_lua(&mut self) -> Result<(), Error> {
+        let mut lua = self.lua.lock();
+        let to_move: Vec<_> = lua.to_move.drain(..).collect();
+        let to_lobby_move: Vec<_> = lua.to_lobby_move.drain(..).collect();
+        drop(lua);
+        for (player, zone) in to_move {
+            self.move_player_named(player, &zone).await?;
         }
-        for (receiver, mapid) in scheduled_move {
-            self.to_move.push((receiver, mapid));
+        for player in to_lobby_move {
+            self.move_to_lobby(player).await?;
         }
-        for receiver in lobby_moves {
-            self.to_lobby_move.push(receiver);
-        }
-        Ok(())
-    }
-
-    fn setup_scope<'s>(
-        &'s self,
-        globals: &mlua::Table,
-        scope: &'s mlua::Scope<'s, '_>,
-        zone_id: ZoneId,
-        scheduled_move: &'s mut Vec<(PlayerId, String)>,
-        lobby_moves: &'s mut Vec<PlayerId>,
-    ) -> Result<(), mlua::Error> {
-        /* LUA FUNCTIONS */
-
-        // send packet
-        let send =
-            scope.create_function_mut(move |lua, (receiver, packet): (u32, mlua::Value)| {
-                let packet: Packet = lua.from_value(packet)?;
-                if let Some(p) = self
-                    .zones
-                    .iter()
-                    .find(|z| z.srv_zone_id == zone_id)
-                    .and_then(|z| {
-                        z.players
-                            .iter()
-                            .find(|p| p.player_id == receiver)
-                            .and_then(|p| p.user.upgrade())
-                    })
-                {
-                    p.lock_blocking()
-                        .send_packet_block(&packet)
-                        .map_err(mlua::Error::external)?;
-                }
-                Ok(())
-            })?;
-        globals.set("send", send)?;
-        // get object data
-        let get_object = scope.create_function(move |lua, id: u32| {
-            let object = self
-                .data
-                .objects
-                .iter()
-                .filter(|o| o.zone_id == zone_id)
-                .find(|obj| obj.data.object.id == id)
-                .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
-            lua.to_value(&object.data)
-        })?;
-        globals.set("get_object", get_object)?;
-        // get npc data
-        let get_npc = scope.create_function(move |lua, id: u32| {
-            let object = self
-                .data
-                .npcs
-                .iter()
-                .filter(|o| o.zone_id == zone_id)
-                .find(|obj| obj.data.object.id == id)
-                .ok_or(mlua::Error::runtime("Couldn't find requested npc"))?;
-            lua.to_value(&object.data)
-        })?;
-        globals.set("get_npc", get_npc)?;
-        // get additional data
-        let get_extra_data = scope.create_function(move |lua, id: u32| {
-            let object = self
-                .data
-                .objects
-                .iter()
-                .filter(|o| o.zone_id == zone_id)
-                .map(|x| (x.data.object.id, &x.lua_data))
-                .chain(
-                    self.data
-                        .npcs
-                        .iter()
-                        .filter(|o| o.zone_id == zone_id)
-                        .map(|x| (x.data.object.id, &x.lua_data)),
-                )
-                .find(|(obj_id, _)| *obj_id == id)
-                .map(|(_, data)| data)
-                .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
-            match object {
-                Some(d) => lua.load(d).eval::<mlua::Value>(),
-                None => Ok(mlua::Value::Nil),
-            }
-        })?;
-        globals.set("get_extra_data", get_extra_data)?;
-        // move player to another submap
-        globals.set(
-            "move_player",
-            scope.create_function_mut(|_, (receiver, zone): (u32, String)| {
-                scheduled_move.push((receiver, zone));
-                Ok(())
-            })?,
-        )?;
-        // move player to lobby
-        globals.set(
-            "move_lobby",
-            scope.create_function_mut(|_, receiver: u32| {
-                lobby_moves.push(receiver);
-                Ok(())
-            })?,
-        )?;
-        // set account flag
-        globals.set(
-            "set_account_flag",
-            scope.create_function_mut(move |_, (receiver, flag, value): (u32, u32, u8)| {
-                if let Some(p) = self
-                    .zones
-                    .iter()
-                    .find(|z| z.srv_zone_id == zone_id)
-                    .and_then(|z| {
-                        z.players
-                            .iter()
-                            .find(|p| p.player_id == receiver)
-                            .and_then(|p| p.user.upgrade())
-                    })
-                {
-                    p.lock_blocking()
-                        .set_account_flag_block(flag, value != 0)
-                        .map_err(mlua::Error::external)?;
-                }
-                Ok(())
-            })?,
-        )?;
-        // set character flag
-        globals.set(
-            "set_character_flag",
-            scope.create_function_mut(move |_, (receiver, flag, value): (u32, u32, u8)| {
-                if let Some(p) = self
-                    .zones
-                    .iter()
-                    .find(|z| z.srv_zone_id == zone_id)
-                    .and_then(|z| {
-                        z.players
-                            .iter()
-                            .find(|p| p.player_id == receiver)
-                            .and_then(|p| p.user.upgrade())
-                    })
-                {
-                    p.lock_blocking()
-                        .set_char_flag_block(flag, value != 0)
-                        .map_err(mlua::Error::external)?;
-                }
-                Ok(())
-            })?,
-        )?;
-        // delete all npcs from the client
-        globals.set(
-            "delete_all_npcs_packets",
-            scope.create_function_mut(move |lua, receiver: u32| -> Result<mlua::Value, _> {
-                let mut packets = vec![];
-                for object in self
-                    .data
-                    .npcs
-                    .iter()
-                    .filter(|n| n.zone_id == zone_id && n.is_active)
-                {
-                    packets.push(Packet::DespawnObject(
-                        protocol::objects::DespawnObjectPacket {
-                            player: ObjectHeader {
-                                id: receiver,
-                                entity_type: ObjectType::Player,
-                                ..Default::default()
-                            },
-                            item: object.data.object,
-                        },
-                    ))
-                }
-                lua.to_value(&packets)
-            })?,
-        )?;
-        // unlock one quest
-        globals.set(
-            "unlock_quest",
-            scope.create_function_mut(
-                move |_, (receiver, name_id): (u32, u32)| -> Result<(), _> {
-                    if let Some(p) = self
-                        .zones
-                        .iter()
-                        .find(|z| z.srv_zone_id == zone_id)
-                        .and_then(|z| {
-                            z.players
-                                .iter()
-                                .find(|p| p.player_id == receiver)
-                                .and_then(|p| p.user.upgrade())
-                        })
-                    {
-                        let mut lock = p.lock_blocking();
-                        let char = lock
-                            .character
-                            .as_mut()
-                            .expect("Character should be loaded for users in map");
-                        if !char.unlocked_quests.contains(&name_id) {
-                            char.unlocked_quests.push(name_id);
-                            char.unlocked_quests_notif.push(name_id);
-                        }
-                    }
-                    Ok(())
-                },
-            )?,
-        )?;
-        // unlock multiple quests
-        globals.set(
-            "unlock_quests",
-            scope.create_function_mut(
-                move |_, (receiver, name_id): (u32, Vec<u32>)| -> Result<(), _> {
-                    if let Some(p) = self
-                        .zones
-                        .iter()
-                        .find(|z| z.srv_zone_id == zone_id)
-                        .and_then(|z| {
-                            z.players
-                                .iter()
-                                .find(|p| p.player_id == receiver)
-                                .and_then(|p| p.user.upgrade())
-                        })
-                    {
-                        let mut lock = p.lock_blocking();
-                        let char = lock
-                            .character
-                            .as_mut()
-                            .expect("Character should be loaded for users in map");
-                        for name in name_id {
-                            if !char.unlocked_quests.contains(&name) {
-                                char.unlocked_quests.push(name);
-                                char.unlocked_quests_notif.push(name);
-                            }
-                        }
-                    }
-                    Ok(())
-                },
-            )?,
-        )?;
-
-        /* LUA FUNCTIONS END */
         Ok(())
     }
 }
@@ -1152,7 +563,7 @@ impl Zone {
         }
         let mut np_lock = new_player.lock().await;
         np_lock.map_id = self.data.settings.map_id;
-        np_lock.zone_id = self.srv_zone_id;
+        np_lock.zone_pos = self.zone_pos;
         let np_id = np_lock.get_user_id();
         let Some(new_character) = np_lock.character.to_owned() else {
             unreachable!("User should be in state >= `PreInGame`")
@@ -1181,6 +592,7 @@ impl Zone {
                 ..Default::default()
             })
             .await?;
+        Self::load_objects(&self.lua, &self.objects, &mut np_lock)?;
         for (character, position, isgm) in other_characters {
             let player_id = character.player_id;
             np_lock
@@ -1243,9 +655,56 @@ impl Zone {
             user: Arc::downgrade(&new_player),
         });
 
+        let Some(lua) = self.lua.lock().procs.get("on_player_load").cloned() else {
+            return Ok(());
+        };
+        self.run_lua(np_id, &Packet::None, "on_player_load", &lua)
+            .await?;
+
         Ok(())
     }
-    pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
+
+    fn load_objects(
+        lua: &parking_lot::Mutex<LuaState>,
+        map_data: &Objects,
+        user: &mut User,
+    ) -> Result<(), Error> {
+        let lua_lock = lua.lock();
+        let lua = &lua_lock.lua;
+        for mut obj in map_data.objects.iter().cloned() {
+            if user.user_data.packet_type == PacketType::Vita {
+                let lua_code = lua_lock
+                    .procs
+                    .get(obj.data.name.as_str())
+                    .map(|s| s.as_str())
+                    .unwrap_or("");
+                let globals = lua.globals();
+                globals.set("data", obj.data.data.as_slice())?;
+                globals.set("call_type", "to_vita")?;
+                globals.set("size", obj.data.data.len())?;
+                let chunk = lua.load(lua_code);
+                chunk.exec()?;
+                obj.data.data = globals.get::<Vec<u32>>("data")?.into();
+                globals.raw_remove("data")?;
+                globals.raw_remove("call_type")?;
+                globals.raw_remove("size")?;
+            }
+            user.try_send_packet(&Packet::ObjectSpawn(obj.data))?;
+        }
+        for npc in map_data.npcs.iter().cloned() {
+            user.try_send_packet(&Packet::NPCSpawn(npc.data))?;
+        }
+        for event in map_data.events.iter().cloned() {
+            user.try_send_packet(&Packet::EventSpawn(event.data))?;
+        }
+        for tele in map_data.transporters.iter().cloned() {
+            user.try_send_packet(&Packet::TransporterSpawn(tele.data))?;
+        }
+
+        Ok(())
+    }
+
+    async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
         let (pos, _) = self
             .players
             .iter()
@@ -1273,6 +732,127 @@ impl Zone {
         .await;
         user.user.upgrade()
     }
+
+    async fn send_palette_change(&self, sender_id: PlayerId) -> Result<(), Error> {
+        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
+            return Err(Error::NoUserInMap(sender_id, self.data.name.clone()));
+        };
+        let Some(player) = user.user.upgrade() else {
+            return Err(Error::InvalidInput("send_palette_change"));
+        };
+        let new_eqipment = {
+            let p = player.lock().await;
+            let Some(character) = &p.character else {
+                unreachable!("Users in map should have characters")
+            };
+            (
+                character.palette.send_change_palette(sender_id),
+                character
+                    .palette
+                    .send_cur_weapon(sender_id, &character.inventory),
+            )
+        };
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.try_send_packet(&new_eqipment.0);
+            let _ = player.try_send_packet(&new_eqipment.1);
+        })
+        .await;
+
+        Ok(())
+    }
+    async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {
+        let mut out_packet = match packet {
+            Packet::Movement(_) => packet,
+            Packet::MovementEnd(mut data) => {
+                if data.unk1.id == 0 && data.unk2.id != 0 {
+                    data.unk1 = data.unk2;
+                }
+                Packet::MovementEnd(data)
+            }
+            Packet::MovementAction(data) => {
+                let packet = protocol::objects::MovementActionServerPacket {
+                    performer: data.performer,
+                    receiver: ObjectHeader {
+                        id: 0,
+                        entity_type: ObjectType::Player,
+                        ..Default::default()
+                    },
+                    unk3: data.unk3,
+                    unk4: data.unk4,
+                    unk5: data.unk5,
+                    unk6: data.unk6,
+                    action: data.action,
+                    unk7: data.unk7,
+                    unk8: data.unk8,
+                    unk9: data.unk9,
+                    unk10: data.unk10,
+                };
+                Packet::MovementActionServer(packet)
+            }
+            Packet::ActionUpdate(data) => {
+                let packet = protocol::objects::ActionUpdateServerPacket {
+                    performer: data.performer,
+                    unk2: data.unk2,
+                    receiver: ObjectHeader {
+                        id: 0,
+                        entity_type: ObjectType::Player,
+                        ..Default::default()
+                    },
+                };
+                Packet::ActionUpdateServer(packet)
+            }
+            Packet::ActionEnd(mut data) => {
+                data.unk1 = data.performer;
+                Packet::ActionEnd(data)
+            }
+            _ => return,
+        };
+        exec_users(&self.players, |user, mut player| {
+            if let Packet::MovementActionServer(ref mut data) = out_packet {
+                data.receiver.id = player.get_user_id();
+            } else if let Packet::ActionUpdateServer(ref mut data) = out_packet {
+                data.receiver.id = player.get_user_id();
+            }
+            if user.player_id != sender_id {
+                let _ = player.try_send_packet(&out_packet);
+            }
+        })
+        .await;
+    }
+
+    async fn send_message(&self, mut packet: Packet, id: PlayerId) {
+        if let Packet::ChatMessage(ref mut data) = packet {
+            data.object = ObjectHeader {
+                id,
+                entity_type: ObjectType::Player,
+                ..Default::default()
+            };
+        }
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.try_send_packet(&packet);
+        })
+        .await;
+    }
+
+    async fn send_sa(&self, data: SendSymbolArtPacket, id: PlayerId) {
+        let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
+            object: ObjectHeader {
+                id,
+                entity_type: ObjectType::Player,
+                ..Default::default()
+            },
+            uuid: data.uuid,
+            area: data.area,
+            unk1: data.unk1,
+            unk2: data.unk2,
+            unk3: data.unk3,
+        });
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.try_send_packet(&packet);
+        })
+        .await;
+    }
+
     fn prepare_enemy_packets(enemy_id: u32, enemy: &EnemyStats) -> (Packet, Packet) {
         let packet = enemy.create_spawn_packet(enemy_id);
         // techically this is a response to 0x04 0x2B
@@ -1284,7 +864,35 @@ impl Zone {
         let packet = Packet::EnemySpawn(packet);
         (packet, packet2)
     }
-    pub async fn deal_damage(
+
+    async fn spawn_enemy(
+        &mut self,
+        block_data: &BlockData,
+        max_id: &mut u32,
+        enemy_lvl: u32,
+        name: &str,
+        pos: Position,
+    ) -> Result<(), Error> {
+        let id = *max_id + 1;
+        *max_id += 1;
+        let data = EnemyStats::build(name, enemy_lvl, pos, &block_data.server_data)?;
+        let (packet, mut packet2) = Zone::prepare_enemy_packets(id, &data);
+        self.enemies.push((id, data));
+
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.try_send_packet(&packet);
+            if let Packet::EnemyAction(data) = &mut packet2 {
+                data.receiver = player.create_object_header();
+                data.action_starter = player.create_object_header();
+                let _ = player.try_send_packet(&packet2);
+            }
+        })
+        .await;
+
+        Ok(())
+    }
+
+    async fn deal_damage(
         &mut self,
         block_data: Arc<BlockData>,
         dmg: DealDamagePacket,
@@ -1417,8 +1025,21 @@ impl Zone {
     }
     async fn minimap_reveal(
         &mut self,
+        sender_id: PlayerId,
+        block_data: &BlockData,
+        max_id: &mut u32,
+        enemy_lvl: u32,
         packet: &protocol::questlist::MinimapRevealRequestPacket,
     ) -> Result<(), Error> {
+        let Some(user) = self
+            .players
+            .iter()
+            .find(|p| p.player_id == sender_id)
+            .cloned()
+        else {
+            return Err(Error::InvalidInput("minimap_reveal"));
+        };
+
         if let Some(chunk) = self
             .data
             .chunks
@@ -1429,6 +1050,117 @@ impl Zone {
                 self.minimap_status = RevealedRegions::new([0xFF; 10]);
                 // self.minimap_status[reveal.row as usize - 1].set(reveal.column as usize - 1, true);
             }
+
+            // wow, how nested
+            match chunk.enemy_spawn_type {
+                data_structs::map::EnemySpawnType::Disabled => {}
+                data_structs::map::EnemySpawnType::Automatic { min, max } => {
+                    let count = rand::distributions::Uniform::new_inclusive(min, max)
+                        .sample(&mut rand::thread_rng());
+                    if !self.chunk_spawns.iter().any(|s| s.0 == chunk.chunk_id) {
+                        self.chunk_spawns
+                            .push((chunk.chunk_id, std::time::Instant::now()));
+                        // this is length biased
+                        let spawn_category = self
+                            .data
+                            .enemies
+                            .iter()
+                            .map(|e| e.spawn_category)
+                            .choose(&mut rand::thread_rng())
+                            .unwrap_or_default();
+                        let spawn_point = chunk
+                            .enemy_spawn_points
+                            .iter()
+                            .choose(&mut rand::thread_rng());
+                        let spawn_point = match spawn_point {
+                            Some(x) => *x,
+                            None => user.user.upgrade().unwrap().lock().await.position,
+                        };
+                        for _ in 0..count {
+                            let enemy = self
+                                .data
+                                .enemies
+                                .iter()
+                                .filter(|e| e.spawn_category == spawn_category)
+                                .choose(&mut rand::thread_rng());
+                            if let Some(enemy) = enemy {
+                                let enemy_name = enemy.enemy_name.clone();
+                                self.spawn_enemy(
+                                    block_data,
+                                    max_id,
+                                    enemy_lvl,
+                                    &enemy_name,
+                                    spawn_point,
+                                )
+                                .await?;
+                            }
+                        }
+                    }
+                }
+                data_structs::map::EnemySpawnType::AutomaticWithRespawn {
+                    min,
+                    max,
+                    respawn_time,
+                } => {
+                    let count = rand::distributions::Uniform::new_inclusive(min, max)
+                        .sample(&mut rand::thread_rng());
+                    let (spawn, is_first) = if let Some(spawn) =
+                        self.chunk_spawns.iter().find(|s| s.0 == chunk.chunk_id)
+                    {
+                        (spawn, false)
+                    } else {
+                        self.chunk_spawns
+                            .push((chunk.chunk_id, std::time::Instant::now()));
+                        (self.chunk_spawns.last().unwrap(), true)
+                    };
+
+                    if is_first || spawn.1.elapsed() > respawn_time {
+                        // this is length biased
+                        let spawn_category = self
+                            .data
+                            .enemies
+                            .iter()
+                            .map(|e| e.spawn_category)
+                            .choose(&mut rand::thread_rng())
+                            .unwrap_or_default();
+                        let spawn_point = chunk
+                            .enemy_spawn_points
+                            .iter()
+                            .choose(&mut rand::thread_rng());
+                        let spawn_point = match spawn_point {
+                            Some(x) => *x,
+                            None => user.user.upgrade().unwrap().lock().await.position,
+                        };
+                        for _ in 0..count {
+                            let enemy = self
+                                .data
+                                .enemies
+                                .iter()
+                                .filter(|e| e.spawn_category == spawn_category)
+                                .choose(&mut rand::thread_rng());
+                            if let Some(enemy) = enemy {
+                                let enemy_name = enemy.enemy_name.clone();
+                                self.spawn_enemy(
+                                    block_data,
+                                    max_id,
+                                    enemy_lvl,
+                                    &enemy_name,
+                                    spawn_point,
+                                )
+                                .await?;
+                            }
+                        }
+                    }
+                }
+                data_structs::map::EnemySpawnType::Manual => {
+                    let proc = self.lua.lock().procs.get("spawn_enemy").cloned();
+                    if let Some(lua) = proc {
+                        self.run_lua(user.player_id, &packet, "spawn_enemy", &lua)
+                            .await?;
+                    };
+                }
+            }
+
             let mut packet = Packet::MinimapReveal(MinimapRevealPacket {
                 world: ObjectHeader {
                     id: self.data.settings.world_id,
@@ -1460,6 +1192,295 @@ impl Zone {
             }
         }
 
+        let proc = self.lua.lock().procs.get("on_minimap_reveal").cloned();
+        if let Some(lua) = proc {
+            self.run_lua(user.player_id, &packet, "on_minimap_reveal", &lua)
+                .await?;
+        };
+
+        Ok(())
+    }
+
+    async fn run_lua<S: serde::Serialize + Sync>(
+        &mut self,
+        sender_id: PlayerId,
+        packet: &S,
+        call_type: &str,
+        lua_data: &str,
+    ) -> Result<(), Error> {
+        spawn_blocking(|| self.run_lua_blocking(sender_id, packet, call_type, lua_data)).await?
+    }
+
+    fn run_lua_blocking<S: serde::Serialize + Sync>(
+        &mut self,
+        sender_id: PlayerId,
+        packet: &S,
+        call_type: &str,
+        lua_data: &str,
+    ) -> Result<(), Error> {
+        let mut scheduled_move = vec![];
+        let mut lobby_moves = vec![];
+
+        let Some(caller) = self
+            .players
+            .iter()
+            .find(|p| p.player_id == sender_id)
+            .and_then(|p| p.user.upgrade())
+        else {
+            unreachable!("Sender should exist in the current map");
+        };
+        let caller_lock = caller.lock_blocking();
+        let zone_set = &self.data;
+        drop(caller_lock);
+        let mut lua_lock = self.lua.lock();
+        {
+            let lua = &lua_lock.lua;
+            let globals = lua.globals();
+            let player_ids: Vec<_> = self.players.iter().map(|p| p.player_id).collect();
+            globals.set("zone", zone_set.name.clone())?;
+            globals.set("packet", lua.to_value(&packet)?)?;
+            globals.set("sender", sender_id)?;
+            globals.set("players", player_ids)?;
+            globals.set("call_type", call_type)?;
+            lua.scope(|scope| {
+                self.setup_scope(&globals, scope, &mut scheduled_move, &mut lobby_moves)?;
+
+                /* LUA FUNCTIONS */
+
+                // get account flag
+                globals.set(
+                    "get_account_flag",
+                    scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
+                        Ok(caller.lock_blocking().get_account_flags().get(flag as _))
+                    })?,
+                )?;
+                // get character flag
+                globals.set(
+                    "get_character_flag",
+                    scope.create_function_mut(|_, flag: u32| -> Result<u8, _> {
+                        if let Some(f) = caller.lock_blocking().get_char_flags() {
+                            Ok(f.get(flag as _))
+                        } else {
+                            unreachable!("Users in maps should have loaded characters")
+                        }
+                    })?,
+                )?;
+
+                /* LUA FUNCTIONS END */
+
+                let chunk = lua.load(lua_data);
+                chunk.exec()?;
+                Ok(())
+            })?;
+            globals.raw_remove("packet")?;
+            globals.raw_remove("sender")?;
+            globals.raw_remove("players")?;
+            globals.raw_remove("call_type")?;
+            globals.raw_remove("zone")?;
+        }
+        for (receiver, mapid) in scheduled_move {
+            lua_lock.to_move.push((receiver, mapid));
+        }
+        for receiver in lobby_moves {
+            lua_lock.to_lobby_move.push(receiver);
+        }
+        Ok(())
+    }
+
+    fn setup_scope<'s>(
+        &'s self,
+        globals: &mlua::Table,
+        scope: &'s mlua::Scope<'s, '_>,
+        scheduled_move: &'s mut Vec<(PlayerId, String)>,
+        lobby_moves: &'s mut Vec<PlayerId>,
+    ) -> Result<(), mlua::Error> {
+        /* LUA FUNCTIONS */
+
+        // send packet
+        let send =
+            scope.create_function_mut(move |lua, (receiver, packet): (u32, mlua::Value)| {
+                let packet: Packet = lua.from_value(packet)?;
+                if let Some(p) = self
+                    .players
+                    .iter()
+                    .find(|p| p.player_id == receiver)
+                    .and_then(|p| p.user.upgrade())
+                {
+                    p.lock_blocking()
+                        .send_packet_block(&packet)
+                        .map_err(mlua::Error::external)?;
+                }
+                Ok(())
+            })?;
+        globals.set("send", send)?;
+        // get object data
+        let get_object = scope.create_function(move |lua, id: u32| {
+            let object = self
+                .objects
+                .objects
+                .iter()
+                .find(|obj| obj.data.object.id == id)
+                .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
+            lua.to_value(&object.data)
+        })?;
+        globals.set("get_object", get_object)?;
+        // get npc data
+        let get_npc = scope.create_function(move |lua, id: u32| {
+            let object = self
+                .objects
+                .npcs
+                .iter()
+                .find(|obj| obj.data.object.id == id)
+                .ok_or(mlua::Error::runtime("Couldn't find requested npc"))?;
+            lua.to_value(&object.data)
+        })?;
+        globals.set("get_npc", get_npc)?;
+        // get additional data
+        let get_extra_data = scope.create_function(move |lua, id: u32| {
+            let object = self
+                .objects
+                .objects
+                .iter()
+                .map(|x| (x.data.object.id, &x.lua_data))
+                .chain(
+                    self.objects
+                        .npcs
+                        .iter()
+                        .map(|x| (x.data.object.id, &x.lua_data)),
+                )
+                .find(|(obj_id, _)| *obj_id == id)
+                .map(|(_, data)| data)
+                .ok_or(mlua::Error::runtime("Couldn't find requested object"))?;
+            match object {
+                Some(d) => lua.load(d).eval::<mlua::Value>(),
+                None => Ok(mlua::Value::Nil),
+            }
+        })?;
+        globals.set("get_extra_data", get_extra_data)?;
+        // move player to another submap
+        globals.set(
+            "move_player",
+            scope.create_function_mut(|_, (receiver, zone): (u32, String)| {
+                scheduled_move.push((receiver, zone));
+                Ok(())
+            })?,
+        )?;
+        // move player to lobby
+        globals.set(
+            "move_lobby",
+            scope.create_function_mut(|_, receiver: u32| {
+                lobby_moves.push(receiver);
+                Ok(())
+            })?,
+        )?;
+        // set account flag
+        globals.set(
+            "set_account_flag",
+            scope.create_function_mut(move |_, (receiver, flag, value): (u32, u32, u8)| {
+                if let Some(p) = self
+                    .players
+                    .iter()
+                    .find(|p| p.player_id == receiver)
+                    .and_then(|p| p.user.upgrade())
+                {
+                    p.lock_blocking()
+                        .set_account_flag_block(flag, value != 0)
+                        .map_err(mlua::Error::external)?;
+                }
+                Ok(())
+            })?,
+        )?;
+        // set character flag
+        globals.set(
+            "set_character_flag",
+            scope.create_function_mut(move |_, (receiver, flag, value): (u32, u32, u8)| {
+                if let Some(p) = self
+                    .players
+                    .iter()
+                    .find(|p| p.player_id == receiver)
+                    .and_then(|p| p.user.upgrade())
+                {
+                    p.lock_blocking()
+                        .set_char_flag_block(flag, value != 0)
+                        .map_err(mlua::Error::external)?;
+                }
+                Ok(())
+            })?,
+        )?;
+        // delete all npcs from the client
+        globals.set(
+            "delete_all_npcs_packets",
+            scope.create_function_mut(move |lua, receiver: u32| -> Result<mlua::Value, _> {
+                let mut packets = vec![];
+                for object in self.objects.npcs.iter().filter(|n| n.is_active) {
+                    packets.push(Packet::DespawnObject(
+                        protocol::objects::DespawnObjectPacket {
+                            player: ObjectHeader {
+                                id: receiver,
+                                entity_type: ObjectType::Player,
+                                ..Default::default()
+                            },
+                            item: object.data.object,
+                        },
+                    ))
+                }
+                lua.to_value(&packets)
+            })?,
+        )?;
+        // unlock one quest
+        globals.set(
+            "unlock_quest",
+            scope.create_function_mut(
+                move |_, (receiver, name_id): (u32, u32)| -> Result<(), _> {
+                    if let Some(p) = self
+                        .players
+                        .iter()
+                        .find(|p| p.player_id == receiver)
+                        .and_then(|p| p.user.upgrade())
+                    {
+                        let mut lock = p.lock_blocking();
+                        let char = lock
+                            .character
+                            .as_mut()
+                            .expect("Character should be loaded for users in map");
+                        if !char.unlocked_quests.contains(&name_id) {
+                            char.unlocked_quests.push(name_id);
+                            char.unlocked_quests_notif.push(name_id);
+                        }
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        // unlock multiple quests
+        globals.set(
+            "unlock_quests",
+            scope.create_function_mut(
+                move |_, (receiver, name_id): (u32, Vec<u32>)| -> Result<(), _> {
+                    if let Some(p) = self
+                        .players
+                        .iter()
+                        .find(|p| p.player_id == receiver)
+                        .and_then(|p| p.user.upgrade())
+                    {
+                        let mut lock = p.lock_blocking();
+                        let char = lock
+                            .character
+                            .as_mut()
+                            .expect("Character should be loaded for users in map");
+                        for name in name_id {
+                            if !char.unlocked_quests.contains(&name) {
+                                char.unlocked_quests.push(name);
+                                char.unlocked_quests_notif.push(name);
+                            }
+                        }
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+
+        /* LUA FUNCTIONS END */
         Ok(())
     }
 }

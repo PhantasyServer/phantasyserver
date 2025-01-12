@@ -113,10 +113,10 @@ pub async fn equip_item(mut user: MutexGuard<'_, User>, packet: EquipItemRequest
         equipment_pos: packet.equipment_pos,
         ..Default::default()
     });
-    let user_id = user.get_user_id();
+    let zone = user.zone_pos;
     if let Some(map) = user.get_current_map() {
         drop(user);
-        map.lock().await.send_to_all(user_id, &equip_packet).await;
+        map.lock().await.send_to_all(zone, &equip_packet).await;
     }
 
     Ok(Action::Nothing)
@@ -137,10 +137,10 @@ pub async fn unequip_item(
         equipment_pos: packet.equipment_pos,
         ..Default::default()
     });
-    let user_id = user.get_user_id();
+    let zone = user.zone_pos;
     if let Some(map) = user.get_current_map() {
         drop(user);
-        map.lock().await.send_to_all(user_id, &equip_packet).await;
+        map.lock().await.send_to_all(zone, &equip_packet).await;
     }
 
     Ok(Action::Nothing)
