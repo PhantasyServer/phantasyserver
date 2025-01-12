@@ -23,7 +23,7 @@ pub async fn init_block(
 ) -> Result<(), Error> {
     let listener = TcpListener::bind(("0.0.0.0", this_block.port)).await?;
 
-    let latest_mapid = AtomicU32::new(0);
+    let latest_mapid = AtomicU32::new(1);
 
     let Some(lobby) = this_block.server_data.maps.get(&this_block.lobby_map) else {
         return Err(Error::NoMapFound(this_block.lobby_map.clone()));
@@ -43,7 +43,7 @@ pub async fn init_block(
         lobby,
         key,
         latest_mapid,
-        latest_partyid: AtomicU32::new(0),
+        latest_partyid: AtomicU32::new(1),
         server_data: this_block.server_data,
         quests: this_block.quests,
         clients: Mutex::new(vec![]),

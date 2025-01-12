@@ -296,12 +296,11 @@ impl EnemyStats {
 
         Ok(resulting_stats)
     }
-    pub fn create_spawn_packet(&self, id: u32, map_id: u16) -> EnemySpawnPacket {
+    pub fn create_spawn_packet(&self, id: u32) -> EnemySpawnPacket {
         EnemySpawnPacket {
             object: pso2packetlib::protocol::ObjectHeader {
                 id,
                 entity_type: pso2packetlib::protocol::ObjectType::Object,
-                map_id,
                 ..Default::default()
             },
             position: self.pos,

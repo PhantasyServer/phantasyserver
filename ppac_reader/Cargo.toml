@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 byteorder = { version = "1.5.0", features = ["i128"]}
-pso2packetlib = { version = "0.3.0", default-features = false, features = ["serde", "ppac", "ngs_packets"]}
+pso2packetlib = { version = "0.4.0", default-features = false, features = ["serde", "ppac", "ngs_packets"]}
 data_structs = { path = "../data_structs", features = ["rmp", "json"] }
 serde = "1.0.204"
 serde_json = "1.0.121"

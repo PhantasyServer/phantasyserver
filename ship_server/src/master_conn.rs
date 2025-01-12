@@ -85,10 +85,7 @@ impl MasterConnection {
                     }
                 }
             }
-            log::warn!(
-                "The authenticity of master server '{}' can't be established.",
-                local_addr
-            );
+            log::warn!("The authenticity of master server '{ip}' can't be established.");
             log::warn!("Key fingerprint is SHA256:{fingerprint}",);
             let confirm =
                 dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
@@ -97,10 +94,7 @@ impl MasterConnection {
                     .unwrap();
             if confirm {
                 hostkeys.keys.push(HostKey { ip, fingerprint });
-                log::warn!(
-                    "Permanently added '{}' to the list of known master ships.",
-                    local_addr
-                );
+                log::warn!("Permanently added '{ip}' to the list of known master ships.");
                 true
             } else {
                 false

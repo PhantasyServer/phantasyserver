@@ -94,9 +94,17 @@ pub enum EnemySpawnType {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
+pub struct ChunkReveal {
+    pub row: u32,
+    pub column: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
 pub struct ZoneChunk {
     pub zone_id: ZoneId,
     pub chunk_id: u32,
     pub enemy_spawn_type: EnemySpawnType,
     pub enemy_spawn_points: Vec<Position>,
+    pub reveals: Vec<ChunkReveal>,
 }

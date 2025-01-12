@@ -180,7 +180,10 @@ pub async fn minimap_reveal(
 ) -> HResult {
     user.send_packet(&Packet::SystemMessage(
         pso2packetlib::protocol::unk19::SystemMessagePacket {
-            message: format!("Chunk ID: {}", data.chunk_id),
+            message: format!(
+                "Chunk ID: {}, {}:{}",
+                data.chunk_id, data.map_row, data.map_column
+            ),
             msg_type: pso2packetlib::protocol::unk19::MessageType::EventInformationYellow,
             ..Default::default()
         },

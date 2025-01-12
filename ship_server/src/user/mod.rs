@@ -40,6 +40,7 @@ pub struct User {
     ready_to_shutdown: bool,
     pub party_invites: Vec<PartyInvite>,
     pub party_ignore: Pr::party::RejectStatus,
+    pub map_id: u32,
     pub zone_id: u32,
     firstload: bool,
     pub state: UserState,
@@ -86,6 +87,7 @@ impl User {
                 ready_to_shutdown: false,
                 party_invites: vec![],
                 party_ignore: Default::default(),
+                map_id: 0,
                 zone_id: 0,
                 firstload: true,
                 state: UserState::LoggingIn,
@@ -168,6 +170,9 @@ impl User {
     }
     pub const fn get_user_id(&self) -> u32 {
         self.user_data.id
+    }
+    pub const fn get_map_id(&self) -> u32 {
+        self.map_id
     }
     pub const fn get_zone_id(&self) -> u32 {
         self.zone_id

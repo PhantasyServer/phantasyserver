@@ -3,7 +3,7 @@ use crate::{
     mutex::{Mutex, MutexGuard},
     BlockData, Error, User,
 };
-use data_structs::map::MapData;
+use data_structs::map::{MapData, ZoneData};
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
     self,
@@ -11,7 +11,8 @@ use pso2packetlib::protocol::{
     models::Position,
     objects::EnemyActionPacket,
     playerstatus::{DealDamagePacket, GainedEXPPacket, SetPlayerIDPacket},
-    server::MapTransferPacket,
+    questlist::{MinimapRevealPacket, RevealedRegions},
+    server::{LoadLevelPacket, MapTransferPacket},
     spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
     ObjectHeader, ObjectType, Packet, PacketType,
@@ -31,17 +32,23 @@ type PlayerId = u32;
 #[derive(Clone)]
 struct MapPlayer {
     player_id: PlayerId,
-    zone_id: ZoneId,
-    chunk_id: u32,
     user: Weak<Mutex<User>>,
 }
 
 #[derive(Clone)]
 struct OwnedMapPlayer {
     player_id: PlayerId,
-    zone_id: ZoneId,
-    chunk_id: u32,
     user: Arc<Mutex<User>>,
+}
+
+struct Zone {
+    srv_zone_id: ZoneId,
+    obj: ObjectHeader,
+    players: Vec<MapPlayer>,
+    enemies: Vec<(u32, EnemyStats)>,
+    chunk_spawns: Vec<(u32, Instant)>,
+    minimap_status: RevealedRegions,
+    data: ZoneData,
 }
 
 pub enum MapType {
@@ -53,17 +60,14 @@ pub struct Map {
     // lua is not `Send` so i've put it in a mutex
     // this mutex shouldn't block, because `Map` is under a mutex itself.
     lua: parking_lot::Mutex<Lua>,
-    map_objs: Vec<(ZoneId, ObjectHeader)>,
+    zones: Vec<Zone>,
     data: MapData,
-    players: Vec<MapPlayer>,
     // fighting with async recursion
     to_move: Vec<(PlayerId, String)>,
     to_lobby_move: Vec<PlayerId>,
     max_id: u32,
     block_data: Option<Arc<BlockData>>,
-    enemies: Vec<(u32, ZoneId, EnemyStats)>,
     enemy_level: u32,
-    chunk_spawns: Vec<(u32, Instant)>,
     map_type: MapType,
 }
 impl Map {
@@ -72,16 +76,13 @@ impl Map {
         let lua_libs = StdLib::NONE;
         let mut map = Self {
             lua: Lua::new_with(lua_libs, mlua::LuaOptions::default())?.into(),
-            map_objs: vec![],
+            zones: vec![],
             data,
-            players: vec![],
             to_move: vec![],
             to_lobby_move: vec![],
             max_id: 0,
             block_data: None,
-            enemies: vec![],
             enemy_level: 0,
-            chunk_spawns: vec![],
             map_type: MapType::QuestMap,
         };
         let map_obj = ObjectHeader {
@@ -90,18 +91,27 @@ impl Map {
             ..Default::default()
         };
         map.data.map_data.map_object = map_obj;
-        let def_id = map.data.init_map;
-        map.map_objs.push((def_id, map_obj));
-        for zone in &map.data.zones {
-            map.map_objs.push((
-                zone.zone_id,
-                ObjectHeader {
+        map.data.map_data.settings = map.data.zones[0].settings.clone();
+        map.data.map_data.other_settings.clear();
+        for zone in std::mem::take(&mut map.data.zones) {
+            if !zone.is_special_zone {
+                map.data.map_data.other_settings.push(zone.settings.clone());
+            }
+            map.zones.push(Zone {
+                srv_zone_id: zone.zone_id,
+                players: vec![],
+                obj: ObjectHeader {
                     id: map_obj_id.fetch_add(1, Ordering::Relaxed),
                     entity_type: ObjectType::Map,
                     ..Default::default()
                 },
-            ))
+                enemies: vec![],
+                chunk_spawns: vec![],
+                minimap_status: Default::default(),
+                data: zone,
+            });
         }
+        log::trace!("Map data: {:?}", map.data.map_data);
         map.init_lua()?;
         map.find_max_id();
         log::trace!("Map {} created", map_obj.id);
@@ -200,48 +210,47 @@ impl Map {
 
     pub async fn init_add_player(&mut self, new_player: Arc<Mutex<User>>) -> Result<(), Error> {
         let mut np_lock = new_player.lock().await;
+        let map_data = self.data.map_data.clone();
+        let obj = np_lock.create_object_header();
         np_lock
-            .send_packet(&Packet::LoadLevel(self.data.map_data.clone()))
+            .send_packet(&Packet::LoadLevel(LoadLevelPacket {
+                receiver: obj,
+                ..map_data
+            }))
             .await?;
         drop(np_lock);
         self.add_player(new_player, self.data.init_map).await
     }
     pub async fn move_player_named(&mut self, id: PlayerId, name: &str) -> Result<(), Error> {
-        let Some(zone) = self.data.zones.iter().find(|z| z.name == name) else {
+        let Some(zone) = self.zones.iter().find(|z| z.data.name == name) else {
             return Err(Error::InvalidInput("move_player_named"));
         };
-        self.move_player(id, zone.zone_id).await
+        self.move_player(id, zone.srv_zone_id).await
     }
-    pub async fn move_player(&mut self, id: PlayerId, zone_id: ZoneId) -> Result<(), Error> {
+    async fn move_player(&mut self, id: PlayerId, srv_zone_id: ZoneId) -> Result<(), Error> {
         let Some(player) = self.remove_player(id).await else {
             return Err(Error::NoUserInMap(id, self.data.map_data.unk7.to_string()));
         };
-        let Some(map) = self.data.zones.iter().find(|z| z.zone_id == zone_id) else {
+        let Some(zone) = self.zones.iter().find(|z| z.srv_zone_id == srv_zone_id) else {
             return Err(Error::NoMapInMapSet(
-                zone_id,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
-        let Some((_, map_obj)) = self.map_objs.iter().find(|(m, _)| *m == map.zone_id) else {
-            return Err(Error::NoMapInMapSet(
-                zone_id,
+                srv_zone_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
         let mut lock = player.lock().await;
         let pid = lock.get_user_id();
         lock.send_packet(&Packet::MapTransfer(MapTransferPacket {
-            map: *map_obj,
+            map: zone.obj,
             target: ObjectHeader {
                 id: pid,
                 entity_type: ObjectType::Player,
                 ..Default::default()
             },
-            settings: map.settings.clone(),
+            settings: zone.data.settings.clone(),
         }))
         .await?;
         drop(lock);
-        self.add_player(player, map.zone_id).await
+        self.add_player(player, srv_zone_id).await
     }
     pub async fn move_to_lobby(&mut self, id: PlayerId) -> Result<(), Error> {
         if matches!(self.map_type, MapType::Lobby) {
@@ -255,155 +264,45 @@ impl Map {
         let mut lock = lobby.lock().await;
         lock.init_add_player(player).await
     }
-
     async fn add_player(
         &mut self,
         new_player: Arc<Mutex<User>>,
-        zone_id: ZoneId,
+        srv_zone_id: ZoneId,
     ) -> Result<(), Error> {
-        let mut other_equipment = Vec::with_capacity(self.players.len() * 2);
-        let mut other_characters = Vec::with_capacity(self.players.len());
-        for player in self
-            .players
-            .iter()
-            .filter(|p| p.zone_id == zone_id)
-            .filter_map(|p| p.user.upgrade())
-        {
-            let p = player.lock().await;
-            let pid = p.get_user_id();
-            let Some(char_data) = &p.character else {
-                unreachable!("User should be in state >= `PreInGame`")
-            };
-            other_equipment.push(char_data.palette.send_change_palette(pid));
-            other_equipment.push(char_data.palette.send_cur_weapon(pid, &char_data.inventory));
-            other_equipment.push(char_data.inventory.send_equiped(pid));
-            other_characters.push((char_data.character.clone(), p.position, p.user_data.isgm));
-        }
-        let mut np_lock = new_player.lock().await;
-        np_lock.zone_id = zone_id;
-        let np_id = np_lock.get_user_id();
-        let Some(new_character) = np_lock.character.to_owned() else {
-            unreachable!("User should be in state >= `PreInGame`")
+        let Some(zone) = self.zones.iter_mut().find(|z| z.srv_zone_id == srv_zone_id) else {
+            return Err(Error::InvalidInput("add_player"));
         };
-        self.data.map_data.receiver.id = np_id;
-        self.data.map_data.receiver.entity_type = ObjectType::Player;
-        np_lock
-            .send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
-                player_id: np_id,
-                unk2: 4,
-                ..Default::default()
-            }))
-            .await?;
-        let pos = self
-            .data
-            .zones
-            .iter()
-            .find(|z| z.zone_id == zone_id)
-            .map(|z| z.default_location)
-            .unwrap_or_default();
-        np_lock.position = pos;
-        let np_gm = np_lock.user_data.isgm as u32;
-        np_lock
-            .spawn_character(CharacterSpawnPacket {
-                position: pos,
-                character: new_character.character.clone(),
-                spawn_type: CharacterSpawnType::Myself,
-                gm_flag: np_gm,
-                player_obj: ObjectHeader {
-                    id: np_id,
-                    entity_type: ObjectType::Player,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .await?;
-        Self::load_objects(&self.lua, &self.data, zone_id, &mut np_lock)?;
-        for (character, position, isgm) in other_characters {
-            let player_id = character.player_id;
-            np_lock
-                .spawn_character(CharacterSpawnPacket {
-                    position,
-                    spawn_type: CharacterSpawnType::Other,
-                    gm_flag: isgm as u32,
-                    player_obj: ObjectHeader {
-                        id: player_id,
-                        entity_type: ObjectType::Player,
-                        ..Default::default()
-                    },
-                    character,
-                    ..Default::default()
-                })
-                .await?;
-        }
-        for equipment in other_equipment {
-            np_lock.send_packet(&equipment).await?;
-        }
-        let new_eqipment = (
-            new_character.palette.send_change_palette(np_id),
-            new_character
-                .palette
-                .send_cur_weapon(np_id, &new_character.inventory),
-            new_character.inventory.send_equiped(np_id),
-        );
-
-        let map_id = self
-            .data
-            .zones
-            .iter()
-            .find(|z| z.zone_id == zone_id)
-            .map(|z| z.settings.map_id)
-            .unwrap();
-        for (id, _, enemy) in self.enemies.iter().filter(|(_, zid, _)| *zid == zone_id) {
-            let (packet, mut packet2) = Self::prepare_enemy_packets(*id, map_id, enemy);
-            if let Packet::EnemyAction(data) = &mut packet2 {
-                data.receiver = np_lock.create_object_header();
-                data.action_starter = np_lock.create_object_header();
-            }
-            np_lock.send_packet(&packet).await?;
-            np_lock.send_packet(&packet2).await?;
-        }
-        drop(np_lock);
-
-        exec_users(&self.players, zone_id, |_, mut player| {
-            let _ = player.try_spawn_character(CharacterSpawnPacket {
-                position: pos,
-                spawn_type: CharacterSpawnType::Other,
-                gm_flag: np_gm,
-                player_obj: ObjectHeader {
-                    id: new_character.character.player_id,
-                    entity_type: ObjectType::Player,
-                    ..Default::default()
-                },
-                character: new_character.character.clone(),
-                ..Default::default()
-            });
-            let _ = player.try_send_packet(&new_eqipment.0);
-            let _ = player.try_send_packet(&new_eqipment.1);
-            let _ = player.try_send_packet(&new_eqipment.2);
-        })
-        .await;
-        self.players.push(MapPlayer {
-            player_id: np_id,
-            zone_id,
-            chunk_id: 0,
-            user: Arc::downgrade(&new_player),
-        });
-
+        zone.add_player(new_player.clone()).await?;
+        let mut lock = new_player.lock().await;
+        Self::load_objects(&self.lua, &self.data, srv_zone_id, &mut lock)?;
         let Some(lua) = self.data.luas.get("on_player_load").cloned() else {
             return Ok(());
         };
-        self.run_lua(np_id, zone_id, &Packet::None, "on_player_load", &lua)
-            .await?;
+        self.run_lua(
+            lock.get_user_id(),
+            srv_zone_id,
+            &Packet::None,
+            "on_player_load",
+            &lua,
+        )
+        .await?;
         Ok(())
     }
+    fn find_player(&self, id: PlayerId) -> Option<(usize, &MapPlayer)> {
+        self.zones
+            .iter()
+            .enumerate()
+            .flat_map(|(i, z)| z.players.iter().map(move |p| (i, p)))
+            .find(|(_, p)| p.player_id == id)
+    }
+
     pub async fn send_palette_change(&self, sender_id: PlayerId) -> Result<(), Error> {
-        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
+        let Some((zone_pos, user)) = self.find_player(sender_id) else {
             return Err(Error::NoUserInMap(
                 sender_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = user.zone_id;
         let Some(player) = user.user.upgrade() else {
             return Err(Error::InvalidInput("send_palette_change"));
         };
@@ -419,7 +318,7 @@ impl Map {
                     .send_cur_weapon(sender_id, &character.inventory),
             )
         };
-        exec_users(&self.players, zone_id, |_, mut player| {
+        exec_users(&self.zones[zone_pos].players, |_, mut player| {
             let _ = player.try_send_packet(&new_eqipment.0);
             let _ = player.try_send_packet(&new_eqipment.1);
         })
@@ -428,21 +327,19 @@ impl Map {
         Ok(())
     }
     pub async fn send_to_all(&self, sender_id: PlayerId, packet: &Packet) {
-        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
+        let Some((zone_pos, _)) = self.find_player(sender_id) else {
             return;
         };
-        let zone_id = user.zone_id;
-        exec_users(&self.players, zone_id, |_, mut player| {
+        exec_users(&self.zones[zone_pos].players, |_, mut player| {
             let _ = player.try_send_packet(packet);
         })
         .await;
     }
 
     pub async fn send_movement(&self, packet: Packet, sender_id: PlayerId) {
-        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
+        let Some((zone_pos, _)) = self.find_player(sender_id) else {
             return;
         };
-        let zone_id = user.zone_id;
         let mut out_packet = match packet {
             Packet::Movement(_) => packet,
             Packet::MovementEnd(mut data) => {
@@ -489,7 +386,7 @@ impl Map {
             }
             _ => return,
         };
-        exec_users(&self.players, zone_id, |user, mut player| {
+        exec_users(&self.zones[zone_pos].players, |user, mut player| {
             if let Packet::MovementActionServer(ref mut data) = out_packet {
                 data.receiver.id = player.get_user_id();
             } else if let Packet::ActionUpdateServer(ref mut data) = out_packet {
@@ -503,10 +400,9 @@ impl Map {
     }
 
     pub async fn send_message(&self, mut packet: Packet, id: PlayerId) {
-        let Some(user) = self.players.iter().find(|p| p.player_id == id) else {
+        let Some((zone_pos, _)) = self.find_player(id) else {
             return;
         };
-        let zone_id = user.zone_id;
         if let Packet::ChatMessage(ref mut data) = packet {
             data.object = ObjectHeader {
                 id,
@@ -514,17 +410,16 @@ impl Map {
                 ..Default::default()
             };
         }
-        exec_users(&self.players, zone_id, |_, mut player| {
+        exec_users(&self.zones[zone_pos].players, |_, mut player| {
             let _ = player.try_send_packet(&packet);
         })
         .await;
     }
 
     pub async fn send_sa(&self, data: SendSymbolArtPacket, id: PlayerId) {
-        let Some(user) = self.players.iter().find(|p| p.player_id == id) else {
+        let Some((zone_pos, _)) = self.find_player(id) else {
             return;
         };
-        let zone_id = user.zone_id;
         let packet = Packet::ReceiveSymbolArt(ReceiveSymbolArtPacket {
             object: ObjectHeader {
                 id,
@@ -537,39 +432,17 @@ impl Map {
             unk2: data.unk2,
             unk3: data.unk3,
         });
-        exec_users(&self.players, zone_id, |_, mut player| {
+        exec_users(&self.zones[zone_pos].players, |_, mut player| {
             let _ = player.try_send_packet(&packet);
         })
         .await;
     }
 
     pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
-        let (pos, _) = self
-            .players
-            .iter()
-            .enumerate()
-            .find(|(_, p)| p.player_id == id)?;
-        let user = self.players.swap_remove(pos);
-        let mut packet = Packet::DespawnPlayer(protocol::objects::DespawnPlayerPacket {
-            receiver: ObjectHeader {
-                id: 0,
-                entity_type: ObjectType::Player,
-                ..Default::default()
-            },
-            removed_player: ObjectHeader {
-                id,
-                entity_type: ObjectType::Player,
-                ..Default::default()
-            },
-        });
-        exec_users(&self.players, user.zone_id, |_, mut player| {
-            if let Packet::DespawnPlayer(data) = &mut packet {
-                data.receiver.id = player.get_user_id();
-                let _ = player.try_send_packet(&packet);
-            }
-        })
-        .await;
-        user.user.upgrade()
+        let Some((zone_pos, _)) = self.find_player(id) else {
+            return None;
+        };
+        self.zones[zone_pos].remove_player(id).await
     }
     pub async fn spawn_enemy(
         &mut self,
@@ -583,17 +456,15 @@ impl Map {
         let id = self.max_id + 1;
         self.max_id += 1;
         let data = EnemyStats::build(name, self.enemy_level, pos, &block_data.server_data)?;
-        let map_id = self
-            .data
+        let (packet, mut packet2) = Zone::prepare_enemy_packets(id, &data);
+        let zone = self
             .zones
-            .iter()
-            .find(|z| z.zone_id == zone_id)
-            .map(|z| z.settings.map_id)
+            .iter_mut()
+            .find(|z| z.srv_zone_id == zone_id)
             .unwrap();
-        let (packet, mut packet2) = Self::prepare_enemy_packets(id, map_id, &data);
-        self.enemies.push((id, zone_id, data));
+        zone.enemies.push((id, data));
 
-        exec_users(&self.players, zone_id, |_, mut player| {
+        exec_users(&zone.players, |_, mut player| {
             let _ = player.try_send_packet(&packet);
             if let Packet::EnemyAction(data) = &mut packet2 {
                 data.receiver = player.create_object_header();
@@ -605,151 +476,18 @@ impl Map {
 
         Ok(())
     }
-    fn prepare_enemy_packets(enemy_id: u32, map_id: u32, enemy: &EnemyStats) -> (Packet, Packet) {
-        let packet = enemy.create_spawn_packet(enemy_id, map_id as _);
-        // techically this is a response to 0x04 0x2B
-        let packet2 = Packet::EnemyAction(EnemyActionPacket {
-            actor: packet.object,
-            action_id: 7,
-            ..Default::default()
-        });
-        let packet = Packet::EnemySpawn(packet);
-        (packet, packet2)
-    }
     pub async fn deal_damage(&mut self, dmg: DealDamagePacket) -> Result<(), Error> {
         let Some(block_data) = self.block_data.to_owned() else {
             return Err(Error::InvalidInput("deal_damage"));
         };
-        let (inflicter, target) = (dmg.inflicter, dmg.target);
-        if inflicter.entity_type == ObjectType::Player && target.entity_type == ObjectType::Object {
-            let Some((pos, (_, _, target))) = self
-                .enemies
-                .iter_mut()
-                .enumerate()
-                .find(|(_, (id, _, _))| *id == target.id)
-            else {
-                return Ok(());
-            };
-            let Some(inflicter) = self
-                .players
-                .iter()
-                .find(|u| u.player_id == inflicter.id)
-                .and_then(|p| p.user.upgrade())
-            else {
-                return Err(Error::InvalidInput("deal_damage"));
-            };
-            let mut lock = inflicter.lock().await;
-            let zone_id = lock.get_zone_id();
-            let result = lock
-                .get_stats_mut()
-                .damage_enemy(target, &block_data.server_data, dmg)?;
-            drop(lock);
-            match result {
-                BattleResult::Damaged { dmg_packet } => {
-                    let mut packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, zone_id, |_, mut player| {
-                        if let Packet::DamageReceive(data) = &mut packet {
-                            data.receiver = player.create_object_header();
-                            let _ = player.try_send_packet(&packet);
-                        }
-                    })
-                    .await;
-                }
-                BattleResult::Killed {
-                    dmg_packet,
-                    kill_packet,
-                    exp_amount,
-                } => {
-                    let mut action_packet = Packet::EnemyAction(EnemyActionPacket {
-                        actor: dmg_packet.dmg_target,
-                        action_starter: dmg_packet.dmg_inflicter,
-                        action_id: 4,
-                        ..Default::default()
-                    });
-                    let mut dmg_packet = Packet::DamageReceive(dmg_packet);
-                    let mut kill_packet = Packet::EnemyKilled(kill_packet);
-                    let mut exp_packets = vec![];
-                    exec_users(&self.players, zone_id, |_, mut player| {
-                        exp_packets.push(player.add_exp(exp_amount))
-                    })
-                    .await;
-                    let exp_packets = exp_packets.into_iter().collect::<Result<Vec<_>, _>>()?;
-                    let mut exp_packet = Packet::GainedEXP(GainedEXPPacket {
-                        receivers: exp_packets,
-                        ..Default::default()
-                    });
-                    exec_users(&self.players, zone_id, |_, mut player| {
-                        if let Packet::DamageReceive(data) = &mut dmg_packet {
-                            data.receiver = player.create_object_header();
-                            let _ = player.try_send_packet(&dmg_packet);
-                        }
-                        if let Packet::EnemyKilled(data) = &mut kill_packet {
-                            data.receiver = player.create_object_header();
-                            let _ = player.try_send_packet(&kill_packet);
-                        }
-                        if let Packet::GainedEXP(data) = &mut exp_packet {
-                            data.sender = player.create_object_header();
-                            let _ = player.try_send_packet(&exp_packet);
-                        }
-                        if let Packet::EnemyAction(data) = &mut action_packet {
-                            data.receiver = player.create_object_header();
-                            let _ = player.try_send_packet(&action_packet);
-                        }
-                    })
-                    .await;
-                    self.enemies.remove(pos);
-                }
-            }
-        } else if inflicter.entity_type == ObjectType::Object
-            && target.entity_type == ObjectType::Player
-        {
-            let Some(target) = self
-                .players
-                .iter_mut()
-                .find(|u| u.player_id == target.id)
-                .and_then(|p| p.user.upgrade())
-            else {
-                return Err(Error::InvalidInput("deal_damage"));
-            };
-            let Some((_, _, inflicter)) = self
-                .enemies
-                .iter_mut()
-                .find(|(id, _, _)| *id == inflicter.id)
-            else {
-                return Ok(());
-            };
-            let mut lock = target.lock().await;
-            let zone_id = lock.get_zone_id();
-            let result =
-                inflicter.damage_player(lock.get_stats_mut(), &block_data.server_data, dmg)?;
-            drop(lock);
+        let Some(zone) = self.zones.iter_mut().find(|z| {
+            z.players.iter().any(|p| p.player_id == dmg.inflicter.id)
+                || z.enemies.iter().any(|e| e.0 == dmg.inflicter.id)
+        }) else {
+            return Err(Error::InvalidInput("deal_damage"));
+        };
 
-            match result {
-                BattleResult::Damaged { dmg_packet } => {
-                    let mut packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, zone_id, |_, mut player| {
-                        if let Packet::DamageReceive(data) = &mut packet {
-                            data.receiver = player.create_object_header();
-                            let _ = player.try_send_packet(&packet);
-                        }
-                    })
-                    .await;
-                }
-                BattleResult::Killed { dmg_packet, .. } => {
-                    let mut dmg_packet = Packet::DamageReceive(dmg_packet);
-                    exec_users(&self.players, zone_id, |_, mut player| {
-                        if let Packet::DamageReceive(data) = &mut dmg_packet {
-                            data.receiver = player.create_object_header();
-                            let _ = player.try_send_packet(&dmg_packet);
-                        }
-                    })
-                    .await;
-                    todo!();
-                }
-            }
-        }
-
-        Ok(())
+        zone.deal_damage(block_data, dmg).await
     }
     fn load_objects(
         lua: &parking_lot::Mutex<Lua>,
@@ -816,39 +554,34 @@ impl Map {
         sender_id: PlayerId,
         packet: protocol::questlist::MinimapRevealRequestPacket,
     ) -> Result<(), Error> {
-        let Some(user) = self.players.iter_mut().find(|p| p.player_id == sender_id) else {
-            return Err(Error::NoUserInMap(
-                sender_id,
-                self.data.map_data.unk7.to_string(),
-            ));
-        };
-        let zone_id = user.zone_id;
-        user.chunk_id = packet.chunk_id;
-        let user = user.clone();
-        let Some(zone) = self
-            .data
-            .zones
-            .iter()
-            .find(|z| z.zone_id == user.zone_id)
-            .cloned()
-        else {
+        let Some((zone_pos, user)) = self.find_player(sender_id) else {
             return Err(Error::NoMapInMapSet(
-                user.zone_id,
+                self.data.map_data.map_object.id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        if let Some(chunk) = zone.chunks.iter().find(|c| c.chunk_id == packet.chunk_id) {
+        let user = user.clone();
+        let zone = &mut self.zones[zone_pos];
+        let zone_id = zone.srv_zone_id;
+
+        if let Some(chunk) = zone
+            .data
+            .chunks
+            .iter()
+            .find(|c| c.chunk_id == packet.chunk_id)
+        {
             // wow, how nested
             match chunk.enemy_spawn_type {
                 data_structs::map::EnemySpawnType::Disabled => {}
                 data_structs::map::EnemySpawnType::Automatic { min, max } => {
                     let count = rand::distributions::Uniform::new_inclusive(min, max)
                         .sample(&mut rand::thread_rng());
-                    if !self.chunk_spawns.iter().any(|s| s.0 == chunk.chunk_id) {
-                        self.chunk_spawns
+                    if !zone.chunk_spawns.iter().any(|s| s.0 == chunk.chunk_id) {
+                        zone.chunk_spawns
                             .push((chunk.chunk_id, std::time::Instant::now()));
                         // this is length biased
                         let spawn_category = zone
+                            .data
                             .enemies
                             .iter()
                             .map(|e| e.spawn_category)
@@ -863,14 +596,15 @@ impl Map {
                             None => user.user.upgrade().unwrap().lock().await.position,
                         };
                         for _ in 0..count {
-                            let enemy = zone
+                            let enemy = self.zones[zone_pos]
+                                .data
                                 .enemies
                                 .iter()
                                 .filter(|e| e.spawn_category == spawn_category)
                                 .choose(&mut rand::thread_rng());
                             if let Some(enemy) = enemy {
-                                self.spawn_enemy(&enemy.enemy_name, spawn_point, zone_id)
-                                    .await?;
+                                let enemy_name = enemy.enemy_name.clone();
+                                self.spawn_enemy(&enemy_name, spawn_point, zone_id).await?;
                             }
                         }
                     }
@@ -883,18 +617,19 @@ impl Map {
                     let count = rand::distributions::Uniform::new_inclusive(min, max)
                         .sample(&mut rand::thread_rng());
                     let (spawn, is_first) = if let Some(spawn) =
-                        self.chunk_spawns.iter().find(|s| s.0 == chunk.chunk_id)
+                        zone.chunk_spawns.iter().find(|s| s.0 == chunk.chunk_id)
                     {
                         (spawn, false)
                     } else {
-                        self.chunk_spawns
+                        zone.chunk_spawns
                             .push((chunk.chunk_id, std::time::Instant::now()));
-                        (self.chunk_spawns.last().unwrap(), true)
+                        (zone.chunk_spawns.last().unwrap(), true)
                     };
 
                     if is_first || spawn.1.elapsed() > respawn_time {
                         // this is length biased
                         let spawn_category = zone
+                            .data
                             .enemies
                             .iter()
                             .map(|e| e.spawn_category)
@@ -909,14 +644,15 @@ impl Map {
                             None => user.user.upgrade().unwrap().lock().await.position,
                         };
                         for _ in 0..count {
-                            let enemy = zone
+                            let enemy = self.zones[zone_pos]
+                                .data
                                 .enemies
                                 .iter()
                                 .filter(|e| e.spawn_category == spawn_category)
                                 .choose(&mut rand::thread_rng());
                             if let Some(enemy) = enemy {
-                                self.spawn_enemy(&enemy.enemy_name, spawn_point, zone_id)
-                                    .await?;
+                                let enemy_name = enemy.enemy_name.clone();
+                                self.spawn_enemy(&enemy_name, spawn_point, zone_id).await?;
                             }
                         }
                     }
@@ -929,6 +665,8 @@ impl Map {
                 }
             }
         }
+
+        self.zones[zone_pos].minimap_reveal(&packet).await?;
 
         if let Some(lua) = self.data.luas.get("on_minimap_reveal").cloned() {
             self.run_lua(user.player_id, zone_id, &packet, "on_minimap_reveal", &lua)
@@ -950,13 +688,13 @@ impl Map {
         packet: protocol::objects::InteractPacket,
         sender_id: PlayerId,
     ) -> Result<(), Error> {
-        let Some(user) = self.players.iter().find(|p| p.player_id == sender_id) else {
+        let Some((zone_pos, _)) = self.find_player(sender_id) else {
             return Err(Error::NoUserInMap(
                 sender_id,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = user.zone_id;
+        let zone_id = self.zones[zone_pos].srv_zone_id;
         let Some(lua_data) = self
             .data
             .objects
@@ -985,13 +723,13 @@ impl Map {
         player: PlayerId,
         packet: SkitItemAddRequestPacket,
     ) -> Result<(), Error> {
-        let Some(user) = self.players.iter().find(|p| p.player_id == player) else {
+        let Some((zone_pos, _)) = self.find_player(player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = user.zone_id;
+        let zone_id = self.zones[zone_pos].srv_zone_id;
         let Some(lua) = self.data.luas.get("on_questwork").cloned() else {
             return Ok(());
         };
@@ -1008,13 +746,13 @@ impl Map {
         player: PlayerId,
         packet: CutsceneEndPacket,
     ) -> Result<(), Error> {
-        let Some(user) = self.players.iter().find(|p| p.player_id == player) else {
+        let Some((zone_pos, _)) = self.find_player(player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = user.zone_id;
+        let zone_id = self.zones[zone_pos].srv_zone_id;
         let Some(lua) = self.data.luas.get("on_cutscene_end").cloned() else {
             return Ok(());
         };
@@ -1032,13 +770,13 @@ impl Map {
     }
 
     pub async fn on_map_loaded(&mut self, player: PlayerId) -> Result<(), Error> {
-        let Some(user) = self.players.iter().find(|p| p.player_id == player) else {
+        let Some((zone_pos, _)) = self.find_player(player) else {
             return Err(Error::NoUserInMap(
                 player,
                 self.data.map_data.unk7.to_string(),
             ));
         };
-        let zone_id = user.zone_id;
+        let zone_id = self.zones[zone_pos].srv_zone_id;
         let Some(lua) = self.data.luas.get("on_map_loaded").cloned() else {
             return Ok(());
         };
@@ -1090,7 +828,10 @@ impl Map {
         let mut scheduled_move = vec![];
         let mut lobby_moves = vec![];
 
-        let Some(caller) = self
+        let Some(zone) = self.zones.iter().find(|z| z.srv_zone_id == zone_id) else {
+            return Err(Error::InvalidInput("run_lua, zone"));
+        };
+        let Some(caller) = zone
             .players
             .iter()
             .find(|p| p.player_id == sender_id)
@@ -1099,15 +840,13 @@ impl Map {
             unreachable!("Sender should exist in the current map");
         };
         let caller_lock = caller.lock_blocking();
-        let Some(zone) = self.data.zones.iter().find(|z| z.zone_id == zone_id) else {
-            return Err(Error::InvalidInput("run_lua, zone"));
-        };
+        let zone_set = &zone.data;
         drop(caller_lock);
         {
             let lua = self.lua.lock();
             let globals = lua.globals();
-            let player_ids: Vec<_> = self.players.iter().map(|p| p.player_id).collect();
-            globals.set("zone", zone.name.clone())?;
+            let player_ids: Vec<_> = zone.players.iter().map(|p| p.player_id).collect();
+            globals.set("zone", zone_set.name.clone())?;
             globals.set("packet", lua.to_value(&packet)?)?;
             globals.set("sender", sender_id)?;
             globals.set("players", player_ids)?;
@@ -1174,20 +913,26 @@ impl Map {
         /* LUA FUNCTIONS */
 
         // send packet
-        let send = scope.create_function_mut(|lua, (receiver, packet): (u32, mlua::Value)| {
-            let packet: Packet = lua.from_value(packet)?;
-            if let Some(p) = self
-                .players
-                .iter()
-                .find(|p| p.player_id == receiver)
-                .and_then(|p| p.user.upgrade())
-            {
-                p.lock_blocking()
-                    .send_packet_block(&packet)
-                    .map_err(mlua::Error::external)?;
-            }
-            Ok(())
-        })?;
+        let send =
+            scope.create_function_mut(move |lua, (receiver, packet): (u32, mlua::Value)| {
+                let packet: Packet = lua.from_value(packet)?;
+                if let Some(p) = self
+                    .zones
+                    .iter()
+                    .find(|z| z.srv_zone_id == zone_id)
+                    .and_then(|z| {
+                        z.players
+                            .iter()
+                            .find(|p| p.player_id == receiver)
+                            .and_then(|p| p.user.upgrade())
+                    })
+                {
+                    p.lock_blocking()
+                        .send_packet_block(&packet)
+                        .map_err(mlua::Error::external)?;
+                }
+                Ok(())
+            })?;
         globals.set("send", send)?;
         // get object data
         let get_object = scope.create_function(move |lua, id: u32| {
@@ -1256,12 +1001,17 @@ impl Map {
         // set account flag
         globals.set(
             "set_account_flag",
-            scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
+            scope.create_function_mut(move |_, (receiver, flag, value): (u32, u32, u8)| {
                 if let Some(p) = self
-                    .players
+                    .zones
                     .iter()
-                    .find(|p| p.player_id == receiver)
-                    .and_then(|p| p.user.upgrade())
+                    .find(|z| z.srv_zone_id == zone_id)
+                    .and_then(|z| {
+                        z.players
+                            .iter()
+                            .find(|p| p.player_id == receiver)
+                            .and_then(|p| p.user.upgrade())
+                    })
                 {
                     p.lock_blocking()
                         .set_account_flag_block(flag, value != 0)
@@ -1273,12 +1023,17 @@ impl Map {
         // set character flag
         globals.set(
             "set_character_flag",
-            scope.create_function_mut(|_, (receiver, flag, value): (u32, u32, u8)| {
+            scope.create_function_mut(move |_, (receiver, flag, value): (u32, u32, u8)| {
                 if let Some(p) = self
-                    .players
+                    .zones
                     .iter()
-                    .find(|p| p.player_id == receiver)
-                    .and_then(|p| p.user.upgrade())
+                    .find(|z| z.srv_zone_id == zone_id)
+                    .and_then(|z| {
+                        z.players
+                            .iter()
+                            .find(|p| p.player_id == receiver)
+                            .and_then(|p| p.user.upgrade())
+                    })
                 {
                     p.lock_blocking()
                         .set_char_flag_block(flag, value != 0)
@@ -1318,10 +1073,15 @@ impl Map {
             scope.create_function_mut(
                 move |_, (receiver, name_id): (u32, u32)| -> Result<(), _> {
                     if let Some(p) = self
-                        .players
+                        .zones
                         .iter()
-                        .find(|p| p.player_id == receiver)
-                        .and_then(|p| p.user.upgrade())
+                        .find(|z| z.srv_zone_id == zone_id)
+                        .and_then(|z| {
+                            z.players
+                                .iter()
+                                .find(|p| p.player_id == receiver)
+                                .and_then(|p| p.user.upgrade())
+                        })
                     {
                         let mut lock = p.lock_blocking();
                         let char = lock
@@ -1343,10 +1103,15 @@ impl Map {
             scope.create_function_mut(
                 move |_, (receiver, name_id): (u32, Vec<u32>)| -> Result<(), _> {
                     if let Some(p) = self
-                        .players
+                        .zones
                         .iter()
-                        .find(|p| p.player_id == receiver)
-                        .and_then(|p| p.user.upgrade())
+                        .find(|z| z.srv_zone_id == zone_id)
+                        .and_then(|z| {
+                            z.players
+                                .iter()
+                                .find(|p| p.player_id == receiver)
+                                .and_then(|p| p.user.upgrade())
+                        })
                     {
                         let mut lock = p.lock_blocking();
                         let char = lock
@@ -1370,34 +1135,351 @@ impl Map {
     }
 }
 
+impl Zone {
+    async fn add_player(&mut self, new_player: Arc<Mutex<User>>) -> Result<(), Error> {
+        let mut other_equipment = Vec::with_capacity(self.players.len() * 2);
+        let mut other_characters = Vec::with_capacity(self.players.len());
+        for player in self.players.iter().filter_map(|p| p.user.upgrade()) {
+            let p = player.lock().await;
+            let pid = p.get_user_id();
+            let Some(char_data) = &p.character else {
+                unreachable!("User should be in state >= `PreInGame`")
+            };
+            other_equipment.push(char_data.palette.send_change_palette(pid));
+            other_equipment.push(char_data.palette.send_cur_weapon(pid, &char_data.inventory));
+            other_equipment.push(char_data.inventory.send_equiped(pid));
+            other_characters.push((char_data.character.clone(), p.position, p.user_data.isgm));
+        }
+        let mut np_lock = new_player.lock().await;
+        np_lock.map_id = self.data.settings.map_id;
+        np_lock.zone_id = self.srv_zone_id;
+        let np_id = np_lock.get_user_id();
+        let Some(new_character) = np_lock.character.to_owned() else {
+            unreachable!("User should be in state >= `PreInGame`")
+        };
+        np_lock
+            .send_packet(&Packet::SetPlayerID(SetPlayerIDPacket {
+                player_id: np_id,
+                unk2: 4,
+                ..Default::default()
+            }))
+            .await?;
+        let pos = self.data.default_location;
+        np_lock.position = pos;
+        let np_gm = np_lock.user_data.isgm as u32;
+        np_lock
+            .spawn_character(CharacterSpawnPacket {
+                position: pos,
+                character: new_character.character.clone(),
+                spawn_type: CharacterSpawnType::Myself,
+                gm_flag: np_gm,
+                player_obj: ObjectHeader {
+                    id: np_id,
+                    entity_type: ObjectType::Player,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .await?;
+        for (character, position, isgm) in other_characters {
+            let player_id = character.player_id;
+            np_lock
+                .spawn_character(CharacterSpawnPacket {
+                    position,
+                    spawn_type: CharacterSpawnType::Other,
+                    gm_flag: isgm as u32,
+                    player_obj: ObjectHeader {
+                        id: player_id,
+                        entity_type: ObjectType::Player,
+                        ..Default::default()
+                    },
+                    character,
+                    ..Default::default()
+                })
+                .await?;
+        }
+        for equipment in other_equipment {
+            np_lock.send_packet(&equipment).await?;
+        }
+        let new_eqipment = (
+            new_character.palette.send_change_palette(np_id),
+            new_character
+                .palette
+                .send_cur_weapon(np_id, &new_character.inventory),
+            new_character.inventory.send_equiped(np_id),
+        );
+
+        for (id, enemy) in &self.enemies {
+            let (packet, mut packet2) = Self::prepare_enemy_packets(*id, enemy);
+            if let Packet::EnemyAction(data) = &mut packet2 {
+                data.receiver = np_lock.create_object_header();
+                data.action_starter = np_lock.create_object_header();
+            }
+            np_lock.send_packet(&packet).await?;
+            np_lock.send_packet(&packet2).await?;
+        }
+        drop(np_lock);
+
+        exec_users(&self.players, |_, mut player| {
+            let _ = player.try_spawn_character(CharacterSpawnPacket {
+                position: pos,
+                spawn_type: CharacterSpawnType::Other,
+                gm_flag: np_gm,
+                player_obj: ObjectHeader {
+                    id: new_character.character.player_id,
+                    entity_type: ObjectType::Player,
+                    ..Default::default()
+                },
+                character: new_character.character.clone(),
+                ..Default::default()
+            });
+            let _ = player.try_send_packet(&new_eqipment.0);
+            let _ = player.try_send_packet(&new_eqipment.1);
+            let _ = player.try_send_packet(&new_eqipment.2);
+        })
+        .await;
+        self.players.push(MapPlayer {
+            player_id: np_id,
+            user: Arc::downgrade(&new_player),
+        });
+
+        Ok(())
+    }
+    pub async fn remove_player(&mut self, id: PlayerId) -> Option<Arc<Mutex<User>>> {
+        let (pos, _) = self
+            .players
+            .iter()
+            .enumerate()
+            .find(|(_, p)| p.player_id == id)?;
+        let user = self.players.swap_remove(pos);
+        let mut packet = Packet::DespawnPlayer(protocol::objects::DespawnPlayerPacket {
+            receiver: ObjectHeader {
+                id: 0,
+                entity_type: ObjectType::Player,
+                ..Default::default()
+            },
+            removed_player: ObjectHeader {
+                id,
+                entity_type: ObjectType::Player,
+                ..Default::default()
+            },
+        });
+        exec_users(&self.players, |_, mut player| {
+            if let Packet::DespawnPlayer(data) = &mut packet {
+                data.receiver.id = player.get_user_id();
+                let _ = player.try_send_packet(&packet);
+            }
+        })
+        .await;
+        user.user.upgrade()
+    }
+    fn prepare_enemy_packets(enemy_id: u32, enemy: &EnemyStats) -> (Packet, Packet) {
+        let packet = enemy.create_spawn_packet(enemy_id);
+        // techically this is a response to 0x04 0x2B
+        let packet2 = Packet::EnemyAction(EnemyActionPacket {
+            actor: packet.object,
+            action_id: 7,
+            ..Default::default()
+        });
+        let packet = Packet::EnemySpawn(packet);
+        (packet, packet2)
+    }
+    pub async fn deal_damage(
+        &mut self,
+        block_data: Arc<BlockData>,
+        dmg: DealDamagePacket,
+    ) -> Result<(), Error> {
+        let (inflicter, target) = (dmg.inflicter, dmg.target);
+        if inflicter.entity_type == ObjectType::Player && target.entity_type == ObjectType::Object {
+            let Some((enemy_pos, (_, target))) = self
+                .enemies
+                .iter_mut()
+                .enumerate()
+                .find(|(_, (id, _))| *id == target.id)
+            else {
+                return Ok(());
+            };
+            let Some(inflicter) = self
+                .players
+                .iter()
+                .find(|u| u.player_id == inflicter.id)
+                .and_then(|p| p.user.upgrade())
+            else {
+                return Err(Error::InvalidInput("deal_damage"));
+            };
+            let mut lock = inflicter.lock().await;
+            let result = lock
+                .get_stats_mut()
+                .damage_enemy(target, &block_data.server_data, dmg)?;
+            drop(lock);
+            match result {
+                BattleResult::Damaged { dmg_packet } => {
+                    let mut packet = Packet::DamageReceive(dmg_packet);
+                    exec_users(&self.players, |_, mut player| {
+                        if let Packet::DamageReceive(data) = &mut packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&packet);
+                        }
+                    })
+                    .await;
+                }
+                BattleResult::Killed {
+                    dmg_packet,
+                    kill_packet,
+                    exp_amount,
+                } => {
+                    let mut action_packet = Packet::EnemyAction(EnemyActionPacket {
+                        actor: dmg_packet.dmg_target,
+                        action_starter: dmg_packet.dmg_inflicter,
+                        action_id: 4,
+                        ..Default::default()
+                    });
+                    let mut dmg_packet = Packet::DamageReceive(dmg_packet);
+                    let mut kill_packet = Packet::EnemyKilled(kill_packet);
+                    let mut exp_packets = vec![];
+                    exec_users(&self.players, |_, mut player| {
+                        exp_packets.push(player.add_exp(exp_amount))
+                    })
+                    .await;
+                    let exp_packets = exp_packets.into_iter().collect::<Result<Vec<_>, _>>()?;
+                    let mut exp_packet = Packet::GainedEXP(GainedEXPPacket {
+                        receivers: exp_packets,
+                        ..Default::default()
+                    });
+                    exec_users(&self.players, |_, mut player| {
+                        if let Packet::DamageReceive(data) = &mut dmg_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&dmg_packet);
+                        }
+                        if let Packet::EnemyKilled(data) = &mut kill_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&kill_packet);
+                        }
+                        if let Packet::GainedEXP(data) = &mut exp_packet {
+                            data.sender = player.create_object_header();
+                            let _ = player.try_send_packet(&exp_packet);
+                        }
+                        if let Packet::EnemyAction(data) = &mut action_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&action_packet);
+                        }
+                    })
+                    .await;
+                    self.enemies.remove(enemy_pos);
+                }
+            }
+        } else if inflicter.entity_type == ObjectType::Object
+            && target.entity_type == ObjectType::Player
+        {
+            let Some(target) = self
+                .players
+                .iter_mut()
+                .find(|u| u.player_id == target.id)
+                .and_then(|p| p.user.upgrade())
+            else {
+                return Err(Error::InvalidInput("deal_damage"));
+            };
+            let Some((_, inflicter)) = self.enemies.iter_mut().find(|(id, _)| *id == inflicter.id)
+            else {
+                return Ok(());
+            };
+            let mut lock = target.lock().await;
+            let result =
+                inflicter.damage_player(lock.get_stats_mut(), &block_data.server_data, dmg)?;
+            drop(lock);
+
+            match result {
+                BattleResult::Damaged { dmg_packet } => {
+                    let mut packet = Packet::DamageReceive(dmg_packet);
+                    exec_users(&self.players, |_, mut player| {
+                        if let Packet::DamageReceive(data) = &mut packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&packet);
+                        }
+                    })
+                    .await;
+                }
+                BattleResult::Killed { dmg_packet, .. } => {
+                    let mut dmg_packet = Packet::DamageReceive(dmg_packet);
+                    exec_users(&self.players, |_, mut player| {
+                        if let Packet::DamageReceive(data) = &mut dmg_packet {
+                            data.receiver = player.create_object_header();
+                            let _ = player.try_send_packet(&dmg_packet);
+                        }
+                    })
+                    .await;
+                    todo!();
+                }
+            }
+        }
+
+        Ok(())
+    }
+    async fn minimap_reveal(
+        &mut self,
+        packet: &protocol::questlist::MinimapRevealRequestPacket,
+    ) -> Result<(), Error> {
+        if let Some(chunk) = self
+            .data
+            .chunks
+            .iter()
+            .find(|c| c.chunk_id == packet.chunk_id)
+        {
+            for reveal in &chunk.reveals {
+                self.minimap_status = RevealedRegions::new([0xFF; 10]);
+                // self.minimap_status[reveal.row as usize - 1].set(reveal.column as usize - 1, true);
+            }
+            let mut packet = Packet::MinimapReveal(MinimapRevealPacket {
+                world: ObjectHeader {
+                    id: self.data.settings.world_id,
+                    entity_type: ObjectType::World,
+                    ..Default::default()
+                },
+                zone_id: self.data.settings.zone_id,
+                revealed_zones: self.minimap_status.clone(),
+                ..Default::default()
+            });
+            for player in &self.players {
+                let Some(player) = player.user.upgrade() else {
+                    continue;
+                };
+                let mut p_lock = player.lock().await;
+                let party_lock = p_lock
+                    .party
+                    .as_ref()
+                    .expect("Player should have a party at this point")
+                    .read()
+                    .await;
+                let party_obj = party_lock.get_obj();
+                drop(party_lock);
+                if let Packet::MinimapReveal(p) = &mut packet {
+                    p.party = party_obj;
+                }
+                log::warn!("Sending: {packet:?}");
+                let _ = p_lock.send_packet(&packet).await;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl Drop for Map {
     fn drop(&mut self) {
         log::trace!("Map {} dropped", self.data.map_data.map_object.id);
     }
 }
 
-async fn exec_users<F>(users: &[MapPlayer], zone_id: ZoneId, mut f: F)
+async fn exec_users<F>(users: &[MapPlayer], mut f: F)
 where
     F: FnMut(OwnedMapPlayer, MutexGuard<User>) + Send,
 {
-    for user in users
-        .iter()
-        .filter(|u| {
-            if zone_id == 0 {
-                true
-            } else {
-                u.zone_id == zone_id
-            }
+    for user in users.iter().filter_map(|u| {
+        u.user.upgrade().map(|p| OwnedMapPlayer {
+            player_id: u.player_id,
+            user: p,
         })
-        .filter_map(|u| {
-            u.user.upgrade().map(|p| OwnedMapPlayer {
-                player_id: u.player_id,
-                zone_id: u.zone_id,
-                chunk_id: u.chunk_id,
-                user: p,
-            })
-        })
-    {
+    }) {
         let arc = user.user.clone();
         let lock = arc.lock().await;
         f(user, lock)

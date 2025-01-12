@@ -19,6 +19,7 @@ fn main() {
     let mut quest_id = 0;
     let mut quest_diff = 0;
     let mut populated = vec![];
+    let mut accepting_objs = false;
 
     let out_dir = filename.replace('.', "");
     let _ = std::fs::create_dir(&out_dir);
@@ -102,10 +103,12 @@ fn main() {
                     init_map: mapid,
                     ..Default::default()
                 });
+                accepting_objs = true;
             }
             Packet::MapTransfer(p) => {
                 populated.push(mapid);
                 mapid = p.settings.map_id;
+                accepting_objs = true;
             }
             // Packet::CharacterSpawnNGS(p) => {
             //     if let Some(ref mut map) = map_data {
@@ -124,6 +127,9 @@ fn main() {
             Packet::ObjectSpawn(p) => {
                 if let Some(ref mut data) = map_data {
                     if populated.contains(&mapid) {
+                        continue;
+                    }
+                    if !accepting_objs {
                         continue;
                     }
                     if data
@@ -147,6 +153,9 @@ fn main() {
                     if populated.contains(&mapid) {
                         continue;
                     }
+                    if !accepting_objs {
+                        continue;
+                    }
                     if data
                         .npcs
                         .iter()
@@ -168,6 +177,9 @@ fn main() {
                     if populated.contains(&mapid) {
                         continue;
                     }
+                    if !accepting_objs {
+                        continue;
+                    }
                     if data
                         .npcs
                         .iter()
@@ -187,6 +199,9 @@ fn main() {
             Packet::TransporterSpawn(p) => {
                 if let Some(ref mut data) = map_data {
                     if populated.contains(&mapid) {
+                        continue;
+                    }
+                    if !accepting_objs {
                         continue;
                     }
                     if data
@@ -222,6 +237,9 @@ fn main() {
                     p.item.item_type, p.item.id, p.item.subid, p.desc,
                 )
                 .unwrap();
+            }
+            Packet::FinishLoading => {
+                accepting_objs = false;
             }
             _ => {}
         }

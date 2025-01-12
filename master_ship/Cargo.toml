@@ -6,19 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1.42.0", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
 pso2packetlib = { workspace = true, features = ["serde", "split_connection", "tokio"] }
 parking_lot = { version = "0.12.3", features = ["send_guard"] }
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
-sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite", "migrate"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite", "migrate"] }
 serde = { version = "1.0.217", features = ["derive"] }
 p256 = { version = "0.13.2",  features = ["ecdh"] }
-thiserror = "2.0.9"
+thiserror = "2.0.11"
 argon2 = "0.5.3"
 rand_core = "0.6.4"
 toml = "0.8.19"
 rmp-serde = "1.3.0"
-log = { version = "0.4.22", features = ["serde", "release_max_level_info", "std"] }
+log = { version = "0.4.24", features = ["serde", "release_max_level_info", "std"] }
 simplelog = "0.12.2"
 network-interface = "2.0.0"
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.26", features = ["derive"] }
