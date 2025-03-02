@@ -276,7 +276,7 @@ pub async fn send_chat(mut user: MutexGuard<'_, User>, packet: Packet) -> HResul
     Ok(Action::Nothing)
 }
 
-async fn set_flag_parse<'a>(
+async fn set_flag_parse(
     user: &mut User,
     ftype: FlagType,
     range: &str,

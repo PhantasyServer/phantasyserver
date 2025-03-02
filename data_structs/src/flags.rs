@@ -31,7 +31,7 @@ impl Flags {
         if self.flags.len() < index + 1 {
             return 0;
         }
-        (self.flags[index] & 1 << bit_index) >> bit_index
+        (self.flags[index] >> bit_index) & 1
     }
     pub fn set_param(&mut self, id: usize, val: u32) {
         if self.params.len() < id + 1 {

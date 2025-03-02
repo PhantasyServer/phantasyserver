@@ -63,7 +63,7 @@ impl<T> DerefMut for MutexGuard<'_, T> {
     }
 }
 
-impl<'a, T> MutexGuard<'a, T> {
+impl<T> MutexGuard<'_, T> {
     pub async fn unlocked<F, R>(s: &mut Self, f: F) -> R
     where
         Self: Send,
@@ -168,7 +168,7 @@ impl<T> DerefMut for RwWriteGuard<'_, T> {
     }
 }
 
-impl<'a, T> RwReadGuard<'a, T> {
+impl<T> RwReadGuard<'_, T> {
     pub async fn unlocked<F, R>(s: &mut Self, f: F) -> R
     where
         Self: Send,
@@ -210,7 +210,7 @@ impl<'a, T> RwReadGuard<'a, T> {
     }
 }
 
-impl<'a, T> RwWriteGuard<'a, T> {
+impl<T> RwWriteGuard<'_, T> {
     pub async fn unlocked<F, R>(s: &mut Self, f: F) -> R
     where
         Self: Send,

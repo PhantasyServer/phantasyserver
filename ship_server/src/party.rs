@@ -668,8 +668,8 @@ impl Party {
             let _ = current_map.lock().await.move_to_lobby(id).await;
         }
     }
-    pub fn get_obj(&self) -> ObjectHeader {
-        self.id.clone()
+    pub const fn get_obj(&self) -> ObjectHeader {
+        self.id
     }
 }
 
