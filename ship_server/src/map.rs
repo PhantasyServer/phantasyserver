@@ -86,6 +86,7 @@ pub struct Map {
     block_data: Option<Arc<BlockData>>,
     enemy_level: u32,
     map_type: MapType,
+    quest_obj: ObjectHeader,
 }
 impl Map {
     pub fn new_from_data(mut data: MapData, map_obj_id: &AtomicU32) -> Result<Self, Error> {
@@ -165,8 +166,11 @@ impl Map {
             block_data: None,
             enemy_level: 0,
             map_type: MapType::QuestMap,
+            quest_obj: ObjectHeader {
+                entity_type: ObjectType::Quest,
+                ..Default::default()
+            },
         };
-        log::trace!("Map data: {:?}", map.data.map_data);
         map.init_lua()?;
         map.find_max_id();
         log::trace!("Map {} created", map_obj.id);
@@ -180,6 +184,9 @@ impl Map {
     }
     pub fn set_enemy_level(&mut self, level: u32) {
         self.enemy_level = level;
+    }
+    pub fn set_quest_obj(&mut self, obj: ObjectHeader) {
+        self.quest_obj = obj;
     }
     fn find_max_id(&mut self) {
         let obj_max = self
@@ -268,9 +275,20 @@ impl Map {
         let mut np_lock = new_player.lock().await;
         let map_data = self.data.map_data.clone();
         let obj = np_lock.create_object_header();
+        let Some(p) = &np_lock.get_current_party() else {
+            return Err(Error::InvalidInput("init_add_player"));
+        };
+        let party_obj = p.read().await.get_obj();
         np_lock
             .send_packet(&Packet::LoadLevel(LoadLevelPacket {
-                receiver: obj,
+                host: obj,
+                party: party_obj,
+                world_obj: ObjectHeader {
+                    id: map_data.settings.world_id,
+                    entity_type: ObjectType::World,
+                    ..Default::default()
+                },
+                quest: self.quest_obj,
                 ..map_data
             }))
             .await?;
@@ -1047,8 +1065,7 @@ impl Zone {
             .find(|c| c.chunk_id == packet.chunk_id)
         {
             for reveal in &chunk.reveals {
-                self.minimap_status = RevealedRegions::new([0xFF; 10]);
-                // self.minimap_status[reveal.row as usize - 1].set(reveal.column as usize - 1, true);
+                self.minimap_status[reveal.row as usize - 1].set(reveal.column as usize - 1, true);
             }
 
             // wow, how nested
@@ -1187,7 +1204,6 @@ impl Zone {
                 if let Packet::MinimapReveal(p) = &mut packet {
                     p.party = party_obj;
                 }
-                log::warn!("Sending: {packet:?}");
                 let _ = p_lock.send_packet(&packet).await;
             }
         }
