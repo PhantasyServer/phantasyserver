@@ -195,7 +195,7 @@ impl Inventory {
             .equiped
             .iter()
             .enumerate()
-            .find(|(_, &x)| x.1 == uuid)
+            .find(|(_, x)| x.1 == uuid)
         {
             self.inventory.equiped.remove(pos);
         }

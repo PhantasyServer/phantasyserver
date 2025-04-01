@@ -484,7 +484,7 @@ impl Sql {
                 .character_ids
                 .iter()
                 .enumerate()
-                .find(|(_, &i)| i == char_id)
+                .find(|(_, i)| **i == char_id)
             {
                 user_data.character_ids.swap_remove(pos);
             }

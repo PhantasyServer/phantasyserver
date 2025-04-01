@@ -1,12 +1,12 @@
 use crate::{
+    BlockData, Error, User,
     battle_stats::{BattleResult, EnemyStats},
     mutex::{Mutex, MutexGuard},
-    BlockData, Error, User,
 };
 use data_structs::map::{EventData, MapData, NPCData, ObjectData, TransporterData, ZoneData};
 use mlua::{Lua, LuaSerdeExt, StdLib};
 use pso2packetlib::protocol::{
-    self,
+    self, ObjectHeader, ObjectType, Packet, PacketType,
     flag::{CutsceneEndPacket, SkitItemAddRequestPacket},
     models::Position,
     objects::EnemyActionPacket,
@@ -15,14 +15,13 @@ use pso2packetlib::protocol::{
     server::{LoadLevelPacket, MapTransferPacket},
     spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
-    ObjectHeader, ObjectType, Packet, PacketType,
 };
 use rand::{prelude::Distribution, seq::IteratorRandom};
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicU32, Ordering},
         Arc, Weak,
+        atomic::{AtomicU32, Ordering},
     },
     time::Instant,
 };

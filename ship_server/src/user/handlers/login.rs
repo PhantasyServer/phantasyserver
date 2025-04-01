@@ -1,14 +1,13 @@
 use super::HResult;
-use crate::{battle_stats::PlayerStats, user::UserState, Action, Error, User};
+use crate::{Action, Error, User, battle_stats::PlayerStats, user::UserState};
 use data_structs::master_ship::SetNicknameResult;
 use pso2packetlib::protocol::{
-    self,
+    self, ObjectHeader, Packet, PacketType,
     items::Item,
     login::{
         self, AllBlocksListPacket, BlockListPacket, NicknameRequestPacket, NicknameResponsePacket,
     },
     models::character::Race,
-    ObjectHeader, Packet, PacketType,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
