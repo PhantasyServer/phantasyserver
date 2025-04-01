@@ -1,9 +1,9 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, user::User, Action};
+use crate::{Action, mutex::MutexGuard, user::User};
 use indicatif::HumanBytes;
 use memory_stats::memory_stats;
 use pso2packetlib::protocol::{
-    chat::MessageChannel, flag::FlagType, items::ItemId, playerstatus, ObjectType, Packet,
+    ObjectType, Packet, chat::MessageChannel, flag::FlagType, items::ItemId, playerstatus,
 };
 
 #[derive(Debug, cmd_derive::ChatCommand)]

@@ -1,14 +1,13 @@
 use crate::{
-    map,
+    Action, BlockData, BlockInfo, Error, map,
     mutex::{Mutex, RwLock},
     sql,
     user::User,
-    Action, BlockData, BlockInfo, Error,
 };
-use pso2packetlib::{connection::ConnectionError, PrivateKey};
+use pso2packetlib::{PrivateKey, connection::ConnectionError};
 use std::{
     io,
-    sync::{atomic::AtomicU32, Arc},
+    sync::{Arc, atomic::AtomicU32},
 };
 use tokio::{
     net::{TcpListener, TcpStream},

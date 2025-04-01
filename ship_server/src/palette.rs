@@ -1,12 +1,12 @@
-use crate::{inventory::Inventory, Error};
+use crate::{Error, inventory::Inventory};
 use pso2packetlib::protocol::{
+    ObjectHeader, Packet,
     items::{ChangeWeaponPalettePacket, EquipedWeaponPacket, Item},
     palette::{
         FullPaletteInfoPacket, LoadPalettePacket, NewDefaultPAsPacket, SetDefaultPAsPacket,
         SetPalettePacket, SetSubPalettePacket, SubPalette, UpdatePalettePacket,
         UpdateSubPalettePacket, WeaponPalette,
     },
-    ObjectHeader, Packet,
 };
 use serde::{Deserialize, Serialize};
 

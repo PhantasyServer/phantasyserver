@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, User};
+use crate::{Action, User, mutex::MutexGuard};
 use pso2packetlib::protocol::playerstatus;
 
 pub async fn deal_damage(

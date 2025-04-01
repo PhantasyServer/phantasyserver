@@ -1,6 +1,6 @@
 use pso2packetlib::protocol::{
-    flag::{AccountFlagsPacket, CharacterFlagsPacket},
     Packet,
+    flag::{AccountFlagsPacket, CharacterFlagsPacket},
 };
 use serde::{Deserialize, Serialize};
 

@@ -1,29 +1,28 @@
 pub(crate) mod handlers;
 use crate::{
+    Action, BlockData, Error,
     battle_stats::PlayerStats,
     invites::PartyInvite,
     map::Map,
     mutex::{Mutex, MutexGuard, RwLock},
     party::{self, Party},
     sql::{self, CharData},
-    Action, BlockData, Error,
 };
 use data_structs::flags::Flags;
 use pso2packetlib::{
+    Connection, PublicKey,
     connection::{ConnectionError, ConnectionRead, ConnectionWrite},
     protocol::{
-        self as Pr,
+        self as Pr, ObjectHeader, Packet, PacketType,
         login::Language,
         models::{
-            character::{Class, ClassLevel},
             Position,
+            character::{Class, ClassLevel},
         },
         party::BusyState,
         playerstatus::EXPReceiver,
         spawn::CharacterSpawnPacket,
-        ObjectHeader, Packet, PacketType,
     },
-    Connection, PublicKey,
 };
 use std::{fmt::Display, net::Ipv4Addr, sync::Arc, time::Instant};
 
@@ -373,7 +372,7 @@ pub async fn packet_handler(
     let state = user.state;
     // sidestep borrow checker
     let match_unit = (state, packet);
-    use {handlers as H, Packet as P, UserState as US};
+    use {Packet as P, UserState as US, handlers as H};
 
     match match_unit {
         // Server packets

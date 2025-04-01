@@ -1,7 +1,7 @@
 use parking_lot::{
-    lock_api::{RawMutex as _, RawRwLock},
     Mutex as PMutex, MutexGuard as PGuard, RwLock as PRwLock, RwLockReadGuard as PRwReadGuard,
     RwLockWriteGuard as PRwWriteGuard,
+    lock_api::{RawMutex as _, RawRwLock},
 };
 use std::{
     future::Future,

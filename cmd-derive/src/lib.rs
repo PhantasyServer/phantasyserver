@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, Data, DeriveInput, Error, Ident};
+use syn::{Data, DeriveInput, Error, Ident, parse_macro_input, spanned::Spanned};
 
 #[proc_macro_derive(ChatCommand, attributes(help, only_gm, only_not_gm, default, alias))]
 pub fn packet_read_write_derive(input: TokenStream) -> TokenStream {

@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, party, Action, User};
+use crate::{Action, User, mutex::MutexGuard, party};
 use pso2packetlib::protocol::party::{
     AcceptInvitePacket, BusyState, ChatStatusPacket, KickMemberPacket, NewPartySettingsPacket,
     TransferLeaderPacket,

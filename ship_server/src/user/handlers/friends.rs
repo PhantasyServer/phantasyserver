@@ -1,6 +1,6 @@
 use super::HResult;
 use crate::{Action, User};
-use pso2packetlib::protocol::{friends::FriendListRequestPacket, Flags, Packet, PacketHeader};
+use pso2packetlib::protocol::{Flags, Packet, PacketHeader, friends::FriendListRequestPacket};
 
 pub async fn get_friends(user: &mut User, _: FriendListRequestPacket) -> HResult {
     let mut packet: pso2packetlib::protocol::friends::FriendListPacket =

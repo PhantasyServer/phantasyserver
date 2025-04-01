@@ -1,14 +1,13 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, User};
+use crate::{Action, User, mutex::MutexGuard};
 use pso2packetlib::protocol::{
-    self,
+    self, ObjectHeader, Packet,
     chat::MessageChannel,
     symbolart::{
         ChangeSymbolArtPacket, SendSymbolArtPacket, SymbolArtClientDataPacket,
         SymbolArtClientDataRequestPacket, SymbolArtDataPacket, SymbolArtDataRequestPacket,
         SymbolArtListPacket,
     },
-    ObjectHeader, Packet,
 };
 
 pub async fn list_sa(user: &mut User) -> HResult {

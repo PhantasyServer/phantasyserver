@@ -1,18 +1,18 @@
-use crate::{inventory::Inventory, master_conn::MasterConnection, palette::Palette, Error};
+use crate::{Error, inventory::Inventory, master_conn::MasterConnection, palette::Palette};
 use data_structs::{
     flags::Flags,
     inventory::AccountStorages,
     master_ship::{MasterShipAction, SetNicknameResult, UserCreds, UserLoginResult},
 };
 use pso2packetlib::{
+    AsciiString,
     protocol::{
+        PacketType,
         login::{Language, LoginAttempt, UserInfoPacket},
         models::character::Character,
-        PacketType,
     },
-    AsciiString,
 };
-use sqlx::{migrate::MigrateDatabase, Executor, Row};
+use sqlx::{Executor, Row, migrate::MigrateDatabase};
 use std::{net::Ipv4Addr, time::Duration};
 
 pub struct Sql {

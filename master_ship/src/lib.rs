@@ -4,26 +4,25 @@
 pub mod sql;
 use clap::Parser;
 use data_structs::{
-    master_ship::{
-        start_discovery_loop, MasterShipAction, MasterShipComm, RegisterShipResult,
-        ServerDataResult, SetNicknameResult, ShipConnection, ShipInfo, ShipLoginResult,
-        UserLoginResult,
-    },
     SerDeFile, ServerData,
+    master_ship::{
+        MasterShipAction, MasterShipComm, RegisterShipResult, ServerDataResult, SetNicknameResult,
+        ShipConnection, ShipInfo, ShipLoginResult, UserLoginResult, start_discovery_loop,
+    },
 };
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use p256::ecdsa::SigningKey;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use pso2packetlib::{
-    protocol::{login, Packet, PacketType},
     Connection, PrivateKey, PublicKey,
+    protocol::{Packet, PacketType, login},
 };
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{
     io,
     net::{IpAddr, Ipv4Addr},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 use tokio::{

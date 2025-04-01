@@ -1,5 +1,6 @@
 mod ice;
 use data_structs::{
+    SerDeFile as _, ServerData,
     inventory::{DefaultClassesData, DefaultClassesDataReadable, ItemName},
     map::MapData,
     name_to_id,
@@ -8,7 +9,6 @@ use data_structs::{
         AllEnemyStats, AttackStats, AttackStatsReadable, ClassStatsStored, EnemyBaseStats,
         EnemyLevelBaseStats, NamedEnemyStats, PlayerStats, RaceModifierStored,
     },
-    SerDeFile as _, ServerData,
 };
 use pso2packetlib::protocol::models::item_attrs;
 use std::{

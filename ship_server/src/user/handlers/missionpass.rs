@@ -1,6 +1,6 @@
 use super::HResult;
 use crate::{Action, User};
-use pso2packetlib::protocol::{missionpass, Packet};
+use pso2packetlib::protocol::{Packet, missionpass};
 
 pub async fn mission_pass_info(user: &mut User) -> HResult {
     let mut temp = [0u32; 47];

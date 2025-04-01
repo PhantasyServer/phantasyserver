@@ -1,5 +1,5 @@
 use super::HResult;
-use crate::{battle_stats::PlayerStats, mutex::MutexGuard, Action, User};
+use crate::{Action, User, battle_stats::PlayerStats, mutex::MutexGuard};
 use pso2packetlib::protocol::palette::{
     SetDefaultPAsPacket, SetPalettePacket, SetSubPalettePacket, UpdatePalettePacket,
     UpdateSubPalettePacket,

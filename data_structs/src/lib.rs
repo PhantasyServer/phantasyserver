@@ -10,7 +10,7 @@ pub mod quest;
 pub mod stats;
 
 use inventory::DefaultClassesData;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -43,8 +43,10 @@ pub enum Error {
     #[error("MP Deserialization error: {0}")]
     RMPDecodeError(#[from] rmp_serde::decode::Error),
 
-    #[error("bincode error: {0}")]
-    BincodeError(#[from] bincode::Error),
+    #[error("bincode encode error: {0}")]
+    BincodeEncodeError(#[from] bincode::error::EncodeError),
+    #[error("bincode decode error: {0}")]
+    BincodeDecodeError(#[from] bincode::error::DecodeError),
 
     #[error("Invalid file format")]
     InvalidFileFormat,
@@ -140,8 +142,8 @@ pub trait SerDeFile: Serialize + DeserializeOwned {
         Ok(())
     }
     fn save_bin_comp<T: AsRef<std::path::Path>>(&self, path: T) -> Result<(), Error> {
-        let file = zstd::Encoder::new(std::fs::File::create(path)?, 0)?.auto_finish();
-        bincode::serialize_into(file, self)?;
+        let mut file = zstd::Encoder::new(std::fs::File::create(path)?, 0)?.auto_finish();
+        bincode::serde::encode_into_std_write(self, &mut file, bincode::config::standard())?;
         Ok(())
     }
 }

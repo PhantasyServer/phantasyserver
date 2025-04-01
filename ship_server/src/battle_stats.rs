@@ -1,7 +1,7 @@
 use crate::{Error, User};
-use data_structs::{stats::EnemyHitbox, ServerData};
+use data_structs::{ServerData, stats::EnemyHitbox};
 use pso2packetlib::protocol::{
-    models::{character::Class, Position},
+    models::{Position, character::Class},
     objects::{DamageReceivePacket, EnemyKilledPacket},
     playerstatus::DealDamagePacket,
     spawn::EnemySpawnPacket,

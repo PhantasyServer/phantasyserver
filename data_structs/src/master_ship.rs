@@ -1,22 +1,22 @@
-use crate::{flags::Flags, inventory::AccountStorages, Error};
+use crate::{Error, flags::Flags, inventory::AccountStorages};
 use aes_gcm::{
-    aead::{Aead, KeyInit},
     AeadCore, Aes256Gcm,
+    aead::{Aead, KeyInit},
 };
 use p256::{
+    PublicKey,
     ecdh::EphemeralSecret,
     ecdsa::{
-        signature::{Signer, Verifier},
         Signature, SigningKey, VerifyingKey,
+        signature::{Signer, Verifier},
     },
-    PublicKey,
 };
 use pso2packetlib::{
-    protocol::login::{LoginAttempt, ShipStatus, UserInfoPacket},
     AsciiString,
+    protocol::login::{LoginAttempt, ShipStatus, UserInfoPacket},
 };
 use rand_core::{OsRng, RngCore};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     time::Duration,
@@ -464,14 +464,19 @@ impl SerializerFormat {
             Self::Json => Ok(serde_json::to_vec(data)?),
             Self::MessagePack => Ok(rmp_serde::to_vec_named(data)?),
             Self::MessagePackUnnamed => Ok(rmp_serde::to_vec(data)?),
-            Self::Bincode => Ok(bincode::serialize(data)?),
+            Self::Bincode => Ok(bincode::serde::encode_to_vec(
+                self,
+                bincode::config::standard(),
+            )?),
         }
     }
     fn deserialize<T: DeserializeOwned>(&self, data: &[u8]) -> Result<T, Error> {
         match self {
             Self::Json => Ok(serde_json::from_slice(data)?),
             Self::MessagePack | Self::MessagePackUnnamed => Ok(rmp_serde::from_slice(data)?),
-            Self::Bincode => Ok(bincode::deserialize(data)?),
+            Self::Bincode => {
+                Ok(bincode::serde::decode_from_slice(data, bincode::config::standard())?.0)
+            }
         }
     }
 }

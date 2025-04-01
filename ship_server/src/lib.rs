@@ -19,14 +19,14 @@ mod sql;
 mod user;
 
 use data_structs::{
-    master_ship::{self, ShipInfo},
     SerDeFile, ServerData,
+    master_ship::{self, ShipInfo},
 };
 use master_conn::MasterConnection;
 use mutex::{Mutex, RwLock};
 use pso2packetlib::{
-    protocol::{login, Packet, PacketType},
     Connection, PrivateKey, PublicKey,
+    protocol::{Packet, PacketType, login},
 };
 use quests::Quests;
 use rand::Rng;
@@ -35,7 +35,7 @@ use settings::Settings;
 use std::{
     io,
     net::Ipv4Addr,
-    sync::{atomic::AtomicU32, Arc},
+    sync::{Arc, atomic::AtomicU32},
 };
 use thiserror::Error;
 use user::*;

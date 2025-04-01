@@ -1,12 +1,12 @@
 use crate::Error;
-use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString};
 use data_structs::{flags::Flags, inventory::AccountStorages};
 use pso2packetlib::{
-    protocol::login::{LoginAttempt, LoginResult, UserInfoPacket},
     AsciiString,
+    protocol::login::{LoginAttempt, LoginResult, UserInfoPacket},
 };
 use rand_core::{OsRng, RngCore};
-use sqlx::{migrate::MigrateDatabase, Executor, Row};
+use sqlx::{Executor, Row, migrate::MigrateDatabase};
 use std::{
     net::Ipv4Addr,
     ops::Add,
@@ -458,11 +458,11 @@ mod tests {
     use crate::sql::Sql;
     use data_structs::flags::Flags;
     use pso2packetlib::{
+        AsciiString,
         protocol::{
             login::{LoginResult, UserInfoPacket},
             models::SGValue,
         },
-        AsciiString,
     };
     use std::{net::Ipv4Addr, time::Duration};
 

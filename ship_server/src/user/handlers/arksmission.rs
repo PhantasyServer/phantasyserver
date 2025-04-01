@@ -1,6 +1,6 @@
 use super::HResult;
-use crate::{user::User, Action};
-use pso2packetlib::protocol::{missions, Packet};
+use crate::{Action, user::User};
+use pso2packetlib::protocol::{Packet, missions};
 
 pub async fn mission_list(user: &mut User) -> HResult {
     let mission = missions::Mission {

@@ -1,8 +1,8 @@
 use crate::Error;
 use clap::Parser;
 use rsa::{
-    pkcs8::{DecodePrivateKey, EncodePrivateKey},
     RsaPrivateKey,
+    pkcs8::{DecodePrivateKey, EncodePrivateKey},
 };
 use serde::{Deserialize, Serialize};
 

@@ -1,6 +1,6 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, User};
-use pso2packetlib::protocol::{objects, Packet};
+use crate::{Action, User, mutex::MutexGuard};
+use pso2packetlib::protocol::{Packet, objects};
 
 pub async fn movement(mut user: MutexGuard<'_, User>, packet: objects::MovementPacket) -> HResult {
     if let Some(n) = packet.rot_x {

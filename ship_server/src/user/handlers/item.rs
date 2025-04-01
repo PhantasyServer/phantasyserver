@@ -1,7 +1,7 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, Action, Error, User};
+use crate::{Action, Error, User, mutex::MutexGuard};
 use pso2packetlib::protocol::{
-    self,
+    self, Packet,
     items::{
         DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipItemPacket,
         EquipItemRequestPacket, GetItemDescriptionPacket, ItemType, LoadItemDescriptionPacket,
@@ -9,7 +9,6 @@ use pso2packetlib::protocol::{
         MoveToStorageRequestPacket, UnequipItemPacket, UnequipItemRequestPacket,
     },
     login::Language,
-    Packet,
 };
 
 pub async fn move_to_storage(user: &mut User, packet: MoveToStorageRequestPacket) -> HResult {
@@ -55,7 +54,9 @@ pub async fn discard_storage(user: &mut User, packet: DiscardStorageItemRequestP
 
 pub async fn move_storages(user: &mut User, packet: MoveStoragesRequestPacket) -> HResult {
     let character = user.character.as_mut().unwrap();
-    let packet = character.inventory.move_storages(packet, &mut user.user_data.last_uuid)?;
+    let packet = character
+        .inventory
+        .move_storages(packet, &mut user.user_data.last_uuid)?;
     user.send_packet(&packet).await?;
     Ok(Action::Nothing)
 }

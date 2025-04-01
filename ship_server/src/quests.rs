@@ -1,6 +1,6 @@
-use std::sync::{atomic::AtomicU32, Arc};
+use std::sync::{Arc, atomic::AtomicU32};
 
-use crate::{map::Map, mutex::Mutex, Error};
+use crate::{Error, map::Map, mutex::Mutex};
 use data_structs::quest::QuestData;
 use pso2packetlib::protocol::{
     party::{SetPartyQuestPacket, SetQuestInfoPacket},

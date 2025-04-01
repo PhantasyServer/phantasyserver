@@ -1,6 +1,7 @@
 use crate::Error;
 use data_structs::inventory::{AccountStorages, ItemParameters, StorageInventory};
 use pso2packetlib::protocol::{
+    ObjectHeader, Packet, ProtocolRW,
     items::{
         AddedItemPacket, DiscardItemRequestPacket, DiscardStorageItemRequestPacket, EquipedItem,
         InventoryMesetaPacket, Item, ItemId, ItemType, LoadEquipedPacket, LoadItemPacket,
@@ -11,7 +12,6 @@ use pso2packetlib::protocol::{
         UpdateStoragePacket,
     },
     login::Language,
-    ObjectHeader, Packet, ProtocolRW,
 };
 use serde::{Deserialize, Serialize};
 

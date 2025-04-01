@@ -1,13 +1,13 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, quests::PartyQuest, Action, User};
+use crate::{Action, User, mutex::MutexGuard, quests::PartyQuest};
 use pso2packetlib::protocol::{
+    Packet, PacketHeader,
     flag::{CutsceneEndPacket, SkitItemAddRequestPacket},
     questlist::{
         self, AcceptQuestPacket, AcceptStoryQuestPacket, MinimapRevealRequestPacket,
         NewUnlockedQuestsPacket, QuestCategoryRequestPacket, QuestDifficultyPacket,
         QuestDifficultyRequestPacket, UnlockedQuest,
     },
-    Packet, PacketHeader,
 };
 
 pub async fn counter_request(user: &mut User) -> HResult {

@@ -1,14 +1,13 @@
 use super::HResult;
-use crate::{mutex::MutexGuard, party, Action, Error, User, UserState};
+use crate::{Action, Error, User, UserState, mutex::MutexGuard, party};
 use pso2packetlib::protocol::{
-    self,
+    self, Packet,
     flag::{FlagType, SetFlagPacket},
     server::{
         BridgeToLobbyPacket, BridgeTransportPacket, CafeToLobbyPacket, CafeTransportPacket,
         CampshipDownPacket, CasinoToLobbyPacket, CasinoTransportPacket, MapLoadedPacket,
         StoryToLobbyPacket, ToCampshipPacket,
     },
-    Packet,
 };
 use std::sync::atomic::Ordering;
 

@@ -1,8 +1,8 @@
 use super::HResult;
 use crate::{Action, User};
 use pso2packetlib::protocol::{
-    settings::{LoadSettingsPacket, SaveSettingsPacket},
     Packet,
+    settings::{LoadSettingsPacket, SaveSettingsPacket},
 };
 
 pub async fn settings_request(user: &mut User) -> HResult {
