@@ -22,7 +22,7 @@ mlua = { version = "0.10.3", features = ["serialize", "vendored", "send", "async
 parking_lot = {version = "0.12.3", features = ["send_guard"]}
 indicatif = "0.17.11"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
-tokio = { version = "1.44.1", features = ["full"] }
+tokio = { version = "1.44.2", features = ["full"] }
 toml = "0.8.20"
 log = { version = "0.4.27", features = ["serde", "release_max_level_info", "std"] }
 simplelog = "0.12.2"
