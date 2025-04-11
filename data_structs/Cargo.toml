@@ -19,7 +19,7 @@ serde_json = { version = "1.0.140", optional = true }
 thiserror = "2.0.12"
 tokio = { version = "1.44.2", optional = true, features = ["full"] }
 p256 = { version = "0.13.2", optional = true, features = ["ecdh"] }
-rand_core = { version = "0.6.4", optional = true }
+rand_core = { version = "0.9.3", optional = true }
 sha2 = { version = "0.10.8", optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 zstd = "0.13.3"
