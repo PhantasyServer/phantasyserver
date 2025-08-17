@@ -184,7 +184,19 @@ fn build_parser(ast: &DeriveInput) -> syn::Result<TokenStream> {
                 if string.is_empty() {
                     return Err(Self::get_help(is_gm));
                 }
-                let mut data_stream = string.split_whitespace();
+                // let mut data_stream = string.split_whitespace();
+                let mut data_stream = string
+                    .split_terminator('"')
+                    .filter(|x| !x.is_empty())
+                    .enumerate()
+                    .map(|(i, s)| {
+                        if i % 2 == 0 {
+                            s.split_terminator(' ')
+                        } else {
+                            s.split_terminator('"')
+                        }
+                    })
+                .flatten();
                 let cmd = data_stream.next().unwrap_or_default();
                 match (cmd, is_gm) {
                     #parse_variant_stream
