@@ -31,7 +31,7 @@ impl<T> Mutex<T> {
             mutex: PMutex::new(val),
         }
     }
-    pub async fn lock(&self) -> MutexGuard<T>
+    pub async fn lock(&self) -> MutexGuard<'_, T>
     where
         Self: Send,
         T: Send,
@@ -43,7 +43,7 @@ impl<T> Mutex<T> {
             }
         }
     }
-    pub fn lock_blocking(&self) -> MutexGuard<T> {
+    pub fn lock_blocking(&self) -> MutexGuard<'_, T> {
         MutexGuard {
             guard: self.mutex.lock(),
         }
@@ -111,7 +111,7 @@ impl<T> RwLock<T> {
             lock: PRwLock::new(val),
         }
     }
-    pub async fn read(&self) -> RwReadGuard<T>
+    pub async fn read(&self) -> RwReadGuard<'_, T>
     where
         Self: Send,
         T: Send + Sync,
@@ -123,12 +123,12 @@ impl<T> RwLock<T> {
             }
         }
     }
-    pub fn read_blocking(&self) -> RwReadGuard<T> {
+    pub fn read_blocking(&self) -> RwReadGuard<'_, T> {
         RwReadGuard {
             guard: self.lock.read(),
         }
     }
-    pub async fn write(&self) -> RwWriteGuard<T>
+    pub async fn write(&self) -> RwWriteGuard<'_, T>
     where
         Self: Send,
         T: Send + Sync,
@@ -140,7 +140,7 @@ impl<T> RwLock<T> {
             }
         }
     }
-    pub fn write_blocking(&self) -> RwWriteGuard<T> {
+    pub fn write_blocking(&self) -> RwWriteGuard<'_, T> {
         RwWriteGuard {
             guard: self.lock.write(),
         }

@@ -48,10 +48,10 @@ impl Attributes {
                     }
                 }
                 syn::Meta::NameValue(meta) => {
-                    if let syn::Expr::Lit(expr) = &meta.value {
-                        if let syn::Lit::Str(lit_str) = &expr.lit {
-                            ret.doc.push_str(&lit_str.value());
-                        }
+                    if let syn::Expr::Lit(expr) = &meta.value
+                        && let syn::Lit::Str(lit_str) = &expr.lit
+                    {
+                        ret.doc.push_str(&lit_str.value());
                     }
                 }
             }

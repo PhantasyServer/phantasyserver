@@ -7,15 +7,6 @@ pub enum Group {
     Group2,
 }
 
-#[derive(Debug, Default)]
-#[repr(C)]
-pub struct IceFlags {
-    pub encrypted: bool,
-    pub compressed: bool,
-    pub oodle: bool,
-    pub vita: bool,
-}
-
 struct IceInfo {
     crc32: u32,
     flags: u32,
