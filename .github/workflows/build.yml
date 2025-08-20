@@ -89,6 +89,7 @@ jobs:
         mv target/${{ matrix.TARGET }}/release/pso2ship_server${{ matrix.EXTENSION }} output
         mv target/${{ matrix.TARGET }}/release/master_ship${{ matrix.EXTENSION }} output
         mv target/${{ matrix.TARGET }}/release/data_compiler${{ matrix.EXTENSION }} output
+        mv target/${{ matrix.TARGET }}/release/patch_server${{ matrix.EXTENSION }} output
     - name: Upload bin artifact
       if: ${{ success() }}
       uses: actions/upload-artifact@v4
