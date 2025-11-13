@@ -1,0 +1,14 @@
+# Domain name or IP of the server running the server
+domain = "example.com"
+# URL folder of the main game files
+master_url = "master"
+# Folder where main game files are located
+master_folder = "master"
+# URL folder of the "patch" game files
+patch_url = "patch"
+# Folder where patch game files are located
+patch_folder = "patch"
+# Port of the patch server (default: 4040)
+port = 8080
+# Controls whether to append a port to the URL (default: false)
+output_port = true

@@ -177,7 +177,7 @@ impl User {
     pub const fn get_stats(&self) -> &PlayerStats {
         &self.battle_stats
     }
-    pub fn get_stats_mut(&mut self) -> &mut PlayerStats {
+    pub const fn get_stats_mut(&mut self) -> &mut PlayerStats {
         &mut self.battle_stats
     }
     pub const fn create_object_header(&self) -> ObjectHeader {

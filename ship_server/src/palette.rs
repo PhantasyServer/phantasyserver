@@ -46,17 +46,17 @@ impl Palette {
             default: self.default_pas.clone().into(),
         })
     }
-    pub fn set_palette(&mut self, packet: SetPalettePacket) -> Result<(), Error> {
+    pub const fn set_palette(&mut self, packet: SetPalettePacket) -> Result<(), Error> {
         if packet.palette > 5 {
             return Err(Error::InvalidInput("set_palette"));
         }
         self.cur_palette = packet.palette;
         Ok(())
     }
-    pub fn set_palette_data(&mut self, id: u32, palette: WeaponPalette) {
+    pub const fn set_palette_data(&mut self, id: u32, palette: WeaponPalette) {
         self.palettes[id as usize] = palette;
     }
-    pub fn set_subpalette_data(&mut self, palettes: [SubPalette; 6]) {
+    pub const fn set_subpalette_data(&mut self, palettes: [SubPalette; 6]) {
         self.subpalettes = palettes;
     }
     pub fn send_change_palette(&self, playerid: u32) -> Packet {
@@ -108,7 +108,7 @@ impl Palette {
         self.subpalettes = packet.subpalettes;
         Ok(self.send_palette())
     }
-    pub fn set_subpalette(&mut self, packet: SetSubPalettePacket) -> Result<(), Error> {
+    pub const fn set_subpalette(&mut self, packet: SetSubPalettePacket) -> Result<(), Error> {
         if packet.subpalette > 5 {
             return Err(Error::InvalidInput("set_subpalette"));
         }

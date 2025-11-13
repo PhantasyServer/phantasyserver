@@ -284,10 +284,10 @@ impl ShipConnection {
     }
     pub async fn read_for(&mut self, time: Duration) -> Result<MasterShipComm, Error> {
         let mut buf = [0; 4096];
-        if !self.raw_read_buffer.is_empty() {
-            if let Some(data) = self.extract_data()? {
-                return Ok(data);
-            }
+        if !self.raw_read_buffer.is_empty()
+            && let Some(data) = self.extract_data()?
+        {
+            return Ok(data);
         }
         loop {
             let read_bytes = self.read_timeout(&mut buf, time).await?;
@@ -390,10 +390,10 @@ impl ShipConnection {
             .map_err(|_| Error::HKDFError)?;
         Ok(output)
     }
-    pub fn set_format(&mut self, format: SerializerFormat) {
+    pub const fn set_format(&mut self, format: SerializerFormat) {
         self.format = format;
     }
-    pub fn set_deferred_fmt(&mut self, format: SerializerFormat) {
+    pub const fn set_deferred_fmt(&mut self, format: SerializerFormat) {
         self.deferred_fmt = Some(format);
     }
 }

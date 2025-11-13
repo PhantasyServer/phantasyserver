@@ -179,7 +179,7 @@ impl MasterConnection {
             _ => Err(Error::MSUnexpected),
         }
     }
-    pub fn take_notif_ch(&mut self) -> Option<Receiver<MAS>> {
+    pub const fn take_notif_ch(&mut self) -> Option<Receiver<MAS>> {
         self.notif_cf.take()
     }
 }

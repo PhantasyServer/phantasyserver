@@ -73,7 +73,7 @@ pub struct DefaultItem {
 }
 
 impl StorageInventory {
-    pub fn generate_info(&self) -> StorageInfo {
+    pub const fn generate_info(&self) -> StorageInfo {
         StorageInfo {
             total_space: self.total_space,
             used_space: self.items.len() as u32,

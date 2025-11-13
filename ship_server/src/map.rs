@@ -175,16 +175,16 @@ impl Map {
         log::trace!("Map {} created", map_obj.id);
         Ok(map)
     }
-    pub fn set_map_type(&mut self, map_type: MapType) {
+    pub const fn set_map_type(&mut self, map_type: MapType) {
         self.map_type = map_type;
     }
     pub fn set_block_data(&mut self, data: Arc<BlockData>) {
         self.block_data = Some(data);
     }
-    pub fn set_enemy_level(&mut self, level: u32) {
+    pub const fn set_enemy_level(&mut self, level: u32) {
         self.enemy_level = level;
     }
-    pub fn set_quest_obj(&mut self, obj: ObjectHeader) {
+    pub const fn set_quest_obj(&mut self, obj: ObjectHeader) {
         self.quest_obj = obj;
     }
     fn find_max_id(&mut self) {

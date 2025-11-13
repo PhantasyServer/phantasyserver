@@ -751,7 +751,7 @@ async fn send_keys(mut stream: TcpStream, servers: Arc<MSData>) -> Result<(), Er
     Ok(())
 }
 
-async fn async_write<T>(mutex: &RwLock<T>) -> RwLockWriteGuard<T>
+async fn async_write<T>(mutex: &RwLock<T>) -> RwLockWriteGuard<'_, T>
 where
     T: Send + Sync,
 {
