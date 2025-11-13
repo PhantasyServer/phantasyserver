@@ -182,11 +182,11 @@ fn build_filestate(state: &mut Vec<FileInfo>, folder: &str) -> Result<(), Box<dy
                 }
             }
 
-            let data = std::fs::read(&open_path)?;
+            let data = std::fs::read(open_path)?;
             let mut hasher = md5::Context::new();
             hasher.consume(&data);
             let size = data.len();
-            let hash = hasher.compute();
+            let hash = hasher.finalize();
             let info = FileInfo {
                 path_hash,
                 path: path.to_string_lossy().to_string(),
