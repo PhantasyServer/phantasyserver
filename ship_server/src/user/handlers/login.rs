@@ -90,6 +90,12 @@ pub async fn login_request(user: &mut User, packet: Packet) -> HResult {
 
 pub async fn on_successful_login(user: &mut User) -> HResult {
     let id = user.get_user_id();
+    user.send_packet(&Packet::BannerList(protocol::login::BannerListPacket {
+        banners: "ui_acshop_main_banner_03/hangame,shop_banner_large_02;ui_acshop_main_banner_03/segapc/segavita/segaps4/segaswitch/pccloud,shop_banner_large_01;ui_acshop_sub_banner_01/hangame,shop_banner_small_06;ui_acshop_sub_banner_01/segapc/segavita/segaps4/segaswitch/pccloud,shop_banner_small_04;ui_acshop_sub_banner_02/hangame,shop_banner_small_02;ui_acshop_sub_banner_02/segapc/segavita/segaps4/segaswitch/pccloud,shop_banner_small_05;ui_acshop_sub_banner_03/segapc/hangame/segavita/segaps4/segaswitch/pccloud,shop_banner_small_03;ui_gacha_l_000/segapc/hangame/segavita/segaps4/segaswitch/pccloud,gacha_banner_large_17;ui_gacha_l_001/segapc/hangame/segavita/segaps4/segaswitch/pccloud,gacha_banner_large_15;ui_gacha_l_002/segapc/hangame/segavita/segaps4/segaswitch/pccloud,gacha_banner_large_03;ui_info_banner_1_1/segapc/hangame/segavita/segaps4/segaswitch/pccloud,gacha_banner_large_17;ui_info_banner_1_2/segapc/hangame/segavita/segaps4/segaswitch/pccloud,gacha_banner_large_15;ui_info_banner_1_3/segapc/hangame/segavita/segaps4/segaswitch/pccloud,gacha_banner_large_03;ui_info_banner_2_1/segapc/hangame/segavita/segaps4/segaswitch/pccloud,test_banner_large_16;ui_info_banner_2_2/segapc/hangame/segavita/segaps4/segaswitch/pccloud,test_banner_large_20;ui_info_banner_3_1/segapc/hangame/segavita/segaps4/segaswitch/pccloud,notice_banner_large_02;ui_load_l_000/segapc/hangame/segaps4/segaswitch/pccloud,test_banner_large_01;ui_load_l_003/segaswitch,test_banner_large_04".into(),
+    }))
+    .await?;
+    user.send_packet(&Packet::Unk116F(protocol::login::Unk116FPacket { unk1: "<info pict campaign>gacha_banner_large_02\n<info pict start>\n<banner title 1>Select for more info about New Scratch Tickets!\n<info pict banner 1>ui_mainmenu_banner_01\n<info pict change time 1>6\n<banner title 2>Select for more info about New Scratch Tickets!\n<info pict banner 2>mainmenu_banner_01\n<info pict change time 2>6\n<Info pict end>\nPlease see the announcements on the\nOfficial NGS Site for details about\nthe updates and events.".into(), unk2: 0})).await?;
+
     user.send_packet(&Packet::LoginResponse(login::LoginResponsePacket {
         status: login::LoginStatus::Success,
         error: String::new(),
