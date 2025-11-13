@@ -128,8 +128,6 @@ pub async fn campship_down(user: MutexGuard<'_, User>, _: CampshipDownPacket) ->
 pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket) -> HResult {
     let user = &mut *user_guard;
     let user_id = user.get_user_id();
-    let packet = protocol::unk19::LobbyMonitorPacket { video_id: 1 };
-    user.send_packet(&Packet::LobbyMonitor(packet)).await?;
     let Some(character) = &mut user.character else {
         unreachable!("Character should be loaded here");
     };
@@ -177,6 +175,8 @@ pub async fn map_loaded(mut user_guard: MutexGuard<'_, User>, _: MapLoadedPacket
     // unlock controls?
     user.send_packet(&Packet::UnlockControls).await?;
     user.send_packet(&Packet::FinishLoading).await?;
+    let packet = protocol::unk19::LobbyMonitorPacket { video_id: 121 };
+    user.send_packet(&Packet::LobbyMonitor(packet)).await?;
     user.firstload = false;
 
     let map = user.map.clone().unwrap();
