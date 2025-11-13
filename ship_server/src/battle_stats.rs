@@ -310,9 +310,26 @@ impl EnemyStats {
             unk2: 2,
             unk4: 2,
             // unk5: 269877691,
-            unk6: 1029,
+
+            // contains emergency marker color
+            // 0x505 - blue
+            // 0x605 - purple
+            // 0x705 - green
+            // unk6: 0x405,
+            // 0x1 - ??
+            // 0x2 - ??
+            // 0x4 - ??
+            // 0x8 - ??
+            // 0x10 - ??
+            // 0x20 - ??
+            // 0x40 - big enemy marker
+            // 0x80 - hide enemy from minimap
+            // 0x300 - emergency color
+            // 0x400 - ??
+            unk6: 0x405,
             unk7: 255,
             unk8: 65535,
+            // last nonzero value - model id
             unk9: [
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 1062804813, 3212836864, 0, 1570802465, 0, 0, 0,
             ],
