@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Pull repo
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Check
       if: ${{ success() }}
       run: cargo check --all-targets --all-features
@@ -23,7 +23,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
     - name: Pull repo
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Compile data
       if: ${{ success() }}
       run: cargo run --bin=data_compiler data 
@@ -68,7 +68,7 @@ jobs:
           EXTENSION: .exe
     steps:
     - name: Pull repo
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Install rustup
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable --profile default --target ${{ matrix.TARGET }} -y
