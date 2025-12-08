@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-actix-web = "4.11.0"
+actix-web = "4.12.1"
 log = "0.4.28"
 md5 = "0.8.0"
 serde = { version = "1.0.228", features = ["derive"] }
