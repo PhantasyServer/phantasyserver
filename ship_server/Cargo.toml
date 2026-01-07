@@ -9,7 +9,7 @@ rust-version = "1.85"
 
 [dependencies]
 rand = "0.8.5"
-rsa = "0.9.9"
+rsa = "0.9.10"
 pso2packetlib = { workspace = true, default-features = false, features = ["serde", "split_connection", "vita_enc", "base_enc", "ppac", "item_attrs", "tokio"] }
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "any"] }
 thiserror = "2.0.17"
