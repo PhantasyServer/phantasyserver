@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-actix-web = "4.12.1"
+actix-web = "4.13.0"
 log = "0.4.29"
 md5 = "0.8.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 simplelog = "0.12.2"
-toml = "0.9.11"
+toml = "1.0.3"
