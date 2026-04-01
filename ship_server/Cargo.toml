@@ -22,12 +22,12 @@ mlua = { version = "0.11.6", features = ["serialize", "vendored", "send", "async
 parking_lot = {version = "0.12.5", features = ["send_guard"]}
 indicatif = "0.18.4"
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
-tokio = { version = "1.49.0", features = ["full"] }
-toml = "1.0.3"
+tokio = { version = "1.50.0", features = ["full"] }
+toml = "1.1.1"
 log = { version = "0.4.29", features = ["serde", "release_max_level_info", "std"] }
 simplelog = "0.12.2"
 dialoguer = "0.12.0"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 base64 = "0.22.1"
 clap = { version = "4.5.60", features = ["derive"] }
 cmd-derive = { path = "../cmd-derive" }
