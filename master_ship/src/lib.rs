@@ -17,7 +17,8 @@ use pso2packetlib::{
     Connection, PrivateKey, PublicKey,
     protocol::{Packet, PacketType, login},
 };
-use rand_core::{OsRng, RngCore};
+use rand::rngs::SysRng;
+use rand_core::TryRng;
 use serde::{Deserialize, Serialize};
 use std::{
     io,
@@ -250,7 +251,7 @@ pub async fn ctrl_c_handler() {
 
 pub async fn load_key() -> SigningKey {
     let mut data = tokio::fs::read("master_key.bin").await.unwrap_or_default();
-    data.resize_with(32, || OsRng.next_u32() as u8);
+    data.resize_with(32, || SysRng.try_next_u32().unwrap() as u8);
     let _ = tokio::fs::write("master_key.bin", &data).await;
     SigningKey::from_slice(&data).unwrap()
 }

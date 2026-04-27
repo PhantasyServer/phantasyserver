@@ -1,11 +1,11 @@
 use crate::Error;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use data_structs::{flags::Flags, inventory::AccountStorages};
 use pso2packetlib::{
     AsciiString,
     protocol::login::{LoginAttempt, LoginResult, UserInfoPacket},
 };
-use rand_core::{OsRng, RngCore};
+use rand::{TryRng, rngs::SysRng};
 use sqlx::{Executor, Row, migrate::MigrateDatabase};
 use std::{
     net::Ipv4Addr,
@@ -183,7 +183,7 @@ impl Sql {
         {
             return Err(Error::NoUser);
         }
-        let challenge = OsRng.next_u32();
+        let challenge = SysRng.try_next_u32().unwrap();
         let until = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -295,9 +295,8 @@ impl Sql {
         // joined
         let password: &'static str = unsafe { std::mem::transmute(password) };
         let hash = tokio::task::spawn_blocking(|| {
-            let salt = SaltString::generate(&mut OsRng);
             let argon2 = Argon2::default();
-            match argon2.hash_password(password.as_bytes(), &salt) {
+            match argon2.hash_password(password.as_bytes()) {
                 Ok(x) => Ok(x.to_string()),
                 Err(_) => Err(Error::HashError),
             }

@@ -6,7 +6,7 @@ use pso2packetlib::protocol::{
     playerstatus::DealDamagePacket,
     spawn::EnemySpawnPacket,
 };
-use rand::distributions::Distribution;
+use rand::distr::{Distribution, Uniform};
 
 #[derive(Debug, Clone, Default)]
 pub struct PlayerStats {
@@ -204,12 +204,14 @@ impl PlayerStats {
 
         //TODO: elemental dmg
 
-        let mut rng = rand::rngs::OsRng;
-        let crit_chance = rand::distributions::Uniform::new(0, 100).sample(&mut rng);
+        let mut rng = rand::rng();
+        let crit_chance = Uniform::new(0, 100).unwrap().sample(&mut rng);
         let dmg = if crit_chance < 5 || min_weapon_attack == max_weapon_attack {
             max_weapon_attack
         } else {
-            rand::distributions::Uniform::new(min_weapon_attack, max_weapon_attack).sample(&mut rng)
+            Uniform::new(min_weapon_attack, max_weapon_attack)
+                .unwrap()
+                .sample(&mut rng)
         }
         .round() as u32;
         enemy.hp = enemy.hp.saturating_sub(dmg);
@@ -374,12 +376,14 @@ impl EnemyStats {
 
         //TODO: elemental res
 
-        let mut rng = rand::rngs::OsRng;
-        let crit_chance = rand::distributions::Uniform::new(0, 100).sample(&mut rng);
+        let mut rng = rand::rng();
+        let crit_chance = Uniform::new(0, 100).unwrap().sample(&mut rng);
         let dmg = if crit_chance < 5 || min_weapon_attack == max_weapon_attack {
             max_weapon_attack
         } else {
-            rand::distributions::Uniform::new(min_weapon_attack, max_weapon_attack).sample(&mut rng)
+            Uniform::new(min_weapon_attack, max_weapon_attack)
+                .unwrap()
+                .sample(&mut rng)
         }
         .round() as u32;
         player.hp = player.hp.saturating_sub(dmg);

@@ -29,8 +29,8 @@ use pso2packetlib::{
     protocol::{Packet, PacketType, login},
 };
 use quests::Quests;
-use rand::Rng;
-use rsa::traits::PublicKeyParts;
+use rand::distr::{Distribution, Uniform};
+use rsa::traits::{PrivateKeyParts, PublicKeyParts};
 use settings::Settings;
 use std::{
     io,
@@ -206,8 +206,8 @@ pub async fn run() -> Result<(), Error> {
                 name: settings.server_name.clone(),
                 status: pso2packetlib::protocol::login::ShipStatus::Online,
                 key: master_ship::KeyInfo {
-                    n: key.n().to_bytes_le(),
-                    e: key.e().to_bytes_le(),
+                    n: key.n().to_le_bytes().to_vec(),
+                    e: key.e().to_le_bytes().to_vec(),
                 },
             },
         )
@@ -276,7 +276,14 @@ pub async fn run() -> Result<(), Error> {
         blockstatus_lock.push(new_block.clone());
         let server_statuses = server_statuses.clone();
         let sql = sql.clone();
-        let key = PrivateKey::Key(key.clone());
+        let primes = key.primes();
+        let key = PrivateKey::Params {
+            n: key.n().to_le_bytes().to_vec(),
+            e: key.e().to_le_bytes().to_vec(),
+            d: key.d().to_le_bytes().to_vec(),
+            p: primes[0].to_le_bytes().to_vec(),
+            q: primes[1].to_le_bytes().to_vec(),
+        };
         log::debug!("Started block {}", block.name);
         blocks.push(tokio::spawn(async move {
             match block::init_block(server_statuses, new_block, sql, key).await {
@@ -377,7 +384,10 @@ async fn send_block_balance(
             }
         }
     }
-    let block = &mut blocks[rand::thread_rng().gen_range(0..server_count) as usize];
+    let block = Uniform::new(0, server_count)
+        .unwrap()
+        .sample(&mut rand::rng());
+    let block = &mut blocks[block as usize];
     let packet = login::BlockBalancePacket {
         ip: block.ip,
         port: block.port,

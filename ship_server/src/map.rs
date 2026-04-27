@@ -16,7 +16,7 @@ use pso2packetlib::protocol::{
     spawn::{CharacterSpawnPacket, CharacterSpawnType, ObjectSpawnPacket},
     symbolart::{ReceiveSymbolArtPacket, SendSymbolArtPacket},
 };
-use rand::{prelude::Distribution, seq::IteratorRandom};
+use rand::{distr::Uniform, prelude::Distribution, seq::IteratorRandom};
 use std::{
     collections::HashMap,
     sync::{
@@ -1071,8 +1071,9 @@ impl Zone {
             match chunk.enemy_spawn_type {
                 data_structs::map::EnemySpawnType::Disabled => {}
                 data_structs::map::EnemySpawnType::Automatic { min, max } => {
-                    let count = rand::distributions::Uniform::new_inclusive(min, max)
-                        .sample(&mut rand::thread_rng());
+                    let count = Uniform::new_inclusive(min, max)
+                        .unwrap()
+                        .sample(&mut rand::rng());
                     if !self.chunk_spawns.iter().any(|s| s.0 == chunk.chunk_id) {
                         self.chunk_spawns
                             .push((chunk.chunk_id, std::time::Instant::now()));
@@ -1082,12 +1083,9 @@ impl Zone {
                             .enemies
                             .iter()
                             .map(|e| e.spawn_category)
-                            .choose(&mut rand::thread_rng())
+                            .choose(&mut rand::rng())
                             .unwrap_or_default();
-                        let spawn_point = chunk
-                            .enemy_spawn_points
-                            .iter()
-                            .choose(&mut rand::thread_rng());
+                        let spawn_point = chunk.enemy_spawn_points.iter().choose(&mut rand::rng());
                         let spawn_point = match spawn_point {
                             Some(x) => *x,
                             None => user.user.upgrade().unwrap().lock().await.position,
@@ -1098,7 +1096,7 @@ impl Zone {
                                 .enemies
                                 .iter()
                                 .filter(|e| e.spawn_category == spawn_category)
-                                .choose(&mut rand::thread_rng());
+                                .choose(&mut rand::rng());
                             if let Some(enemy) = enemy {
                                 let enemy_name = enemy.enemy_name.clone();
                                 self.spawn_enemy(
@@ -1118,8 +1116,9 @@ impl Zone {
                     max,
                     respawn_time,
                 } => {
-                    let count = rand::distributions::Uniform::new_inclusive(min, max)
-                        .sample(&mut rand::thread_rng());
+                    let count = Uniform::new_inclusive(min, max)
+                        .unwrap()
+                        .sample(&mut rand::rng());
                     let (spawn, is_first) = if let Some(spawn) =
                         self.chunk_spawns.iter().find(|s| s.0 == chunk.chunk_id)
                     {
@@ -1137,12 +1136,9 @@ impl Zone {
                             .enemies
                             .iter()
                             .map(|e| e.spawn_category)
-                            .choose(&mut rand::thread_rng())
+                            .choose(&mut rand::rng())
                             .unwrap_or_default();
-                        let spawn_point = chunk
-                            .enemy_spawn_points
-                            .iter()
-                            .choose(&mut rand::thread_rng());
+                        let spawn_point = chunk.enemy_spawn_points.iter().choose(&mut rand::rng());
                         let spawn_point = match spawn_point {
                             Some(x) => *x,
                             None => user.user.upgrade().unwrap().lock().await.position,
@@ -1153,7 +1149,7 @@ impl Zone {
                                 .enemies
                                 .iter()
                                 .filter(|e| e.spawn_category == spawn_category)
-                                .choose(&mut rand::thread_rng());
+                                .choose(&mut rand::rng());
                             if let Some(enemy) = enemy {
                                 let enemy_name = enemy.enemy_name.clone();
                                 self.spawn_enemy(

@@ -130,7 +130,7 @@ impl Settings {
                 Ok(..) => RsaPrivateKey::read_pkcs8_pem_file(keyfile_path)?,
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                     log::warn!("Keyfile doesn't exist, creating...");
-                    let key = RsaPrivateKey::new(&mut rand::thread_rng(), 1024)?;
+                    let key = RsaPrivateKey::new(&mut rand::rng(), 1024)?;
                     key.write_pkcs8_pem_file(keyfile_path, rsa::pkcs8::LineEnding::default())?;
                     log::info!("Keyfile created.");
                     key
@@ -141,7 +141,7 @@ impl Settings {
                 }
             },
             None => {
-                let key = RsaPrivateKey::new(&mut rand::thread_rng(), 1024)?;
+                let key = RsaPrivateKey::new(&mut rand::rng(), 1024)?;
                 log::info!("Keyfile created.");
                 key
             }

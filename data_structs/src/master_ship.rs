@@ -1,6 +1,6 @@
 use crate::{Error, flags::Flags, inventory::AccountStorages};
 use aes_gcm::{
-    AeadCore, Aes256Gcm,
+    Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
 };
 use p256::{
@@ -10,12 +10,13 @@ use p256::{
         Signature, SigningKey, VerifyingKey,
         signature::{Signer, Verifier},
     },
+    elliptic_curve::Generate,
 };
 use pso2packetlib::{
     AsciiString,
     protocol::login::{LoginAttempt, ShipStatus, UserInfoPacket},
 };
-use rand_core::{OsRng, RngCore};
+use rand_core::TryRng;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -351,7 +352,8 @@ impl ShipConnection {
         Ok(None)
     }
     fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>, Error> {
-        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let mut nonce = Nonce::default();
+        rand::rngs::SysRng.try_fill_bytes(&mut nonce).unwrap();
         let data = self
             .aes
             .encrypt(&nonce, data)
@@ -376,7 +378,7 @@ impl ShipConnection {
         Ok(data)
     }
     async fn key_exchange(stream: &mut tokio::net::TcpStream) -> Result<[u8; 32], Error> {
-        let secret = EphemeralSecret::random(&mut OsRng);
+        let secret = EphemeralSecret::generate();
         let public_key = secret.public_key().to_sec1_bytes();
         stream.write_all(&public_key).await?;
         let mut public_key = vec![0u8; public_key.len()];
@@ -417,7 +419,7 @@ pub async fn try_discover() -> Result<SocketAddr, Error> {
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
     socket.set_broadcast(true)?;
     let mut buf = [0; 2];
-    rand_core::OsRng.fill_bytes(&mut buf);
+    rand::rngs::SysRng.try_fill_bytes(&mut buf).unwrap();
     socket.send_to(&buf, "255.255.255.255:12750").await?;
     match tokio::time::timeout(Duration::from_secs(5), socket.recv_from(&mut buf)).await {
         Ok(x) => {
