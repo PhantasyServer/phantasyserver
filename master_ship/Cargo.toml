@@ -10,7 +10,7 @@ tokio = { version = "1.52.1", features = ["full"] }
 pso2packetlib = { workspace = true, features = ["serde", "split_connection", "tokio"] }
 parking_lot = { version = "0.12.5", features = ["send_guard"] }
 data_structs = { path = "../data_structs", features = ["rmp", "ship"] }
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "migrate"] }
+sqlx = { version = "0.9.0", features = ["runtime-tokio", "sqlite", "migrate"] }
 serde = { version = "1.0.228", features = ["derive"] }
 p256 = { version = "0.14.0-rc.9",  features = ["ecdh"] }
 thiserror = "2.0.18"
